@@ -33,7 +33,8 @@ public sealed class LightCycleReader
             .Where(transition => transition.OccurredAtUtc >= seit)
             .ToList();
 
-        return LightCycleLearner.Learn(flanken, LocalOffset(tentId));
+        var zone = ZoneFor(tentId);
+        return LightCycleLearner.Learn(flanken, utc => zone.GetUtcOffset(utc));
     }
 
     /// <summary>
@@ -44,14 +45,19 @@ public sealed class LightCycleReader
     /// Servers. Fuer die DAUER eines Zyklus ist das egal, fuer „aus um 20:00"
     /// nicht.
     /// </remarks>
-    public TimeSpan LocalOffset(int tentId)
+    public TimeSpan LocalOffset(int tentId) => LocalOffset(tentId, DateTime.UtcNow);
+
+    /// <summary>Der Versatz zu einem bestimmten Zeitpunkt — vor und nach der Zeitumstellung verschieden.</summary>
+    public TimeSpan LocalOffset(int tentId, DateTime zeitpunktUtc) => ZoneFor(tentId).GetUtcOffset(zeitpunktUtc);
+
+    private TimeZoneInfo ZoneFor(int tentId)
     {
         var zone = _lights.GetActiveLightScheduleForTent(tentId)?.TimeZoneId;
         if (!string.IsNullOrWhiteSpace(zone))
         {
             try
             {
-                return TimeZoneInfo.FindSystemTimeZoneById(zone).GetUtcOffset(DateTime.UtcNow);
+                return TimeZoneInfo.FindSystemTimeZoneById(zone);
             }
             catch (TimeZoneNotFoundException)
             {
@@ -59,6 +65,6 @@ public sealed class LightCycleReader
             }
         }
 
-        return TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+        return TimeZoneInfo.Local;
     }
 }

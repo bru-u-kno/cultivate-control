@@ -56,6 +56,19 @@ public static class LightCycleLearner
     /// Schaltzeiten. Die Dauer ist davon unberührt.
     /// </param>
     public static LearnedCycle? Learn(IReadOnlyList<LightTransitionEvent> transitions, TimeSpan localOffset)
+        => Learn(transitions, _ => localOffset);
+
+    /// <summary>
+    /// Wie <see cref="Learn(IReadOnlyList{LightTransitionEvent}, TimeSpan)"/>, aber mit dem Versatz
+    /// ZUM ZEITPUNKT der jeweiligen Flanke.
+    /// </summary>
+    /// <remarks>
+    /// Der Anlass (25.10.2026, Umstellung auf Winterzeit): Der Leser rechnete alle Flanken der letzten
+    /// fünf Tage mit dem Versatz von HEUTE um. Nach der Umstellung lagen die Flanken davor eine Stunde
+    /// daneben, und der gelernte Plan zeigte „an um 07:00“ statt 08:00 — rund drei Tage lang, bis die
+    /// alten Flanken aus dem Fenster fielen. Mit dem Versatz der Flanke selbst bleibt die Uhrzeit stehen.
+    /// </remarks>
+    public static LearnedCycle? Learn(IReadOnlyList<LightTransitionEvent> transitions, Func<DateTime, TimeSpan> versatzUm)
     {
         var sortiert = transitions.OrderBy(t => t.OccurredAtUtc).ToList();
 
@@ -84,8 +97,8 @@ public static class LightCycleLearner
 
         return new LearnedCycle(
             Math.Round(Median(dauern), 1),
-            MedianTime(anZeiten, localOffset),
-            MedianTime(ausZeiten, localOffset),
+            MedianTime(anZeiten, versatzUm),
+            MedianTime(ausZeiten, versatzUm),
             dauern.Count);
     }
 
@@ -150,8 +163,8 @@ public static class LightCycleLearner
     /// einzelner Ausreisser (Stromausfall, manuelles Einschalten) die Zeit nicht
     /// verschiebt.
     /// </remarks>
-    private static TimeOnly MedianTime(List<DateTime> zeitpunkte, TimeSpan offset)
-        => MedianZeit(zeitpunkte, offset);
+    private static TimeOnly MedianTime(List<DateTime> zeitpunkte, Func<DateTime, TimeSpan> versatzUm)
+        => MedianZeit(zeitpunkte, versatzUm);
 
     /// <summary>
     /// Der Median über Uhrzeiten — auch wenn die Flanken um Mitternacht liegen.
@@ -178,9 +191,13 @@ public static class LightCycleLearner
     /// erreichen, und der Grenzfall ginge in der Kulisse unter.</para>
     /// </remarks>
     public static TimeOnly MedianZeit(List<DateTime> zeitpunkte, TimeSpan offset)
+        => MedianZeit(zeitpunkte, _ => offset);
+
+    /// <summary>Wie oben, mit dem Versatz zum Zeitpunkt jeder Flanke (Sommer-/Winterzeit).</summary>
+    public static TimeOnly MedianZeit(List<DateTime> zeitpunkte, Func<DateTime, TimeSpan> versatzUm)
     {
         var minuten = zeitpunkte
-            .Select(zeit => (zeit + offset).TimeOfDay.TotalMinutes)
+            .Select(zeit => (zeit + versatzUm(zeit)).TimeOfDay.TotalMinutes)
             .OrderBy(wert => wert)
             .ToList();
 

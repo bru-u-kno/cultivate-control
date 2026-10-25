@@ -40,7 +40,7 @@ public sealed class LightWatchService
         if (tent.ActiveGrows.Count == 0) return;
 
         var cycle = _cycles.CycleFor(tent.Id, transition.OccurredAtUtc);
-        var lokal = TimeOnly.FromDateTime(transition.OccurredAtUtc + _cycles.LocalOffset(tent.Id));
+        var lokal = TimeOnly.FromDateTime(transition.OccurredAtUtc + _cycles.LocalOffset(tent.Id, transition.OccurredAtUtc));
 
         /* JEDER Grow im Zelt, nicht der erste.
            Hier stand `ActiveGrows.FirstOrDefault()`. Steht neben dem

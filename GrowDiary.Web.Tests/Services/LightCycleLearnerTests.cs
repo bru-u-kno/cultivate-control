@@ -133,4 +133,31 @@ public sealed class LightCycleLearnerTests
 
         Assert.Null(LightCycleLearner.Mismatch(cycle, GrowStage.Flower, SeedType.Autoflower));
     }
+
+    /// <summary>
+    /// Zeitumstellung (25.10.2026): Flanken vor und nach der Umstellung liegen in UTC eine Stunde auseinander,
+    /// zeigen aber dieselbe Uhrzeit im Zelt. Mit dem heutigen Versatz für alle kam „07:00“ statt „08:00“.
+    /// </summary>
+    [Fact]
+    public void DieUhrzeitBleibtBeiDerZeitumstellungStehen()
+    {
+        var berlin = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var events = new List<LightTransitionEvent>();
+        for (var tag = 21; tag <= 26; tag++)
+        {
+            // Im Zelt immer 08:00 bis 20:00 Ortszeit; Umstellung in der Nacht auf den 25.10.
+            var an = TimeZoneInfo.ConvertTimeToUtc(new DateTime(2026, 10, tag, 8, 0, 0), berlin);
+            var aus = TimeZoneInfo.ConvertTimeToUtc(new DateTime(2026, 10, tag, 20, 0, 0), berlin);
+            events.Add(new LightTransitionEvent { Kind = LightTransitionKind.LightOn, OccurredAtUtc = an });
+            events.Add(new LightTransitionEvent { Kind = LightTransitionKind.LightOff, OccurredAtUtc = aus });
+        }
+
+        var heute = berlin.GetUtcOffset(new DateTime(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc));
+        var alt = LightCycleLearner.Learn(events, heute)!;
+        var neu = LightCycleLearner.Learn(events, utc => berlin.GetUtcOffset(utc))!;
+
+        Assert.NotEqual(new TimeOnly(8, 0), alt.OnAt); // die alte Rechnung lag daneben: der Test beißt
+        Assert.Equal(new TimeOnly(8, 0), neu.OnAt);
+        Assert.Equal(new TimeOnly(20, 0), neu.OffAt);
+    }
 }

@@ -11,6 +11,7 @@
 
 - **Übersicht der Steuerungen:** Die Seite lud ihre Zustände nur beim Öffnen. Wer das Licht einschaltete und die Seite offen ließ, sah weiter „aus“. Sie lädt jetzt alle 10 Sekunden leise nach, solange sie sichtbar ist.
 - **Licht an und aus:** Die AC-Infinity-Cloud meldet einen neuen Modus erst nach einigen Sekunden zurück. Bis dahin stand nach dem Klick noch der alte Zustand da und sprang erst beim nächsten Abruf um (bis zu 10 Sekunden). Die Seite zeigt den gesendeten Modus jetzt sofort und fragt bis zur Rückmeldung alle 2 Sekunden nach, höchstens 30 Sekunden lang. Meldet der Controller etwas anderes oder scheitert der Befehl, gilt wieder der Livewert.
+- **Zeitumstellung:** Der gelernte Lichtplan rechnete alle Schaltzeiten der letzten fünf Tage mit der heutigen Zeitverschiebung um. Nach der Umstellung auf Winterzeit (25.10.) zeigte er deshalb etwa drei Tage lang „an um 07:00“ statt 08:00, eine Stunde zu früh. Das Licht selbst lief wie geplant; falsch war nur die Anzeige. Jede Schaltzeit wird jetzt mit der Verschiebung ihres eigenen Zeitpunkts umgerechnet. Das gilt auch für die Uhrzeit in der Meldung bei einem Lichteinbruch. Ein neuer Test deckt Sommer- und Winterzeit in einem Fenster ab.
 - **Schreibabstand:** Die 2 Sekunden zwischen mehreren Schreibschritten (Veggie/Blüte) bleiben unverändert; die AC-Cloud verwirft parallele Befehle.
 
 ## 2.0.0-cc.272
