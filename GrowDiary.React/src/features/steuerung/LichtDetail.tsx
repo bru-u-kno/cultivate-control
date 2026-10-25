@@ -10,8 +10,8 @@ import { rollenPfad } from '../geraete/rollenPfad'
 import { befehlsMeldung, speicherMeldung } from './licht-meldungen'
 import { feldFehlerAus, leereZahlenfelder, zahlAusFeld } from './feld-fehler'
 import { useFehlerZeigen } from './fehler-reiter'
-import { entwurfAbgleichen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
-import type { StufenZiel } from './licht-bedienung'
+import { anzeigeLive, entwurfAbgleichen, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
+import type { ModusZiel, StufenZiel } from './licht-bedienung'
 
 /**
  * Fork AI: Steuerung › Licht — die Bedienung der LED, die bisher als eigene
@@ -49,6 +49,9 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
   // Die zuletzt gesendete Stufe, bis der Livewert sie eingeholt hat — sonst
   // zählen − und + vom veralteten Livewert aus und schicken immer dasselbe Ziel.
   const [stufeZiel, setStufeZiel] = useState<StufenZiel | null>(null)
+  // Der zuletzt gesendete Modus (An/Aus), bis der Controller ihn zurückmeldet: die Seite zeigt ihn sofort
+  // und fragt im 2-Sekunden-Takt nach, statt bis zum nächsten Zehn-Sekunden-Abruf alt zu bleiben.
+  const [modusZiel, setModusZiel] = useState<ModusZiel | null>(null)
 
   /** Nachladen im Takt — hier steht nur das Auffrischen, nicht der erste Abruf. */
   const auffrischen = useCallback(async () => {
@@ -58,6 +61,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
       // Hat der Livewert sich bewegt, ist das gemerkte Stufenziel erledigt — sonst
       // käme es wieder zum Zug, wenn die Stufe zufällig auf den alten Wert zurückgeht.
       setStufeZiel((z) => (z && geladen.live.stufe !== z.basis ? null : z))
+      setModusZiel((z) => (modusZielOffen(geladen.live, z, Date.now()) ? z : null))
       // Einen angefangenen Entwurf nicht ueberschreiben, sonst springt beim
       // Nachladen die Zeit zurueck, die gerade getippt wird.
       setEntwurf((vorher) => vorher ?? geladen.einstellungen)
@@ -91,6 +95,13 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     const uhr = window.setInterval(() => { void auffrischen() }, 10000)
     return () => window.clearInterval(uhr)
   }, [auffrischen])
+
+  useEffect(() => {
+    if (!modusZiel) return
+    const uhr = window.setInterval(() => { void auffrischen() }, 2000)
+    const ende = window.setTimeout(() => setModusZiel(null), Math.max(0, modusZiel.seitMs + 30000 - Date.now()))
+    return () => { window.clearInterval(uhr); window.clearTimeout(ende) }
+  }, [modusZiel, auffrischen])
 
   const geaendert = useMemo(
     () => Boolean(seite && entwurf) && JSON.stringify(seite?.einstellungen) !== JSON.stringify(entwurf),
@@ -130,6 +141,10 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
       const alt = seite?.einstellungen
       setSeite(zurueck)
       if (art === 'stufe' && daten?.stufe != null && zurueck.haAngenommen) setStufeZiel({ ziel: daten.stufe, basis: stufeVorher })
+      if ((art === 'an' || art === 'aus') && zurueck.haAngenommen) {
+        const ziel = art === 'an' ? LICHT_MODI.an : LICHT_MODI.aus
+        setModusZiel(zurueck.live.modus === ziel ? null : { ziel, basis: zurueck.live.modus, seitMs: Date.now() })
+      }
       setEntwurf((vorher) => (vorher && alt ? entwurfAbgleichen(vorher, alt, zurueck.einstellungen) : zurueck.einstellungen))
       setFehler(null)
       setMeldung(befehlsMeldung(art, zurueck.haAngenommen))
@@ -145,7 +160,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     return <V1Page eyebrow="Steuerung" title="Licht">{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
   }
 
-  const live = seite.live
+  const live = anzeigeLive(seite.live, modusZiel)
   const setz = <K extends keyof LichtEinstellungen>(feld: K, wert: LichtEinstellungen[K]) => setEntwurf({ ...entwurf, [feld]: wert })
   const stufeJetzt = stufeBasis(live.stufe, stufeZiel, entwurf.stufe, live.fehlgeschlagen.length > 0)
   const stufeSenden = () => {

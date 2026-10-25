@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entwurfAbgleichen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
+import { anzeigeLive, entwurfAbgleichen, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
 
 describe('stufeAusFeld', () => {
   it('liest ganze Zahlen von 1 bis 10', () => {
@@ -57,5 +57,27 @@ describe('stufeBasis / stufeSchritt (− und + hinter dem Livewert)', () => {
   it('bleibt zwischen 1 und 10', () => {
     expect(stufeSchritt(1, -1)).toBe(1)
     expect(stufeSchritt(10, +1)).toBe(10)
+  })
+})
+
+describe('anzeigeLive', () => {
+  const live = { modus: 'Off', lichtAn: false, fehlgeschlagen: [] as string[] }
+  const ziel = { ziel: 'On', basis: 'Off', seitMs: 1000 }
+
+  it('zeigt den gesendeten Modus, solange der Livewert noch der alte ist', () => {
+    expect(anzeigeLive(live, ziel)).toEqual({ modus: 'On', lichtAn: true, fehlgeschlagen: [] })
+  })
+  it('traut dem Livewert, sobald er sich bewegt hat', () => {
+    const neu = { ...live, modus: 'On', lichtAn: true }
+    expect(anzeigeLive(neu, ziel)).toBe(neu)
+    expect(modusZielOffen(neu, ziel, 5000)).toBe(false)
+  })
+  it('die Frist läuft ab (Nachladen löscht das Ziel) und ein gescheiterter Befehl zählt nicht', () => {
+    expect(modusZielOffen(live, ziel, 40000)).toBe(false)
+    const kaputt = { ...live, fehlgeschlagen: ['x'] }
+    expect(anzeigeLive(kaputt, ziel)).toBe(kaputt)
+  })
+  it('ohne Ziel bleibt alles beim Livewert', () => {
+    expect(anzeigeLive(live, null)).toBe(live)
   })
 })

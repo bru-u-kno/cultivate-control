@@ -110,6 +110,16 @@ export default function SteuerungPage() {
     return () => controller.abort()
   }, [ladeNr])
 
+  // Die Übersicht zeigt Zustände (Licht an/aus, …): leise nachladen, solange die Seite sichtbar ist —
+  // sonst blieb nach dem Schalten „aus" stehen, bis man die Seite neu öffnete.
+  useEffect(() => {
+    const uhr = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      void apiFetch<SteuerungUebersicht>('/api/steuerung').then(setUebersicht).catch(() => undefined)
+    }, 10000)
+    return () => window.clearInterval(uhr)
+  }, [])
+
   // „Einrichten": auswählen, dann auf die Seite der Steuerung — dort werden Geräte zugeordnet.
   const einrichten = async (kennung: string) => {
     if (await umschalten(kennung, true)) {

@@ -35,6 +35,34 @@ export function stufeBasis(live: number | null, ziel: StufenZiel | null, entwurf
   return live ?? entwurf
 }
 
+/** Der zuletzt gesendete Modus (An/Aus) und der Livewert, auf dem er aufsetzte. */
+export type ModusZiel = { ziel: string; basis: string | null; seitMs: number }
+
+/** So lange zeigt die Seite den gewollten Modus, bevor sie dem Livewert wieder allein traut. */
+export const MODUS_ZIEL_MAX_MS = 30000
+
+/** Ein Ziel gilt, solange der Livewert noch auf dem alten Stand steht und die Frist läuft. */
+export function modusZielOffen(live: { modus: string | null }, z: ModusZiel | null, jetztMs: number): z is ModusZiel {
+  return z !== null && live.modus === z.basis && jetztMs - z.seitMs < MODUS_ZIEL_MAX_MS
+}
+
+/**
+ * Der Livewert, so wie die Seite ihn zeigt.
+ *
+ * Die AC-Cloud meldet einen neuen Modus erst nach einigen Sekunden. Bis dahin
+ * stünde nach dem Klick weiter der alte Zustand da, und die Anzeige sprang erst
+ * beim nächsten Abruf um — das war das Ruckeln. Solange ein gesendeter Modus
+ * noch nicht zurückgemeldet ist, zeigt die Seite ihn schon.
+ */
+export function anzeigeLive<T extends { modus: string | null; lichtAn: boolean | null; fehlgeschlagen: string[] }>(
+  live: T, z: ModusZiel | null,
+): T {
+  // Die Frist hält die Seite selbst (Zeitgeber löscht das Ziel) — im Render gibt es keine Uhr.
+  if (z === null || live.modus !== z.basis || live.fehlgeschlagen.length > 0) return live
+  const lichtAn = z.ziel === 'On' ? true : z.ziel === 'Off' ? false : live.lichtAn
+  return { ...live, modus: z.ziel, lichtAn }
+}
+
 /** Ein Schritt hoch (+1) oder runter (−1), begrenzt auf 1 bis 10. */
 export function stufeSchritt(von: number, richtung: 1 | -1): number {
   return Math.min(10, Math.max(1, von + richtung))
