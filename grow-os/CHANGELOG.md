@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.273
+
+**Licht: Die Übersicht zeigt den Zustand von selbst, und das Umschalten springt nicht mehr.**
+
+- **Übersicht der Steuerungen:** Die Seite lud ihre Zustände nur beim Öffnen. Wer das Licht einschaltete und die Seite offen ließ, sah weiter „aus“. Sie lädt jetzt alle 10 Sekunden leise nach, solange sie sichtbar ist.
+- **Licht an und aus:** Die AC-Infinity-Cloud meldet einen neuen Modus erst nach einigen Sekunden zurück. Bis dahin stand nach dem Klick noch der alte Zustand da und sprang erst beim nächsten Abruf um (bis zu 10 Sekunden). Die Seite zeigt den gesendeten Modus jetzt sofort und fragt bis zur Rückmeldung alle 2 Sekunden nach, höchstens 30 Sekunden lang. Meldet der Controller etwas anderes oder scheitert der Befehl, gilt wieder der Livewert.
+- **Schreibabstand:** Die 2 Sekunden zwischen mehreren Schreibschritten (Veggie/Blüte) bleiben unverändert; die AC-Cloud verwirft parallele Befehle.
+
 ## 2.0.0-cc.272
 
 **Sprachdurchgang, Nachtrag: die letzten Reste auf der Hydro-Seite, und die Prüfung liest jetzt auch einzelne Wörter.**
