@@ -197,7 +197,7 @@ test.describe('Nachfüll-Rundweg', () => {
     await weitereAngabenOeffnen(page)
     const vorbei = new Date(Date.now() - 2 * 24 * 3600 * 1000)
     vorbei.setHours(10, 15, 0, 0)
-    await f.getByLabel('Zeitpunkt').fill(feldzeit(vorbei))
+    await f.getByLabel('Wann hast du es gemacht?').fill(feldzeit(vorbei))
     await f.getByLabel('Verbrauch seit dem letzten Mal').fill('14,5')
     const marke = `Nachfüll-Rundweg ${Date.now()}`
     await f.getByLabel('Notiz').fill(marke)
@@ -308,18 +308,44 @@ test.describe('Nachfüll-Rundweg', () => {
     await f.getByLabel('EC des Wassers').fill('0,45')
     await f.getByLabel('pH des Wassers').fill('7,2')
     await f.getByLabel('Härte des Wassers').fill('8')
-    await expect(f.getByText('Eigenes Wasser hat keinen Artikel')).toBeVisible()
+    // Eigenes Wasser wird nach Anteilen gebucht: Osmose 80 % von 20 L = 16 L, der Rest Leitung — nicht mehr „wird nicht gebucht"
+    await expect(f.getByText('Eigenes Wasser hat keinen Artikel')).toHaveCount(0)
+    const anteile = page.locator('[data-audit="nachfuellen-eigen-anteile"]')
+    await expect(anteile.getByLabel('Anteil Osmosewasser in Prozent')).toHaveValue('50')
+    await expect(anteile.getByLabel('Anteil Leitungswasser in Prozent')).toHaveValue('50')
+    await anteile.getByLabel('Anteil Osmosewasser in Prozent').fill('80')
+    await expect(anteile.getByLabel('Anteil Leitungswasser in Prozent')).toHaveValue('20')
+    await expect(page.locator('[data-audit="nachfuellen-artikel-da"], [data-audit="nachfuellen-artikel-fehlt"]').filter({ hasText: 'Osmosewasser' })).toContainText('16,0')
+    await expect(page.locator('[data-audit="nachfuellen-artikel-da"], [data-audit="nachfuellen-artikel-fehlt"]').filter({ hasText: 'Leitungswasser' })).toContainText('4,0')
     const vorgang = await speichern(page)
     expect(vorgang.eintrag.wasserEcMsCm ?? vorgang.eintrag.waterEcMsCm).toBe(0.45)
     expect(vorgang.eintrag.notes).toContain('Wasser (eigene Werte)')
     expect(vorgang.eintrag.notes).toContain('Härte 8')
-    expect(vorgang.buchungen).toHaveLength(0)
+    expect(vorgang.eintrag.notes).toContain('Anteil: 80')
 
     // Ohne EC bei eigenem Wasser lässt sich nichts eintragen
     await f.getByLabel('Wie viel Wasser?').fill('5')
     await f.getByLabel('Womit hast du aufgefüllt?').selectOption('eigen')
     await page.locator('[data-audit="nachfuellen-speichern"]').click()
     await expect(page.getByText('Trag den EC deines Wassers ein')).toBeVisible()
+  })
+
+  test('Nur Wasser: Zusätze (Purolyt, pH-Korrektur) lassen sich mit eintragen, und der Zeitpunkt steht offen da', async ({ page }) => {
+    darfUeberspringen(eigener == null, 'Kein eigener Grow anlegbar — laeuft die App unter GROW_OS_URL?')
+    await oeffnen(page, eigener!.growId)
+    const f = formular(page)
+    await expect(page.locator('[data-audit="nachfuellen-modus-wasser"]')).toHaveAttribute('aria-pressed', 'true')
+    // Der Zeitpunkt liegt ohne Aufklappen im Bild
+    await expect(f.getByLabel('Wann hast du es gemacht?')).toBeVisible()
+    await f.getByLabel('Wie viel Wasser?').fill('18')
+    // Zusätze auch bei „Nur Wasser"
+    const zusaetze = page.locator('[data-audit="nachfuellen-zusaetze"]')
+    await expect(zusaetze).toBeVisible()
+    await zusaetze.locator('[data-audit="nachfuellen-zusatz-anderer"]').click()
+    await zusaetze.getByLabel('Name des Zusatzes').fill(ARTIKEL)
+    await zusaetze.getByLabel(`${ARTIKEL} Menge`).fill('3')
+    const vorgang = await speichern(page)
+    expect(vorgang.tagebuch.body).toContain(`${ARTIKEL} 3`)
   })
 
   test('Nachmessung: der Fork trägt EC und pH aus den Sensoren selbst ein — und die Vorgabe lässt sich merken', async ({ page }) => {
@@ -340,8 +366,8 @@ test.describe('Nachfüll-Rundweg', () => {
     const neuester = new Date(punkte[punkte.length - 1].t)
     await weitereAngabenOeffnen(page)
     await f.getByRole('button', { name: 'vor 1 Std.' }).click()
-    await expect(f.getByLabel('Zeitpunkt')).not.toHaveValue('')
-    await f.getByLabel('Zeitpunkt').fill(feldzeit(new Date(neuester.getTime() + 60_000 - 30 * 60_000)))
+    await expect(f.getByLabel('Wann hast du es gemacht?')).not.toHaveValue('')
+    await f.getByLabel('Wann hast du es gemacht?').fill(feldzeit(new Date(neuester.getTime() + 60_000 - 30 * 60_000)))
     await expect(page.locator('[data-audit="nachfuellen-nachmessung"]')).toContainText('liegt schon in der Vergangenheit')
 
     // Minuten ändern und als Standard merken
@@ -393,7 +419,7 @@ test.describe('Nachfüll-Rundweg', () => {
     await expect(page.locator('[data-audit="nachfuellen-vorbelegt"]')).toBeVisible()
     await expect(f.getByLabel('Wie viel Wasser?')).toHaveValue('20')
     await expect(f.getByLabel('EC nachher')).toHaveValue('1,61')
-    await expect(f.getByLabel('Zeitpunkt')).toHaveValue(feldzeit(zeitpunkt))
+    await expect(f.getByLabel('Wann hast du es gemacht?')).toHaveValue(feldzeit(zeitpunkt))
     await expect(f.getByLabel('Notiz')).toHaveValue(marke)
     // Die Werte nachher sind da — die Automatik entfällt.
     await expect(page.locator('[data-audit="nachfuellen-eintrag"]')).toContainText('selbst eingetragen')

@@ -30,6 +30,12 @@ export const MODI: ReadonlyArray<{ modus: Modus; titel: string; hinweis: string 
   { modus: 'zusatz', titel: 'Nur Zusätze (ohne Wasser)', hinweis: 'Dünger, Purolyt, pH-Korrektur, Cannaboost …' },
 ]
 
+/** Die Zusammensetzung von eigenem Wasser als Zeile für die Notiz („Anteil: 60 % Osmose, 40 % Leitung"); `null` ohne gültigen Anteil. */
+export function eigenesWasserAnteilZeile(osmoseProzent: number | null): string | null {
+  if (osmoseProzent == null || !(osmoseProzent >= 0 && osmoseProzent <= 100)) return null
+  return `Anteil: ${zahl(osmoseProzent, 0)}\u00a0% Osmose, ${zahl(100 - osmoseProzent, 0)}\u00a0% Leitung`
+}
+
 /** Ein Name ohne Groß/Klein und ohne Leerraum am Rand — wie das Backend Artikelnamen vergleicht. */
 export function normalisiert(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase()

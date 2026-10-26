@@ -98,6 +98,12 @@ keine Wasserquelle (`art = Correction`, `Liter` darf fehlen).
   („als Standard merken") liegt in `AppSettings` (`GET/PUT /api/addback/einstellungen`,
   Standard: an, 15 min).
 
+**Eigenes Wasser und Zusätze (cc.274).** Bei „Eigene Werte eintragen …" gibt der Nutzer den Osmose-Anteil an; die Liter
+werden wie bei der Mischung auf die Artikel „Osmosewasser" und „Leitungswasser" gebucht (`wasserZeilen` mit `Mixed`).
+Gespeichert wird weiter `wasser: Tap` mit eigenem `wasserEcMsCm`; der Anteil steht nur in der Notiz
+(`eigenesWasserAnteilZeile`). „Nur Wasser" (`TopOff`) nimmt Zusätze wie „Wasser + Dünger" an — der Server bucht
+`buchungen` unabhängig von der Art. Der Zeitpunkt steht in der Karte „Wann?" über Schritt 1, nicht mehr unter „Weitere Angaben".
+
 **Vorbelegung per Link.** `/addback?growId=1&zeitpunkt=2026-10-03T14:55:00Z&ecVorher=1.75&ecNachher=1.61&liter=20`
 öffnet die Seite mit diesen Werten („Weitere Angaben" dann aufgeklappt). `zeitpunkt` als ISO mit Zone oder Ortszeit
 `yyyy-MM-ddTHH:mm`; Zahlen in Maschinenform (`1.75`) für `liter`, `ecVorher`,

@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.274
+
+**Nachfüllen: Zeitpunkt gleich sichtbar, eigenes Wasser wird gebucht, Zusätze auch bei „Nur Wasser“.**
+
+- **Zeitpunkt:** Wer ein Nachfüllen erst später einträgt, wählt jetzt in der Karte „Wann?“ direkt über „Was hast du gemacht?“ den echten Zeitpunkt. Sie war bisher unter „Weitere Angaben“ eingeklappt und kaum zu finden. EC, pH und Temperatur „vorher“ holt der Fork aus dem Sensorverlauf zu genau diesem Zeitpunkt, nicht aus den Livewerten nach dem Durchmischen. Unter „Weitere Angaben“ bleiben Notiz und Verbrauch.
+- **Eigenes Wasser:** Bei „Eigene Werte eintragen …“ stand „Eigenes Wasser hat keinen Artikel — es wird nicht gebucht“. Jetzt gibst du an, wie viel Prozent Osmose dein Wasser enthält; der Rest ist Leitungswasser. Die Liter werden auf die Artikel „Osmosewasser“ und „Leitungswasser“ gebucht, wie bei der Mischung (bei 18 L und 60 % Osmose sind das 10,8 L und 7,2 L). Der Anteil steht zusammen mit EC und pH in der Notiz des Eintrags. Die Buchungen lassen sich einzeln abwählen.
+- **Zusätze bei „Nur Wasser“:** Purolyt, pH-Korrektur und andere Zusätze ließen sich nur mit „Wasser + Dünger & Zusätze“ eintragen. „Nur Wasser“ hat jetzt den Schritt „Zusätze (optional)“ mit denselben Zeilen und Knöpfen; was du einträgst, wird mitgebucht und steht in der Tagebuchzeile.
+- **Prüfung:** Ein neuer Rundweg trägt Wasser mit Zusatz ein; der Rundweg für eigenes Wasser prüft die Aufteilung der Liter und die Notiz.
+
 ## 2.0.0-cc.273
 
 **Licht: Die Übersicht zeigt den Zustand von selbst, und das Umschalten springt nicht mehr.**

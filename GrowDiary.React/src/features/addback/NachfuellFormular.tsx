@@ -36,6 +36,7 @@ import {
   ecWirkung,
   artikelFuerName,
   eigenesWasserZeile,
+  eigenesWasserAnteilZeile,
   fuellstand,
   MODI,
   nachfuellTagebuch,
@@ -238,9 +239,7 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
         hinweis: z.hinweis, artikelId: z.artikelId, einheit: z.artikelEinheit ?? 'ml',
       }))
       : []
-    const eigene = modus === 'wasser'
-      ? []
-      : extra.map((e): AblaufZeile => ({
+    const eigene = extra.map((e): AblaufZeile => ({
         schluessel: `extra:${e.id}`, name: e.name, art: 'extra', rolle: null, vorschlagMl: null, hinweis: null, artikelId: null, einheit: 'ml',
       }))
     return [...plan, ...eigene]
@@ -253,8 +252,10 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
   const gebucht = zeilen.filter(wirdGebucht)
   const ohneArtikel = zugegeben.filter((z) => zeilenArtikel(z) == null)
 
-  const anteilOsmose = vorschlag?.osmoseAnteil ?? (wasserApi === 'RO' ? 1 : wasserApi === 'Mixed' ? (osmoseZahl ?? 0) / 100 : 0)
-  const wasserTeile = mitWasser && wasserWahl !== 'eigen' && literZahl != null && literZahl > 0 ? wasserZeilen(literZahl, wasserApi, anteilOsmose) : []
+  const anteilOsmose = wasserWahl === 'eigen' ? (osmoseZahl ?? 0) / 100
+    : vorschlag?.osmoseAnteil ?? (wasserApi === 'RO' ? 1 : wasserApi === 'Mixed' ? (osmoseZahl ?? 0) / 100 : 0)
+  const osmoseGueltig = osmoseZahl != null && osmoseZahl >= 0 && osmoseZahl <= 100
+  const wasserTeile = mitWasser && (wasserWahl !== 'eigen' || osmoseGueltig) && literZahl != null && literZahl > 0 ? wasserZeilen(literZahl, wasserWahl === 'eigen' ? 'Mixed' : wasserApi, anteilOsmose) : []
   const wasserBuchungen = wasserTeile.filter((w) => {
     const a = artikelFuerName(artikel, w.name)
     return a != null && !buchenAus.has(`wasser:${w.name}`) && w.menge > 0
@@ -288,7 +289,7 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
 
   // ---- Was gespeichert wird
   const wasserName = wasserWahl === 'eigen' ? 'eigenes Wasser' : wasserWahl === 'Mixed' ? `Mischung (${zahl(osmoseZahl ?? 0, 0)}\u00a0% Osmose)` : WASSER_NAMEN[wasserWahl]
-  const eigeneZeile = wasserWahl === 'eigen' ? eigenesWasserZeile(eigenW) : null
+  const eigeneZeile = wasserWahl === 'eigen' ? [eigenesWasserZeile(eigenW), eigenesWasserAnteilZeile(osmoseZahl)].filter(Boolean).join('\n') || null : null
   const zugabenText = zeilen.filter((z) => zeilenMenge(z) > 0)
     .map((z) => ({ name: z.name, menge: zeilenMenge(z), einheit: einheitVon(zeilenArtikel(z), z.einheit) }))
   const nachherWerte = { ec: zahlOderNull(nachherHand.ec), ph: zahlOderNull(nachherHand.ph), wt: null, do: null, orp: null }
@@ -342,6 +343,7 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
     ]))
     if (unlesbar) { setFehler(unlesbar); return }
     if (mitWasser && (literZahl == null || literZahl <= 0)) { setFehler('Wie viele Liter Wasser hast du eingefüllt?'); return }
+    if (wasserWahl === 'eigen' && !osmoseGueltig) { setFehler('Wie viel Prozent deines Wassers ist Osmose? Trag eine Zahl von 0 bis 100 ein.'); return }
     if (wasserWahl === 'eigen' && ecEigenZahl == null) { setFehler('Trag den EC deines Wassers ein — oder wähl eine Quelle aus der Liste.'); return }
     if (modus === 'zusatz' && zugegeben.length === 0) { setFehler('Was hast du zugegeben? Wähl einen Zusatz und trag die Menge ein.'); return }
     if (extra.some((e) => e.name.trim() === '')) { setFehler('Ein Zusatz hat keinen Namen — trag ihn ein oder nimm die Zeile heraus.'); return }
@@ -467,6 +469,23 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
         />
       )}
 
+      {/* ---- Wann? */}
+      <div className="v1-eyebrow nf-ek nf-abschnitt">Wann?</div>
+      <article className="v1-card tone-neutral" data-audit="nachfuellen-wann">
+        <div className="nf-feld">
+          <label className="l" htmlFor="nf-zeit">Wann hast du es gemacht?</label>
+          <div className="nf-dt">
+            <input id="nf-zeit" type="datetime-local" value={zeitpunkt} max={toLocalInputValue()} onChange={(e) => setZeitpunkt(e.target.value)} />
+            <span className="nf-chips" style={{ margin: 0 }}>
+              {[['Jetzt', 0], ['vor 30 min', 30], ['vor 1 Std.', 60], ['gestern', 1440]].map(([text, min]) => (
+                <button key={text} type="button" onClick={() => setZeitpunkt(toLocalInputValue(new Date(Date.now() - Number(min) * 60_000)))}>{text}</button>
+              ))}
+            </span>
+          </div>
+          <small>Standard: jetzt. Auch später eintragen: EC, pH und Temperatur „vorher“ holt der Fork aus dem Sensorverlauf zu diesem Zeitpunkt.</small>
+        </div>
+      </article>
+
       {/* ---- 1 · Was hast du gemacht? */}
       <div className="v1-eyebrow nf-ek nf-abschnitt"><span className="nf-nr">1</span>Was hast du gemacht?</div>
       {modusKnoepfe}
@@ -541,6 +560,28 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
             )}
             {vorschlagFehler && <p className="nf-fehler" role="alert">{vorschlagFehler}</p>}
 
+            {wasserWahl === 'eigen' && (
+              <div className="nf-feld" style={{ marginTop: 'var(--s-3)' }} data-audit="nachfuellen-eigen-anteile">
+                <span className="l">Woraus besteht dein Wasser?</span>
+                <div className="nf-zwei">
+                  <label className="nf-feld">
+                    <span className="l">Osmose</span>
+                    <span className="nf-mit">
+                      <input inputMode="numeric" aria-label="Anteil Osmosewasser in Prozent" value={osmoseProzent} onChange={(e) => setOsmoseProzent(e.target.value)} />
+                      <span className="e">%</span>
+                    </span>
+                  </label>
+                  <label className="nf-feld">
+                    <span className="l">Leitungswasser</span>
+                    <span className="nf-mit">
+                      <input aria-label="Anteil Leitungswasser in Prozent" value={osmoseGueltig ? zahl(100 - osmoseZahl!, 0) : '–'} readOnly />
+                      <span className="e">%</span>
+                    </span>
+                  </label>
+                </div>
+                <small>Damit bucht der Fork die Liter auf deine Artikel. EC und pH oben bleiben als Notiz im Eintrag.</small>
+              </div>
+            )}
             {wasserTeile.map((w) => (
               <ArtikelZeile key={w.name} name={w.name} menge={`${zahl(w.menge, 1)}\u00a0L`} einheit="L"
                 artikel={artikelFuerName(artikel, w.name)} aus={buchenAus.has(`wasser:${w.name}`)}
@@ -549,20 +590,21 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
                 onFrage={() => { setFrageFehler(null); setFrage({ schluessel: `wasser:${w.name}`, name: w.name, einheit: 'L' }) }}
                 onEinheit={(einheit) => frage && setFrage({ ...frage, einheit })} onAnlegen={() => void artikelAnlegen()} onNein={() => setFrage(null)} />
             ))}
-            {wasserWahl === 'eigen' && <p className="nf-klein">Eigenes Wasser hat keinen Artikel — es wird nicht gebucht.</p>}
           </article>
         </>
       )}
 
       {/* ---- Dünger & Zusätze */}
-      {modus !== 'wasser' && (
-        <>
-          <div className="v1-eyebrow nf-ek nf-abschnitt"><span className="nf-nr">{mitWasser ? 3 : 2}</span>{modus === 'mix' ? 'Dünger & Zusätze' : 'Zusätze'}</div>
+      <>
+        {/* Schritt Zusätze */}
+          <div className="v1-eyebrow nf-ek nf-abschnitt"><span className="nf-nr">{mitWasser ? 3 : 2}</span>{modus === 'mix' ? 'Dünger & Zusätze' : modus === 'wasser' ? 'Zusätze (optional)' : 'Zusätze'}</div>
           <article className="v1-card tone-neutral" data-audit="nachfuellen-zusaetze">
             <p className="st-hinweis">
               {modus === 'mix'
                 ? 'Vorgabe ist der aktuelle Mischplan, umgerechnet auf deine Liter. Du kannst jede Menge überschreiben und jeden Haken wegnehmen — abgewählte Zeilen werden nicht eingetragen.'
-                : 'Trag ein, was du ins Reservoir gegeben hast. Das Volumen bleibt gleich.'}
+                : modus === 'wasser'
+                  ? 'Hast du Purolyt, pH-Korrektur oder anderes zugegeben? Trag es hier ein, dann wird es mitgebucht.'
+                  : 'Trag ein, was du ins Reservoir gegeben hast. Das Volumen bleibt gleich.'}
             </p>
             {modus === 'mix' && vorschlag?.luecke && <V1Alert tone="neutral" message={vorschlag.luecke} />}
             {modus === 'mix' && (literZahl == null || literZahl <= 0) && <p className="st-hinweis">Trag oben die Liter ein, dann rechnet der Fork den Mischplan darauf.</p>}
@@ -624,8 +666,7 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
             </div>
             <datalist id="nf-artikelnamen">{artikel.map((a) => <option key={a.id} value={a.name} />)}</datalist>
           </article>
-        </>
-      )}
+      </>
 
       {/* ---- Wenn die Sensoren fehlen */}
       {vorherFehlt && (
@@ -766,20 +807,8 @@ export function NachfuellFormular({ growId, startModus = 'wasser', vorbelegung =
 
       {/* ---- Weitere Angaben */}
       <div className="nf-klapp">
-        <Klappkachel titel="Weitere Angaben (optional)" zusammenfassung="Zeitpunkt, Notiz, Verbrauch" offen={vorbelegung != null}>
+        <Klappkachel titel="Weitere Angaben (optional)" zusammenfassung="Notiz, Verbrauch" offen={vorbelegung != null}>
           <article className="v1-card tone-neutral">
-            <div className="nf-feld">
-              <label className="l" htmlFor="nf-zeit">Zeitpunkt</label>
-              <div className="nf-dt">
-                <input id="nf-zeit" type="datetime-local" value={zeitpunkt} max={toLocalInputValue()} onChange={(e) => setZeitpunkt(e.target.value)} />
-                <span className="nf-chips" style={{ margin: 0 }}>
-                  {[['Jetzt', 0], ['vor 30 min', 30], ['vor 1 Std.', 60], ['gestern', 1440]].map(([text, min]) => (
-                    <button key={text} type="button" onClick={() => setZeitpunkt(toLocalInputValue(new Date(Date.now() - Number(min) * 60_000)))}>{text}</button>
-                  ))}
-                </span>
-              </div>
-              <small>Standard: jetzt. Die „vorher“-Werte (EC, pH) holt der Fork für diesen Zeitpunkt aus dem Sensorverlauf — so kannst du auch später eintragen.</small>
-            </div>
             <div className="nf-feld">
               <label className="l" htmlFor="nf-notiz">Notiz</label>
               <input id="nf-notiz" value={notiz} onChange={(e) => setNotiz(e.target.value)} placeholder="z. B. Osmose-Tank war leer" />

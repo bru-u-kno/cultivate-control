@@ -6,6 +6,7 @@ import {
   ART_VON_MODUS,
   artikelFuerName,
   eigenesWasserZeile,
+  eigenesWasserAnteilZeile,
   fuellstand,
   alterZeile,
   ecWirkung,
@@ -121,6 +122,18 @@ describe('Eigene Wasserwerte im Text', () => {
   })
   it('ohne Werte keine Zeile', () => {
     expect(eigenesWasserZeile({ ec: '', ph: '', haerte: '', temp: '' })).toBeNull()
+  })
+})
+
+describe('Anteil bei eigenem Wasser', () => {
+  it('nennt Osmose und Leitung', () => {
+    expect(eigenesWasserAnteilZeile(60)).toBe('Anteil: 60\u00a0% Osmose, 40\u00a0% Leitung')
+    expect(eigenesWasserAnteilZeile(0)).toBe('Anteil: 0\u00a0% Osmose, 100\u00a0% Leitung')
+  })
+  it('ohne gültigen Anteil keine Zeile', () => {
+    expect(eigenesWasserAnteilZeile(null)).toBeNull()
+    expect(eigenesWasserAnteilZeile(101)).toBeNull()
+    expect(eigenesWasserAnteilZeile(-1)).toBeNull()
   })
 })
 
