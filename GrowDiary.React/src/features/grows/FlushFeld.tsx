@@ -43,8 +43,8 @@ export function FlushFeld({ flushTage, onChange, maxWochen, flipDatum, flipBekan
       </div>
       <small data-audit="flush-finish">
         {finish
-          ? `Finish beginnt am ${kurzDatum(finish)} (Ernte laut Sorte minus ${aktuell} Tage).`
-          : `Das Finish beginnt ${aktuell} Tage vor der Ernte laut Sorte.`}
+          ? `Flush beginnt am ${kurzDatum(finish)} (Ernte laut Sorte minus ${aktuell} Tage).`
+          : `Der Flush beginnt ${aktuell} Tage vor der Ernte laut Sorte.`}
       </small>
       {hinweis && (
         <small role="status" data-audit={hinweis.art === 'fehlt' ? 'flush-plan-fehlt' : 'flush-plan-mehr'}>

@@ -66,7 +66,7 @@ export function ZuechterWochenFeld({ strainId, eigenGesetzt, wochen, sorte, sort
       {weichtAb && sorte && (
         <small role="status" data-audit="zuechterwochen-abweichung">
           Weicht von der Sorte ab (Sorte: {wochenText(sorte)}).
-          {tage != null && tage !== 0 && ` Finish beginnt dadurch ${Math.abs(tage)} Tage ${tage < 0 ? 'früher' : 'später'}.`}
+          {tage != null && tage !== 0 && ` Flush beginnt dadurch ${Math.abs(tage)} Tage ${tage < 0 ? 'früher' : 'später'}.`}
         </small>
       )}
       {sorte && sorteHatAngabe && (

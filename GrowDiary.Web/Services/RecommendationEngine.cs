@@ -530,7 +530,7 @@ public sealed class RecommendationEngine
                         GrowStage.Veg => (1.0, 1.4, "Veg"),
                         GrowStage.Transition => (1.4, 1.6, "Transition"),
                         GrowStage.Flower => (1.6, 2.0, "Blüte"),
-                        GrowStage.Finish => (0.5, 0.8, "Finish"),
+                        GrowStage.Finish => (0.5, 0.8, "Flush"),
                         _ => (1.0, 1.8, current.Stage.ToString())
                     };
                     if (cannaAquaEc > cannaMax + 0.25)
@@ -571,7 +571,7 @@ public sealed class RecommendationEngine
                 GrowStage.Veg => (1.0, 1.4, "Veg (Canna Aqua)"),
                 GrowStage.Transition => (1.4, 1.6, "Transition (Canna Aqua)"),
                 GrowStage.Flower => (1.6, 2.0, "Blüte (Canna Aqua)"),
-                GrowStage.Finish => (0.5, 0.8, "Finish (Canna Aqua)"),
+                GrowStage.Finish => (0.5, 0.8, "Flush (Canna Aqua)"),
                 _ => (1.0, 1.8, stage.ToString())
             };
         }
@@ -627,7 +627,7 @@ public sealed class RecommendationEngine
             case GrowStage.Finish:
                 min = 0.8;
                 max = 1.2;
-                label = "Finish / Fade";
+                label = "Flush / Fade";
                 break;
 
             default:
@@ -694,7 +694,7 @@ public sealed class RecommendationEngine
             case GrowStage.Finish:
                 min = 0.4;
                 max = 0.6;
-                label = "Finish / Fade";
+                label = "Flush / Fade";
                 break;
 
             default:
@@ -722,7 +722,7 @@ public sealed class RecommendationEngine
             GrowStage.Transition => (1.5, 1.7, "Transition"),
             GrowStage.Flower when runDays < 63 => (1.7, 1.9, "Bloom Phase"),
             GrowStage.Flower => (1.5, 1.7, "Late Bloom"),
-            GrowStage.Finish => (0.5, 0.7, "Finish"),
+            GrowStage.Finish => (0.5, 0.7, "Flush"),
             _ => (1.2, 1.8, stage.ToString())
         };
     }

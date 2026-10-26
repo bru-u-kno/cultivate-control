@@ -153,7 +153,7 @@ function GrowDetailPage() {
             )}
             {canConfirmFinish && (
               <V1Button disabled={Boolean(saving)} onClick={() => void handleGrowAction('finish')}>
-                {saving === 'action-finish' ? 'Trägt ein…' : 'Finish beginnt'}
+                {saving === 'action-finish' ? 'Trägt ein…' : 'Flush beginnt'}
               </V1Button>
             )}
             {canHarvest && <V1LinkButton to={`/grows/${grow.id}/harvest`} variant="primary">Ernte</V1LinkButton>}

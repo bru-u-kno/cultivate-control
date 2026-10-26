@@ -357,7 +357,7 @@ public sealed class AgentContextBuilder
         GrowStage.Veg => "Vegetativ",
         GrowStage.Transition => "Transition",
         GrowStage.Flower => "Blüte",
-        GrowStage.Finish => "Finish",
+        GrowStage.Finish => "Flush",
         _ => stage.ToString(),
     };
 

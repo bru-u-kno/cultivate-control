@@ -36,7 +36,6 @@ const ERLAUBT: Record<string, string> = {
   RDWC: 'Fachbegriff, auf Deutsch genauso — Recirculating Deep Water Culture',
   DWC: 'dasselbe für Deep Water Culture',
   Autoflower: 'die deutsche Sortenbezeichnung ist genau dieses Wort',
-  Finish: 'in PHASEN_NAMEN bewusst „Finish" — im Grow-Deutsch etabliert',
   Problem: 'in FOTO_NAMEN bewusst „Problem" — ist auch ein deutsches Wort',
   Training: 'in FOTO_NAMEN bewusst „Training" — LST/HST heissen hier so',
   Offline: 'deutsches Lehnwort; der Knopf „Offline" ist die Handlung',

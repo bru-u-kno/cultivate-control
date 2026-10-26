@@ -151,7 +151,7 @@ public sealed partial class SchreibWerkzeuge(GrowOsReader reader)
     public async Task<string> MessungEintragenAsync(
         [Description("Die Id des Grows (aus grows_auflisten)")] int growId,
         [Description($"Zeitpunkt der Messung. {ZeitpunktText}")] string? zeitpunkt = null,
-        [Description("Phase, etwa Veg, Blüte, Finish. Weglassen = die aktuelle Phase des Grows.")] string? phase = null,
+        [Description("Phase, etwa Veg, Blüte, Flush. Weglassen = die aktuelle Phase des Grows.")] string? phase = null,
         [Description("pH im Reservoir")] double? ph = null,
         [Description("EC im Reservoir in mS/cm")] double? ec = null,
         [Description("Wassertemperatur im Reservoir in °C")] double? wassertemperaturC = null,
@@ -234,7 +234,7 @@ public sealed partial class SchreibWerkzeuge(GrowOsReader reader)
     public async Task<string> MessungAendernAsync(
         [Description("Die Id der Messung")] int messungId,
         [Description("Neuer Zeitpunkt, Ortszeit, etwa 2026-10-03T14:30 oder 03.10.2026 14:30. Weglassen = bleibt.")] string? zeitpunkt = null,
-        [Description("Neue Phase, etwa Veg, Blüte, Finish. Weglassen = bleibt.")] string? phase = null,
+        [Description("Neue Phase, etwa Veg, Blüte, Flush. Weglassen = bleibt.")] string? phase = null,
         [Description("pH im Reservoir")] double? ph = null,
         [Description("EC im Reservoir in mS/cm")] double? ec = null,
         [Description("Wassertemperatur im Reservoir in °C")] double? wassertemperaturC = null,
@@ -782,7 +782,7 @@ public sealed partial class SchreibWerkzeuge(GrowOsReader reader)
         => $"Nichts ausgeführt: den Zeitpunkt „{zeitpunkt}\" kann ich nicht lesen. Bitte so angeben: 2026-10-03T14:30 oder 03.10.2026 14:30.";
 
     private static string PhaseUnbekannt(string phase)
-        => $"Nichts ausgeführt: „{phase}\" ist keine Phase. Möglich: Sämling, Steckling, Veg, Übergang, Blüte, Finish, Trocknen, Aushärten.";
+        => $"Nichts ausgeführt: „{phase}\" ist keine Phase. Möglich: Sämling, Steckling, Veg, Übergang, Blüte, Flush, Trocknen, Aushärten.";
 
     internal static string? Auswahl(IReadOnlyList<(string Wert, string[] Woerter)> liste, string gesagt)
     {

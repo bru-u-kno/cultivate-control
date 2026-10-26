@@ -29,7 +29,7 @@ const STAGES: Array<{ key: string; label: string }> = [
   { key: 'Veg', label: 'Vegetativ' },
   { key: 'Transition', label: 'Transition' },
   { key: 'Flower', label: 'Blüte' },
-  { key: 'Finish', label: 'Finish' },
+  { key: 'Finish', label: 'Flush' },
 ]
 
 /** Die Spalten der Tabelle: Überschrift und die zwei Felder dahinter. */

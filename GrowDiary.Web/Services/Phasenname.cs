@@ -26,7 +26,7 @@ public static class Phasenname
         GrowStage.Veg => "Vegetativ",
         GrowStage.Transition => "Transition",
         GrowStage.Flower => "Blüte",
-        GrowStage.Finish => "Finish",
+        GrowStage.Finish => "Flush",
         _ => phase.ToString(),
     };
 }

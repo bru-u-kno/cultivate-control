@@ -743,7 +743,7 @@ public sealed class KostenSeiteService
         nameof(GrowStage.Veg) => "Wachstum", // wie deutsche-woerter.ts in der Oberfläche
         nameof(GrowStage.Transition) => "Übergang",
         nameof(GrowStage.Flower) => "Blüte",
-        nameof(GrowStage.Finish) => "Finish",
+        nameof(GrowStage.Finish) => "Flush",
         nameof(GrowStage.Dry) => "Trocknen",
         nameof(GrowStage.Cure) => "Aushärten",
         _ => phase,

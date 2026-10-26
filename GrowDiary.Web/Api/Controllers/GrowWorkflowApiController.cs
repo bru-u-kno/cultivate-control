@@ -628,7 +628,7 @@ public sealed class GrowWorkflowApiController : ApiControllerBase
         var stage = GrowStageResolver.Resolve(grow, DateTime.Today);
         if (stage is not (GrowStage.Transition or GrowStage.Flower or GrowStage.Finish))
         {
-            return BadRequestError("invalid_action", "Finish gibt es erst in der Blüte.");
+            return BadRequestError("invalid_action", "Flush gibt es erst in der Blüte.");
         }
 
         if (!grow.FinishStartedAt.HasValue)
@@ -639,12 +639,12 @@ public sealed class GrowWorkflowApiController : ApiControllerBase
             {
                 GrowId = id,
                 EntryType = JournalEntryType.FinishStarted,
-                Body = "Trichome sind so weit — Finish beginnt, es wird gespuelt.",
+                Body = "Trichome sind so weit — Flush beginnt, es wird gespült.",
                 OccurredAtUtc = DateTime.UtcNow
             });
         }
 
-        return Ok(new GrowActionResultDto(_repository.GetGrow(id)!.ToDetailDto(), "Finish festgehalten."));
+        return Ok(new GrowActionResultDto(_repository.GetGrow(id)!.ToDetailDto(), "Flush festgehalten."));
     }
 
     [HttpPost("{id:int}/actions/confirm-veg")]

@@ -375,7 +375,7 @@ export function CropSteeringPage() {
               <V1Stat label="Blütewoche" value={plan.aktuelleWoche ?? '–'} />
               <V1Stat
                 label="Untergrenze" value={grad(wirksamerBoden)} unit="°C"
-                hint={stand.floorC == null ? 'Finish-Wert deines Profils.' : 'Von dir gesetzt.'} />
+                hint={stand.floorC == null ? 'Flush-Wert deines Profils.' : 'Von dir gesetzt.'} />
             </div>
             {/* Deckt den Null-Fall ab: „Noch keine Blüte …" kommt vom Server. */}
             {plan.luecke && <V1Alert tone="neutral" message={plan.luecke} />}
@@ -451,7 +451,7 @@ export function CropSteeringPage() {
                 <div ref={untergrenzeRef} className="scroll-ziel">
                   <V1Field
                     label="Untergrenze (°C)"
-                    hint={`Leer: Finish-Wert des Profils. Nie unter ${grad(stand.hardFloorC)}\u00a0°C.`}>
+                    hint={`Leer: Flush-Wert des Profils. Nie unter ${grad(stand.hardFloorC)}\u00a0°C.`}>
                     <input inputMode="decimal" value={boden} onChange={(e) => setBoden(e.target.value)} placeholder="16" />
                   </V1Field>
                   {/* Die Luecke steht AUCH hier, nicht nur oben in der Kette:

@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.275
+
+**Die Phase „Finish“ heißt jetzt überall „Flush“.**
+
+- **Ein Name für dieselbe Woche:** Der Mischplan nannte die letzte Woche vor der Ernte schon „Flush“, der Chip im Kasten „Dein Plan heute“ (Addback und Wasserwechsel) las „Woche 1 Finish“. Jetzt heißt die Phase in der ganzen Oberfläche „Flush“: Chip, Knopf „Flush beginnt“, Meldungen beim Anlegen und Bearbeiten eines Grows, Sortenseite, Sollwert-Profile, Nachtabsenkung, Kostenseite und Empfehlungen. Gemessen wird das am Wort „Finish“, das in keiner Oberflächenzeile mehr vorkommt.
+- **Tagebuch:** Der automatische Eintrag lautet „Trichome sind so weit — Flush beginnt, es wird gespült.“ (vorher mit „gespuelt“).
+- **Bestehende Daten bleiben:** Die Phase ist intern weiter unter demselben Schlüssel gespeichert; bestehende Grows, Profile und Pläne ändern sich nicht. Die KI-Werkzeuge verstehen „Flush“ zusätzlich zu „Finish“.
+
 ## 2.0.0-cc.274
 
 **Nachfüllen: Zeitpunkt gleich sichtbar, eigenes Wasser wird gebucht, Zusätze auch bei „Nur Wasser“.**

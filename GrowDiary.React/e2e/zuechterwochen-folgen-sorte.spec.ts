@@ -80,7 +80,7 @@ test('Grow folgt der Sorte, eigener Wert bleibt, „Wie Sorte" führt zurück', 
     await eigen.getByLabel('Blüte von (Wochen)').fill('8')
     await eigen.getByLabel('Blüte bis (Wochen)').fill('9')
     await expect(page.locator('[data-audit="zuechterwochen-abweichung"]'))
-      .toContainText('Weicht von der Sorte ab (Sorte: 10–11). Finish beginnt dadurch 14 Tage früher.')
+      .toContainText('Weicht von der Sorte ab (Sorte: 10–11). Flush beginnt dadurch 14 Tage früher.')
     await page.getByRole('button', { name: 'Speichern' }).click()
     await expect.poll(async () => (await holeGrow(request, growId)).breederWeeksEigen).toBe(true)
     grow = await holeGrow(request, growId)
@@ -153,9 +153,9 @@ test('Sorten-Seite sagt vor dem Speichern, was die Änderung bei den Grows bewir
     await page.getByLabel('Blüte bis (Wochen)').fill('10')
     await expect(hinweis).toContainText('Wirkt auf 1 laufendes Grow')
     // Der Helfer hängt dem Namen ein Suffix an — gezählt wird deshalb am Wortlaut, nicht am Namen.
-    await expect(hinweis).toContainText(new RegExp(`${MARKE} folgt \\d+: Finish verschiebt sich um 7 Tage nach hinten`))
+    await expect(hinweis).toContainText(new RegExp(`${MARKE} folgt \\d+: Flush verschiebt sich um 7 Tage nach hinten`))
     await expect(hinweis).toContainText(new RegExp(`Bleibt bei eigenem Wert: ${MARKE} eigen \\d+ \\(7–8 Wochen\\)`))
-    await expect(hinweis).not.toContainText(new RegExp(`${MARKE} eigen \\d+: Finish`))
+    await expect(hinweis).not.toContainText(new RegExp(`${MARKE} eigen \\d+: Flush`))
   } finally {
     await abraeumen(request, folgend)
     await abraeumen(request, eigenwertig)

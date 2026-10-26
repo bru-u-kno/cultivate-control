@@ -32,7 +32,7 @@ const PHASEN_NAMEN: Record<GrowStage, string> = {
   Veg: 'Wachstum',
   Transition: 'Übergang',
   Flower: 'Blüte',
-  Finish: 'Finish',
+  Finish: 'Flush',
   Dry: 'Trocknen',
   Cure: 'Aushärten',
 }

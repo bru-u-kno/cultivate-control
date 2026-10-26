@@ -157,12 +157,12 @@ function kurzDatum(datum: Date): string {
 }
 
 function wirkungText(eintrag: WirkungFolgt): string {
-  if (eintrag.bestaetigt) return `${eintrag.name}: Finish ist schon bestätigt, bleibt`
+  if (eintrag.bestaetigt) return `${eintrag.name}: Flush ist schon bestätigt, bleibt`
   if (eintrag.von && eintrag.nach && eintrag.tage) {
-    return `${eintrag.name}: Finish verschiebt sich vom ${kurzDatum(eintrag.von)}. auf den ${kurzDatum(eintrag.nach)}.`
+    return `${eintrag.name}: Flush verschiebt sich vom ${kurzDatum(eintrag.von)}. auf den ${kurzDatum(eintrag.nach)}.`
   }
   if (eintrag.tage) {
-    return `${eintrag.name}: Finish verschiebt sich um ${Math.abs(eintrag.tage)} Tage ${eintrag.tage > 0 ? 'nach hinten' : 'nach vorn'}`
+    return `${eintrag.name}: Flush verschiebt sich um ${Math.abs(eintrag.tage)} Tage ${eintrag.tage > 0 ? 'nach hinten' : 'nach vorn'}`
   }
   return `${eintrag.name}: folgt der Sorte`
 }

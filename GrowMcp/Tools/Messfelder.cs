@@ -118,7 +118,7 @@ public static class Messfelder
         ("Veg", ["veg", "vegi", "wachstum", "vegetativ", "wachstumsphase"]),
         ("Transition", ["übergang", "uebergang", "stretch", "transition"]),
         ("Flower", ["blüte", "bluete", "flower", "flowering"]),
-        ("Finish", ["finish", "spülen", "spuelen", "reife"]),
+        ("Finish", ["flush", "finish", "spülen", "spuelen", "reife"]),
         ("Dry", ["trocknen", "trocknung", "dry"]),
         ("Cure", ["aushärten", "aushaerten", "curing", "cure"]),
     ];
