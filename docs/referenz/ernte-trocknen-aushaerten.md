@@ -12,7 +12,7 @@
 | Aushärten, alle Gläser | Menü Pflanzen → „Aushärten", `/aushaerten` |
 | Gläser, die dran sind | `/aufgaben`, Abschnitt „Aushärten" (`data-audit="af-curing"`) |
 | Ernte & Archiv | Menü Pflanzen → „Ernte & Archiv", `/archiv` (Altpfad `/analyse` leitet dorthin) |
-| Trocknungs-Klima | Kacheln Temperatur und Feuchte, Vermerk „Trocknung · Tag N" |
+| Trocknungs-Klima | Kacheln Temperatur und Feuchte, Vermerk „Trocknung · Tag N · Etappenname"; die Etappen stehen im Programm (Plan › „Plan von" › Reiter „Trocknung") |
 | Trocknen/Aushärten im Zeitstrahl | Live, Grow-Liste, Grow-Detail |
 | Strompreis eintragen | `/settings` |
 | Für die eigene KI | MCP-Werkzeug `aushaerten` (lesend) |
@@ -30,6 +30,16 @@ speichert **und** schließt ab (`POST /api/grows/:id/archive`).
 läuft kein Grow mehr, ist der letzte kürzlich geerntet und hat noch kein
 Trockengewicht, tragen die Kacheln Temperatur und Feuchte die Trockenziele, und
 die Reservoir-Alarme pausieren.
+
+Die **Trockenziele sind Etappen** (seit cc.280, A-029): je Etappe Name, Dauer in
+Tagen, Lufttemperatur, Luftfeuchte-Ziel und eine Obergrenze der Feuchte. Sie
+liegen im **Programm** des geernteten Grows (Feld `trocknung`), frei editierbar
+unter Plan › „Plan von" › Reiter „Trocknung"; ein Programm ohne eigene Etappen
+trocknet nach dem Standard („langsam": 3 Tage 20 °C/60 %, 4 Tage 19 °C/58 %,
+3 Tage 18 °C/55 %, Obergrenze 65 %). Die Kachel zeigt ein Band um das Ziel
+(±1 °C, ±2 Prozentpunkte, oben nie über der Obergrenze); hinter der letzten
+Etappe gilt sie weiter, bis das Trockengewicht eingetragen ist. Mitgelieferte
+Programme bleiben unverändert — Speichern legt ein eigenes Programm an.
 
 **Aushärten.** Ein Glas, nicht ein Grow — mehrere Sorten härten getrennt aus,
 und eine Sorte füllt oft mehrere Gläser. Feuchte und Lüftminuten werden getrennt
@@ -55,7 +65,9 @@ Kosten; zwei davon lassen sich nebeneinanderlegen.
 | Überfällig | Termin + 1 Tag | `CuringSchedule.Evaluate` |
 | Mindestdauer Aushärten | 14 Tage | `CuringSchedule.MinimumCureDays` — **Konstante, nirgends ausgewertet** |
 | Kürzlich fertige Gläser | 30 Tage | `CuringRepository.GetOpenJars` |
-| Trockenklima | 18–20 °C, 55–60 % | `MoldGuard.DryingTempMinC/MaxC`, `DryingHumidityMin/Max`; 60/60-Faustregel |
+| Trocknung (Standard) | 3 Etappen: 20 °C/60 %, 19 °C/58 %, 18 °C/55 %; Obergrenze 65 % | `TrocknungsPlan.Standard`; je Programm änderbar (`trocknung`); vorher feste 18–20 °C, 55–60 % in `MoldGuard` (60/60-Faustregel) |
+| Trocknung: Grenzen | höchstens 8 Etappen, zusammen höchstens 21 Tage, Name ≤ 60 Zeichen | `TrocknungsPlan.Pruefen`, `MaxTage` = `MoldGuard.DryingWindowDays` |
+| Trocknung: Zielband der Kachel | ±1 °C, ±2 Prozentpunkte | `TrocknungsPlan.BandFuer` |
 | Feuchtedeckel Dry / Cure | 60 % / 62 % | `MoldGuard.MaxHumidityPercent`; die 62 decken sich mit dem Glas-Fenster |
 | Trockenraum-Fenster | 21 Tage nach der Ernte | `MoldGuard.DryingWindowDays`, gelesen in `DryingWindow.DayFor` |
 | Zeitstrahl: Trocknen | 10 Tage (Bereich 7–14) | `phase-timeline.ts`, `TROCKNEN_TAGE` |
@@ -96,7 +108,11 @@ Kosten; zwei davon lassen sich nebeneinanderlegen.
 | Lüft-Rhythmus, Feuchte-Ampel | `GrowDiary.Web/Services/CuringSchedule.cs`, `CuringRating.cs` |
 | Gläser, Ablesungen, Endpunkte | `GrowDiary.Web/Infrastructure/CuringRepository.cs`, `GrowDiary.Web/Api/Controllers/CuringApiController.cs` |
 | Aushärte-Seite, Glas anlegen | `GrowDiary.React/src/pages/CuringPage.tsx`, `src/features/curing/CuringSection.tsx` |
-| Trockenraum erkennen | `GrowDiary.Web/Services/DryingWindow.cs`, `MoldGuard.cs` |
+| Trockenraum erkennen | `GrowDiary.Web/Services/DryingWindow.cs` (`StandFor` nennt den Grow), `MoldGuard.cs` |
+| Trocknungs-Etappen (Rechnung, Standard, Prüfregeln) | `GrowDiary.Web/Services/TrocknungsPlan.cs`, Schema `Services/Knowledge/Schema/TrockenEtappe.cs` |
+| Trocknungs-Etappen lesen/speichern | `GrowDiary.Web/Api/Controllers/ProgrammeApiController.cs` (`GET/POST /api/programme/{id}/trocknung`) |
+| Reiter „Trocknung" | `GrowDiary.React/src/features/zielwerte/TrocknungReiter.tsx`, `trocknung-plan.ts` |
+| Kachel-Ziele beim Trocknen | `GrowDiary.Web/Services/GrowDashboardComposer.cs` (`ApplyDryingTargets`) |
 | Kostenrechnung | `GrowDiary.Web/Services/GrowCostService.cs`, `GrowDiary.Web/Api/Controllers/CostsApiController.cs` |
 | Archiv, Vergleich, Zeitstrahl | `GrowDiary.React/src/pages/ArchivePage.tsx`, `src/features/grows/phase-timeline.ts` |
 

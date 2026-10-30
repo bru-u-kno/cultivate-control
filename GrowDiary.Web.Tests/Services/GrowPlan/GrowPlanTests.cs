@@ -3,6 +3,7 @@ using GrowDiary.Web.Models;
 using GrowDiary.Web.Services;
 using GrowDiary.Web.Services.GrowPlan;
 using GrowDiary.Web.Services.Knowledge;
+using GrowDiary.Web.Services.Knowledge.Schema;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GrowDiary.Web.Tests.Services.GrowPlan;
@@ -690,6 +691,27 @@ public sealed class GrowPlanTests : IDisposable
             .FeedChart!.Columns.Single(c => c.Id == "flower-w6").EcTarget);
         Assert.Equal(GrowPlanArten.AlsProgramm, _repo.Buch(grow.Id)[0].Art);
         Assert.Equal("Canna · Schema: SKX-RDWC", programm.Manufacturer);
+    }
+
+    [Fact]
+    public void EndstandBehaeltDieEtappenDerTrocknung()
+    {
+        // Die Etappen gehören zum Programm, nicht zum Plan: der Endstand baut das Programm neu auf
+        // und darf sie nicht verlieren — sonst trocknet der nächste Grow nach dem Standard.
+        var quelle = _eigene.Anlegen(_eigene.Finden("skx-canna-aqua")!, "Mit Etappen");
+        quelle.Trocknung = [new TrockenEtappe { Name = "Kühl", DauerTage = 6, LufttemperaturC = 17, LuftfeuchteZiel = 55, LuftfeuchteMax = 62 }];
+        _eigene.Speichern(quelle);
+        var grow = Grow(4601, quelle.Id);
+        _dienst.Anlegen(grow);
+        grow.Status = GrowStatus.Completed;
+        _dienst.Abgleichen(grow);
+
+        var programm = _dienst.AlsProgrammSpeichern(grow.Id, "Endstand mit Etappen");
+
+        var gespeichert = _wissen.NutrientPrograms.Single(p => p.Id == programm.Id);
+        Assert.Equal(["Kühl"], gespeichert.Trocknung!.Select(e => e.Name));
+        Assert.Equal(17, gespeichert.Trocknung![0].LufttemperaturC);
+        Assert.Equal(6, gespeichert.Trocknung![0].DauerTage);
     }
 
     [Fact]

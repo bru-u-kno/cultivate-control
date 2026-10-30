@@ -913,6 +913,8 @@ public sealed class GrowPlanService
             PhGuidance = bibliothek?.PhGuidance ?? string.Empty,
             EcGuidance = bibliothek?.EcGuidance ?? string.Empty,
             FeedChart = GrowPlanBauer.Kopie(stand.Inhalt.Chart),
+            // Die Etappen der Trocknung gehören zum Programm, nicht zum Plan des Grows — sie bleiben mit.
+            Trocknung = TrocknungsPlan.HatEigene(bibliothek) ? TrocknungsPlan.Bereinigt(bibliothek!.Trocknung!) : null,
         };
         var programm = _eigene.Anlegen(vorlage, name);
         var zeit = jetztUtc ?? DateTime.UtcNow;

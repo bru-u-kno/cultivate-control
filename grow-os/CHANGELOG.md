@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.280
+
+**Neu: Trocknung in Etappen — Dauer, Temperatur und Feuchte je Etappe, frei änderbar im Programm.**
+
+- **Anlass:** Das Trocknungs-Klima stand als feste Zahlen im Code (18–20 °C, 55–60 %) und galt an jedem Tag gleich. Gewollt ist ein Verlauf — erst milder und feuchter, am Ende kühler und trockener — und jeder soll ihn ändern können, weil Räume und Sorten verschieden trocknen.
+- **Wo du es findest:** Plan › „Plan von“ › ein Programm wählen › Reiter „Trocknung“. Je Etappe: Name, Dauer in Tagen, Lufttemperatur, Luftfeuchte-Ziel und eine Obergrenze der Feuchte (der Schutz gegen Schimmel). Mit „+ Etappe danach“ und „Etappe löschen“ baust du die Folge um: bis zu 8 Etappen, zusammen höchstens 21 Tage — so lange gilt das Trocknungsfenster nach der Ernte. Die Seite zeigt die Summe mit.
+- **Standard:** Ein Programm ohne eigene Etappen trocknet „langsam“: 3 Tage 20 °C und 60 %, 4 Tage 19 °C und 58 %, 3 Tage 18 °C und 55 %, Obergrenze 65 %. Das gilt ab sofort für alle bestehenden Programme, auch für deine eigenen, bis du dort Etappen speicherst.
+- **Was sich auf den Kacheln ändert:** Temperatur und Feuchte des trocknenden Zelts zeigen das Zielband der laufenden Etappe (±1 °C, ±2 Prozentpunkte, oben nie über der Obergrenze) und den Vermerk „Trocknung · Tag 4 · Hauptphase“. Vorher stand dort an jedem Tag 18–20 °C und 55–60 %. Hinter der letzten Etappe gilt sie weiter, bis das Trockengewicht eingetragen ist. Welches Zelt trocknet, bestimmt unverändert der Grow, der dort zuletzt geerntet wurde; die Kachel liest die Etappen aus dem Programm dieses Grows.
+- **Vorlagen bleiben, wie sie sind:** Änderst du die Trocknung in einer mitgelieferten Vorlage, legt „Als eigenes Programm speichern“ ein neues Programm an; ein eigenes wird an Ort und Stelle geändert. Wochenwerte und Trocknung eines Programms ändern einander nicht. Trocknet gerade ein Zelt nach einer Vorlage, ändert eine Kopie dort nichts, solange der Grow nach der Vorlage läuft — die Seite sagt das vor dem Speichern; ein eigenes Programm, nach dem der Grow läuft, wirkt dagegen sofort.
+- **Programme ohne Wochenwerte:** Canna Aqua und Hydroponic Research VBX öffnen auf dem Reiter „Trocknung“ — dort gibt es etwas einzustellen. Bei „Wochen“ steht weiter, dass sie keine Wochenwerte mitbringen.
+- **„Plan von“ ist jetzt eine Auswahlliste** (mit Suche, gruppiert in mitgelieferte Vorlagen und eigene Programme) statt einer Reihe von Reitern. Bei vielen eigenen Programmen füllten die Reiter am Telefon die halbe Seite.
+- **Noch nicht:** Die Etappen bestimmen die Zielwerte der Kacheln. Zuluft, Entfeuchter, Abluft und Kühlung des Trocknungszelts folgen ihnen noch nicht von selbst; das ist der nächste Schritt.
+
 ## 2.0.0-cc.279
 
 **Neu: Programme ohne laufenden Grow ansehen und bearbeiten — die Seite „Plan“ hat jetzt die Auswahl „Plan von“.**

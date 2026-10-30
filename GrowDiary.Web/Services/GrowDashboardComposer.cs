@@ -478,26 +478,35 @@ public sealed class GrowDashboardComposer
     /// Trocknung liegt vor, wenn kein Grow mehr laeuft, der letzte in den
     /// vergangenen drei Wochen geerntet wurde und noch kein Trockengewicht
     /// eingetragen ist — das Gewicht ist der natuerliche Abschluss: gewogen
-    /// wird nach dem Trocknen.
+    /// wird nach dem Trocknen. Welche Etappe gilt, sagt das Programm des
+    /// geernteten Grows (<see cref="TrocknungsPlan"/>); bis dahin gab es feste
+    /// Zahlen in <c>MoldGuard</c>.
     /// </remarks>
     private void ApplyDryingTargets(List<MetricCard> cards, Tent tent, GrowRun? activeGrow)
     {
         if (activeGrow is not null) return;
-        if (DryingWindow.DayFor(_grows, _harvests, tent.Id, DateTime.Today) is not { } tag) return;
+        if (DryingWindow.StandFor(_grows, _harvests, tent.Id, DateTime.Today) is not { } trocknung) return;
+
+        var programm = _knowledge?.NutrientPrograms.FirstOrDefault(p =>
+            string.Equals(p.Id, trocknung.Grow.FeedProgramId, StringComparison.OrdinalIgnoreCase));
+        if (TrocknungsPlan.EtappeAm(TrocknungsPlan.Fuer(programm), trocknung.Tag) is not { } stand) return;
+
+        var band = TrocknungsPlan.BandFuer(stand.Etappe);
+        var vermerk = $"Trocknung · Tag {trocknung.Tag} · {stand.Etappe.Name}";
 
         if (cards.FirstOrDefault(card => card.Key == "temperature") is { } temperatur)
         {
-            temperatur.TargetMin = MoldGuard.DryingTempMinC;
-            temperatur.TargetMax = MoldGuard.DryingTempMaxC;
-            temperatur.TargetNote = $"Trocknung · Tag {tag}";
+            temperatur.TargetMin = band.TempMin;
+            temperatur.TargetMax = band.TempMax;
+            temperatur.TargetNote = vermerk;
             temperatur.TargetDerived = false;
         }
 
         if (cards.FirstOrDefault(card => card.Key == "humidity") is { } feuchte)
         {
-            feuchte.TargetMin = MoldGuard.DryingHumidityMin;
-            feuchte.TargetMax = MoldGuard.DryingHumidityMax;
-            feuchte.TargetNote = $"Trocknung · Tag {tag}";
+            feuchte.TargetMin = band.FeuchteMin;
+            feuchte.TargetMax = band.FeuchteMax;
+            feuchte.TargetNote = vermerk;
             feuchte.TargetDerived = false;
         }
     }

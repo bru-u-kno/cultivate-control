@@ -4,6 +4,7 @@ using GrowDiary.Web.Models;
 using GrowDiary.Web.Services;
 using GrowDiary.Web.Services.GrowPlan;
 using GrowDiary.Web.Services.Knowledge;
+using GrowDiary.Web.Services.Knowledge.Schema;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -30,6 +31,9 @@ public sealed class ProgrammeApiTests : IDisposable
     private readonly WochenwertRepository _wochenwerte;
     private readonly WochenwertUeberlagerung _ueberlagerung;
     private readonly ProgrammeApiController _api;
+    private readonly AppPaths _pfade;
+    private readonly GrowRepository _growRepo;
+    private readonly HarvestRepository _ernten;
 
     public ProgrammeApiTests()
     {
@@ -41,12 +45,16 @@ public sealed class ProgrammeApiTests : IDisposable
         _ueberlagerung = new WochenwertUeberlagerung(_wochenwerte, NullLogger<WochenwertUeberlagerung>.Instance);
         _wissen = new KnowledgeBaseLoader(pfade, NullLogger<KnowledgeBaseLoader>.Instance) { NachDemLaden = _ueberlagerung.Anwenden };
         _wissen.Initialize();
+        _pfade = pfade;
+        _growRepo = new GrowRepository(pfade);
+        _ernten = new HarvestRepository(pfade);
         _api = new ProgrammeApiController(
             _wissen,
             new EigeneProgramme(pfade, _wissen, NullLogger<EigeneProgramme>.Instance),
             _ueberlagerung,
             _wochenwerte,
-            new GrowRepository(pfade));
+            _growRepo,
+            ernten: _ernten);
     }
 
     public void Dispose()
@@ -242,6 +250,125 @@ public sealed class ProgrammeApiTests : IDisposable
     public void Ein_unbekanntes_Programm_wird_beim_Speichern_nicht_gefunden()
     {
         Assert.IsType<NotFoundObjectResult>(Speichern("gibt-es-nicht", Aendern("x", "airTempC", 22, "X")).Result);
+    }
+
+    // ---- Trocknung (Etappe 2) -----------------------------------------------------------------
+
+    private ActionResult<TrocknungGespeichertDto> TrocknungSpeichern(string id, TrocknungSpeichernRequest anfrage)
+        => _api.TrocknungSpeichern(id, anfrage);
+
+    private static TrockenEtappe E(string name, int tage, double temp = 19, double ziel = 58, double max = 65)
+        => new() { Name = name, DauerTage = tage, LufttemperaturC = temp, LuftfeuchteZiel = ziel, LuftfeuchteMax = max };
+
+    [Fact]
+    public void Ein_Programm_ohne_eigene_Etappen_zeigt_den_Standard()
+    {
+        var dto = Wert(_api.Trocknung(Mitgeliefert));
+
+        Assert.True(dto.IstStandard);
+        Assert.False(dto.Eigen);
+        Assert.Equal(TrocknungsPlan.Standard.Count, dto.Etappen.Count);
+        Assert.Equal(TrocknungsPlan.Standard.Select(e => e.Name), dto.Etappen.Select(e => e.Name));
+        Assert.Equal(TrocknungsPlan.MaxTage, dto.MaxTage);
+        Assert.Empty(dto.Laeuft);
+    }
+
+    [Fact]
+    public void Auch_ein_Programm_ohne_Wochenwerte_hat_eine_Trocknung()
+    {
+        // Canna Aqua führt keine Wochenspalten — die Trocknung hängt nicht daran.
+        var ohneRaster = Wert(_api.Liste()).First(p => p.Wochen == 0).Id;
+
+        Assert.False(Wert(_api.Trocknung(ohneRaster)).Etappen.Count == 0);
+        Assert.IsType<NotFoundObjectResult>(_api.Trocknung("gibt-es-nicht").Result);
+    }
+
+    [Fact]
+    public void Etappen_einer_Vorlage_landen_in_einer_Kopie_und_die_Vorlage_bleibt_beim_Standard()
+    {
+        var antwort = Wert(TrocknungSpeichern(Mitgeliefert,
+            new TrocknungSpeichernRequest { Name = "Trocken-Test", Etappen = [E("Kühl", 5, temp: 17), E("Trocken", 4, ziel: 52)] }));
+
+        Assert.True(antwort.NeuAngelegt);
+        Assert.StartsWith("eigen-", antwort.Trocknung.ProgrammId);
+        Assert.False(antwort.Trocknung.IstStandard);
+        Assert.Equal(["Kühl", "Trocken"], antwort.Trocknung.Etappen.Select(e => e.Name));
+        Assert.Equal(17, antwort.Trocknung.Etappen[0].LufttemperaturC);
+        // Das Original: unverändert beim Standard.
+        Assert.True(Wert(_api.Trocknung(Mitgeliefert)).IstStandard);
+        Assert.Contains(Wert(_api.Liste()), p => p.Id == antwort.Trocknung.ProgrammId && p.Eigen);
+    }
+
+    [Fact]
+    public void Etappen_eines_eigenen_Programms_werden_an_Ort_und_Stelle_geaendert_und_Wochenwerte_bleiben()
+    {
+        var woche = ErsteSpalte(Mitgeliefert);
+        var kopie = Wert(Speichern(Mitgeliefert, Aendern(woche, "airTempC", 21.5, "Meins"))).Werte.ProgrammId;
+        var anzahl = Wert(_api.Liste()).Count;
+
+        var antwort = Wert(TrocknungSpeichern(kopie, new TrocknungSpeichernRequest { Etappen = [E("Eine", 8)] }));
+
+        Assert.False(antwort.NeuAngelegt);
+        Assert.Equal(kopie, antwort.Trocknung.ProgrammId);
+        Assert.Equal(anzahl, Wert(_api.Liste()).Count);
+        Assert.Equal(21.5, Luft(kopie, woche)); // die Wochenwerte der Kopie sind unberührt
+        Assert.Equal(["Eine"], Wert(_api.Trocknung(kopie)).Etappen.Select(e => e.Name));
+
+        // Und umgekehrt: eine Änderung der Wochenwerte lässt die Etappen stehen.
+        Wert(Speichern(kopie, Aendern(woche, "airTempC", 23)));
+        Assert.Equal(["Eine"], Wert(_api.Trocknung(kopie)).Etappen.Select(e => e.Name));
+    }
+
+    [Fact]
+    public void Ungueltige_Etappen_werden_abgelehnt_und_es_entsteht_keine_Kopie()
+    {
+        var vorher = Wert(_api.Liste()).Count;
+
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert, new TrocknungSpeichernRequest { Etappen = [] }).Result);
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert, new TrocknungSpeichernRequest { Etappen = [E("a", 30)] }).Result);
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert,
+            new TrocknungSpeichernRequest { Etappen = [E("a", 3)], Name = new string('x', 81) }).Result);
+        Assert.Equal(vorher, Wert(_api.Liste()).Count);
+        Assert.IsType<NotFoundObjectResult>(TrocknungSpeichern("gibt-es-nicht", new TrocknungSpeichernRequest { Etappen = [E("a", 3)] }).Result);
+    }
+
+    [Fact]
+    public void Eine_leere_oder_kaputte_Anfrage_gibt_eine_Meldung_statt_eines_Absturzes()
+    {
+        var vorher = Wert(_api.Liste()).Count;
+
+        // Ein Rumpf, der sich nicht lesen ließ, kommt als null an; ein Feld ohne Liste ebenso.
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert, null!).Result);
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert, new TrocknungSpeichernRequest { Etappen = null! }).Result);
+        Assert.IsNotType<OkObjectResult>(TrocknungSpeichern(Mitgeliefert, new TrocknungSpeichernRequest { Etappen = [null!] }).Result);
+        Assert.IsNotType<OkObjectResult>(Speichern(Mitgeliefert, null!).Result);
+        Assert.IsNotType<OkObjectResult>(Speichern(Mitgeliefert, new ProgrammWerteSpeichernRequest { Aenderungen = null! }).Result);
+        Assert.Equal(vorher, Wert(_api.Liste()).Count);
+    }
+
+    [Fact]
+    public void Die_Trocknung_nennt_welches_Zelt_gerade_nach_dem_Programm_trocknet()
+    {
+        var kopie = Wert(TrocknungSpeichern(Mitgeliefert,
+            new TrocknungSpeichernRequest { Name = "Läuft", Etappen = [E("Zuerst", 2), E("Dann", 5)] })).Trocknung.ProgrammId;
+        var zelt = TestDatabase.EnsureDefaultTent(_pfade);
+        var heute = DateTime.Today;
+        var growId = _growRepo.CreateGrow(new GrowRun
+        {
+            Name = "Geerntet", TentId = zelt.Id, FeedProgramId = kopie,
+            StartDate = heute.AddDays(-90), EndDate = heute.AddDays(-3), Status = GrowStatus.Completed,
+        });
+        _ernten.Create(new HarvestEntry { GrowId = growId, WetWeightG = 400 });
+
+        var laeuft = Assert.Single(Wert(_api.Trocknung(kopie)).Laeuft);
+
+        Assert.Equal(zelt.Name, laeuft.Zelt);
+        Assert.Equal(4, laeuft.Tag);            // Erntetag + 3
+        Assert.Equal(2, laeuft.EtappeNr);       // Etappe 1 dauert 2 Tage
+        Assert.Equal("Dann", laeuft.EtappeName);
+        Assert.False(laeuft.Gehalten);
+        // Ein Programm, nach dem niemand trocknet, hat keinen Eintrag.
+        Assert.Empty(Wert(_api.Trocknung(Mitgeliefert)).Laeuft);
     }
 
     [Theory]

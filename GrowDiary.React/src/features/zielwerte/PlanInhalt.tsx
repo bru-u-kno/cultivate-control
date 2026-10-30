@@ -2,13 +2,34 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { apiFetch } from '../../api'
 import { V1Alert, V1Skeleton, V1Tabs } from '../../components/v1'
+import { V1Select, type V1Option } from '../../components/V1Select'
 import { PlanReiter } from './PlanReiter'
 import { ProgrammReiter } from './ProgrammReiter'
+import { TrocknungReiter } from './TrocknungReiter'
 import { WochenZeile } from './WochenZeile'
 import { hatRaster, programmZeile, type ProgrammKurz } from './programm-plan'
 
 /** Der Wert der Auswahl für „der Plan des laufenden Grows“ — kein Programm in der Adresse. */
 const GROW = '__grow__'
+
+/**
+ * Die Einträge der Auswahl „Plan von“: erst der laufende Grow, dann die mitgelieferten Vorlagen, dann
+ * die eigenen Programme. Eine Auswahlliste statt Reitern, weil die Zahl der eigenen Programme wächst —
+ * Reiter umbrechen am Telefon (Regel des Projekts) und schöben den Plan aus dem Bild.
+ */
+function planVonOptionen(liste: ProgrammKurz[]): V1Option[] {
+  return [
+    { wert: GROW, text: 'Laufender Grow', hinweis: 'Der Plan deines Grows, Woche für Woche', betont: true },
+    ...liste.map((p): V1Option => ({
+      wert: p.id,
+      text: p.name,
+      hinweis: programmZeile(p),
+      gruppe: p.eigen ? 'Eigene Programme' : 'Mitgelieferte Vorlagen',
+    })),
+  ]
+}
+
+type Bereich = 'wochen' | 'trocknung'
 
 /**
  * Fork AI (A-029, Etappe 1): der Inhalt der Seite „Plan“ — mit der Auswahl
@@ -65,19 +86,32 @@ export function PlanInhalt() {
   }
 
   const gewaehlt = programmId ? liste?.find((p) => p.id === programmId) : undefined
+  // Ein Programm ohne Wochenwerte (Canna Aqua, VBX) öffnet auf der Trocknung — dort gibt es etwas zu ändern.
+  const bereich: Bereich = params.get('bereich') === 'wochen' ? 'wochen'
+    : params.get('bereich') === 'trocknung' || (gewaehlt && !hatRaster(gewaehlt)) ? 'trocknung' : 'wochen'
+
+  function bereichWaehlen(wert: Bereich) {
+    setHinweis(null)
+    setParams((alt) => {
+      const neu = new URLSearchParams(alt)
+      neu.set('bereich', wert)
+      return neu
+    }, { replace: true })
+  }
 
   return (
     <>
       {liste && liste.length > 0 && (
-        <V1Tabs
-          label="Plan von"
-          active={programmId ?? GROW}
-          onChange={waehlen}
-          items={[
-            { value: GROW, label: 'Laufender Grow', audit: 'plan-von-grow' },
-            ...liste.map((p) => ({ value: p.id, label: p.name, audit: `plan-von-${p.id}` })),
-          ]}
-        />
+        <div data-audit="plan-von">
+          <V1Select
+            label="Plan von"
+            titel="Plan von"
+            unterzeile="Der Plan deines Grows oder ein Programm"
+            wert={programmId ?? GROW}
+            onWahl={waehlen}
+            optionen={planVonOptionen(liste)}
+          />
+        </div>
       )}
 
       {!programmId && (
@@ -90,11 +124,25 @@ export function PlanInhalt() {
       {programmId && liste !== null && !gewaehlt && (
         <V1Alert tone="warn" message="Dieses Programm gibt es nicht (mehr). Wähle oben ein anderes." />
       )}
-      {gewaehlt && !hatRaster(gewaehlt) && (
-        <V1Alert tone="neutral" title={gewaehlt.name} message={`${programmZeile(gewaehlt)}. Es gibt hier nichts zu ändern.`} />
+      {gewaehlt && (
+        <V1Tabs
+          label="Bereich"
+          active={bereich}
+          onChange={bereichWaehlen}
+          items={[
+            { value: 'wochen' as Bereich, label: 'Wochen', audit: 'plan-bereich-wochen' },
+            { value: 'trocknung' as Bereich, label: 'Trocknung', audit: 'plan-bereich-trocknung' },
+          ]}
+        />
       )}
-      {gewaehlt && hatRaster(gewaehlt) && (
+      {gewaehlt && bereich === 'wochen' && !hatRaster(gewaehlt) && (
+        <V1Alert tone="neutral" title={gewaehlt.name} message={`${programmZeile(gewaehlt)}. Hier gibt es keine Wochenwerte zu ändern — die Trocknung kannst du trotzdem einstellen.`} />
+      )}
+      {gewaehlt && bereich === 'wochen' && hatRaster(gewaehlt) && (
         <ProgrammReiter key={gewaehlt.id} programmId={gewaehlt.id} startMeldung={hinweis?.programmId === gewaehlt.id ? hinweis.text : null} onKopie={(id, text) => void kopieOeffnen(id, text)} />
+      )}
+      {gewaehlt && bereich === 'trocknung' && (
+        <TrocknungReiter key={gewaehlt.id} programmId={gewaehlt.id} startMeldung={hinweis?.programmId === gewaehlt.id ? hinweis.text : null} onKopie={(id, text) => void kopieOeffnen(id, text)} />
       )}
     </>
   )

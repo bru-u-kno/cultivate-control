@@ -36,20 +36,11 @@ public static class MoldGuard
         _ => 70,
     };
 
-    /// <summary>
-    /// Das Klima beim Trocknen: die 60/60-Faustregel, in °C übersetzt.
-    /// </summary>
-    /// <remarks>
-    /// Nach der Ernte hängt alles kopfüber im Zelt — 7 bis 14 Tage, und es ist
-    /// das höchste Schimmelrisiko des ganzen Zyklus: dichte Blüten, keine
-    /// Verdunstung über Blätter, wenig Luftbewegung erwünscht. Zu warm und
-    /// trocken trocknet es in drei Tagen und schmeckt nach Heu; zu feucht
-    /// schimmelt es von innen. 18–20 °C und 55–60 % sind der Korridor.
-    /// </remarks>
-    public const double DryingTempMinC = 18;
-    public const double DryingTempMaxC = 20;
-    public const double DryingHumidityMin = 55;
-    public const double DryingHumidityMax = 60;
+    // Das Klima beim Trocknen stand hier als feste Zahlen (18–20 °C, 55–60 %, die 60/60-Faustregel).
+    // Seit A-029 führt es das Programm als Etappen — Standard und Rechnung in TrocknungsPlan.
+    // Nach der Ernte hängt alles kopfüber im Zelt, 7 bis 14 Tage, und es ist das höchste Schimmelrisiko
+    // des ganzen Zyklus: zu warm und trocken trocknet es in drei Tagen und schmeckt nach Heu, zu feucht
+    // schimmelt es von innen.
 
     /// <summary>
     /// So lange nach der Ernte gilt das Zelt als Trockenraum, wenn kein

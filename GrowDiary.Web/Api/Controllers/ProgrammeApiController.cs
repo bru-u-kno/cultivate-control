@@ -29,6 +29,32 @@ public sealed record ProgrammWerteDto(
     int AndereGrows,
     List<WochenwertSpalteDto> Spalten);
 
+/// <summary>Die Trocknung eines Programms: seine Etappen oder der Standard, dazu was gerade läuft.</summary>
+public sealed record TrocknungDto(
+    string ProgrammId,
+    string ProgrammName,
+    bool Eigen,
+    /// <summary>Das Programm führt keine eigenen Etappen — angezeigt wird der Standard.</summary>
+    bool IstStandard,
+    int MaxTage,
+    int MaxEtappen,
+    List<TrockenEtappe> Etappen,
+    List<TrockenEtappe> Standard,
+    /// <summary>Trocknungen, die gerade nach diesem Programm laufen (ein Eintrag je Zelt).</summary>
+    List<TrocknungLaeuftDto> Laeuft);
+
+public sealed record TrocknungLaeuftDto(string Zelt, int Tag, int EtappeNr, string EtappeName, bool Gehalten);
+
+public sealed class TrocknungSpeichernRequest
+{
+    public List<TrockenEtappe> Etappen { get; set; } = [];
+
+    /// <summary>Name des neuen eigenen Programms; nur nötig, wenn ein mitgeliefertes geändert wird.</summary>
+    public string? Name { get; set; }
+}
+
+public sealed record TrocknungGespeichertDto(TrocknungDto Trocknung, bool NeuAngelegt);
+
 public sealed class ProgrammWerteSpeichernRequest
 {
     public List<WochenwertAenderung> Aenderungen { get; set; } = [];
@@ -76,6 +102,7 @@ public sealed class ProgrammeApiController : ApiControllerBase
     private readonly WochenwertRepository _wochenwerte;
     private readonly GrowRepository _grows;
     private readonly WochenplanSyncService? _sync;
+    private readonly HarvestRepository? _ernten;
 
     public ProgrammeApiController(
         KnowledgeBaseLoader wissen,
@@ -83,7 +110,8 @@ public sealed class ProgrammeApiController : ApiControllerBase
         WochenwertUeberlagerung ueberlagerung,
         WochenwertRepository wochenwerte,
         GrowRepository grows,
-        WochenplanSyncService? sync = null)
+        WochenplanSyncService? sync = null,
+        HarvestRepository? ernten = null)
     {
         _wissen = wissen;
         _eigene = eigene;
@@ -91,6 +119,7 @@ public sealed class ProgrammeApiController : ApiControllerBase
         _wochenwerte = wochenwerte;
         _grows = grows;
         _sync = sync;
+        _ernten = ernten;
     }
 
     /// <summary>Alle Programme mit Wochenraster — die Auswahl „Plan von".</summary>
@@ -121,6 +150,8 @@ public sealed class ProgrammeApiController : ApiControllerBase
         string id, [FromBody] ProgrammWerteSpeichernRequest anfrage, CancellationToken ct)
     {
         if (Mitraster(id) is not { } vorlage) return KeinProgramm();
+        if (anfrage?.Aenderungen is null || anfrage.Aenderungen.Any(a => a is null))
+            return ValidationError("Die Anfrage ist leer oder unlesbar.");
 
         // Die Vergleichswerte: was die Datei des Programms sagt, nicht eine alte Abweichung.
         double? Planwert(FeedChartColumn spalte, Wochenwertfelder.Feld feld) => _ueberlagerung.Planwert(spalte, feld);
@@ -180,6 +211,70 @@ public sealed class ProgrammeApiController : ApiControllerBase
     /// ohne eigenen Plan — eine neue Kopie hat noch keinen, und eine Vorlage ändert sich nie.
     /// </summary>
     public static bool UebergabeNoetig(bool eigen, int andereGrows) => eigen && andereGrows > 0;
+
+    /// <summary>Die Trocknung eines Programms — auch eines ohne Wochenwerte (Canna Aqua, VBX).</summary>
+    [HttpGet("{id}/trocknung")]
+    [ProducesResponseType(typeof(TrocknungDto), StatusCodes.Status200OK)]
+    public ActionResult<TrocknungDto> Trocknung(string id)
+        => _eigene.Finden(id) is { } programm ? Ok(TrocknungDto(programm)) : KeinProgramm();
+
+    /// <summary>
+    /// Die Etappen der Trocknung speichern. Wie bei den Wochenwerten: eine mitgelieferte Vorlage
+    /// bleibt unverändert, Speichern legt ein eigenes Programm an.
+    /// </summary>
+    [HttpPost("{id}/trocknung")]
+    [ProducesResponseType(typeof(TrocknungGespeichertDto), StatusCodes.Status200OK)]
+    public ActionResult<TrocknungGespeichertDto> TrocknungSpeichern(string id, [FromBody] TrocknungSpeichernRequest anfrage)
+    {
+        if (_eigene.Finden(id) is not { } vorlage) return KeinProgramm();
+        if (anfrage?.Etappen is null || anfrage.Etappen.Any(e => e is null))
+            return ValidationError("Die Anfrage ist leer oder unlesbar.");
+
+        var etappen = TrocknungsPlan.Bereinigt(anfrage.Etappen);
+        if (TrocknungsPlan.Pruefen(etappen) is { } fehler) return ValidationError(fehler);
+
+        var eigen = EigeneProgramme.IstEigen(vorlage.Id);
+        var name = (anfrage.Name ?? string.Empty).Trim();
+        if (!eigen && name.Length == 0) name = $"{vorlage.Name} (eigen)";
+        if (name.Length > NameMax) return ValidationError($"Der Name darf höchstens {NameMax} Zeichen lang sein.");
+
+        lock (Schreiben)
+        {
+            var ziel = eigen ? vorlage : _eigene.Anlegen(vorlage, name);
+            ziel.Trocknung = etappen;
+            _eigene.Speichern(ziel);
+            return Ok(new TrocknungGespeichertDto(TrocknungDto(_eigene.Finden(ziel.Id) ?? ziel), NeuAngelegt: !eigen));
+        }
+    }
+
+    private TrocknungDto TrocknungDto(NutrientProgramDefinition programm)
+        => new(
+            programm.Id,
+            programm.Name,
+            EigeneProgramme.IstEigen(programm.Id),
+            IstStandard: !TrocknungsPlan.HatEigene(programm),
+            TrocknungsPlan.MaxTage,
+            TrocknungsPlan.MaxEtappen,
+            TrocknungsPlan.Bereinigt(TrocknungsPlan.Fuer(programm)),
+            TrocknungsPlan.Bereinigt(TrocknungsPlan.Standard),
+            Laeuft(programm));
+
+    /// <summary>Welche Zelte trocknen gerade nach diesem Programm, und bei welcher Etappe?</summary>
+    private List<TrocknungLaeuftDto> Laeuft(NutrientProgramDefinition programm)
+    {
+        var liste = new List<TrocknungLaeuftDto>();
+        if (_ernten is null) return liste;
+
+        foreach (var zelt in _grows.GetTents())
+        {
+            if (DryingWindow.StandFor(_grows, _ernten, zelt.Id, DateTime.Today) is not { } laeuft) continue;
+            if (!string.Equals(laeuft.Grow.FeedProgramId, programm.Id, StringComparison.OrdinalIgnoreCase)) continue;
+            if (TrocknungsPlan.EtappeAm(TrocknungsPlan.Fuer(programm), laeuft.Tag) is not { } stand) continue;
+            liste.Add(new TrocknungLaeuftDto(zelt.Name, laeuft.Tag, stand.Index + 1, stand.Etappe.Name, stand.Gehalten));
+        }
+
+        return liste;
+    }
 
     private NutrientProgramDefinition? Mitraster(string id)
         => _eigene.Finden(id) is { FeedChart.Columns.Count: > 0 } programm ? programm : null;

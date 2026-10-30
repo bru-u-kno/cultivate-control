@@ -56,6 +56,13 @@ public sealed class NutrientProgramDefinition : KnowledgeFileMetadata
     /// </remarks>
     [JsonPropertyName("feedChart")]
     public FeedChartDefinition? FeedChart { get; set; }
+
+    /// <summary>
+    /// Die Etappen der Trocknung nach der Ernte (A-029). Fehlt die Liste, gilt der Standard
+    /// (<see cref="GrowDiary.Web.Services.TrocknungsPlan.Standard"/>).
+    /// </summary>
+    [JsonPropertyName("trocknung")]
+    public List<TrockenEtappe>? Trocknung { get; set; }
 }
 
 /// <summary>Ein Wochen-Chart: Spalten mit Dosen je Komponente und Zielwerten.</summary>

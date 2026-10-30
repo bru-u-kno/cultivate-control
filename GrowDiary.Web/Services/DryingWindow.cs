@@ -21,6 +21,16 @@ public static class DryingWindow
 {
     /// <summary>Der Trocknungs-Tag (1 = Erntetag + 1), oder null wenn keine Trocknung.</summary>
     public static int? DayFor(GrowRepository? grows, HarvestRepository? harvests, int tentId, DateTime today)
+        => StandFor(grows, harvests, tentId, today)?.Tag;
+
+    /// <summary>Was trocknet gerade: der Grow, dessen Ernte hängt, und der wievielte Trocknungstag es ist.</summary>
+    public sealed record Stand(GrowRun Grow, int Tag);
+
+    /// <summary>
+    /// Wie <see cref="DayFor"/>, nennt aber auch den Grow — dessen Programm führt die Etappen der
+    /// Trocknung (<see cref="TrocknungsPlan"/>).
+    /// </summary>
+    public static Stand? StandFor(GrowRepository? grows, HarvestRepository? harvests, int tentId, DateTime today)
     {
         if (grows is null || harvests is null) return null;
         if (grows.GetActiveGrowsForTent(tentId).Count > 0) return null;
@@ -37,7 +47,7 @@ public static class DryingWindow
         var ernte = harvests.GetForGrow(geerntet.Id);
         if (ernte is null || ernte.DryWeightG is not null) return null;
 
-        return TrocknungsTag(today, geerntet.EndDate!.Value);
+        return TrocknungsTag(today, geerntet.EndDate!.Value) is { } tag ? new Stand(geerntet, tag) : null;
     }
 
     /// <summary>
