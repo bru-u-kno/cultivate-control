@@ -7,6 +7,7 @@ import { V1Alert, V1Button, V1Card, V1Empty, V1Field, V1LinkButton, V1Page, V1Se
 import { toNullableInt, toNullableString } from '../components/v1-utils'
 import { classNames } from '../utils'
 import { maschinenZahl } from '../zahlenfeld'
+import { ZeltRuheBlock } from '../features/zeltruhe/ZeltRuheBlock'
 
 const tentTypes: TentType[] = ['Production', 'Mother', 'Propagation', 'Quarantine', 'MultiPurpose']
 
@@ -385,6 +386,8 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
           </div>
         </div>
         <div className="tn-groups" data-audit="tent-metrics">
+          {/* Fork AI (cc.277): „Zelt ruhend" — nur am Zelt der Steuerung, nur mit zugeordneten Geräten. */}
+          <ZeltRuheBlock tentId={tent.id} growName={runningGrow?.name} growAbgeschlossen={abgeschlossenAm(runningGrow)} />
           <div className="tn-group">
             <div className="tn-group-label">Klima</div>
             <Row label="Temp" value={liveValue(live, 'temperature')} />
@@ -539,6 +542,13 @@ const coreMetrics: Array<{ metricType: TentDto['sensors'][number]['metricType'];
   { metricType: 'Humidity', label: 'Luftfeuchte' },
   { metricType: 'ReservoirPh', label: 'pH Reservoir' },
 ]
+
+/** „30.10." — wann der Grow abgeschlossen wurde; null, solange er läuft. */
+function abgeschlossenAm(grow: GrowSummary | null | undefined): string | null {
+  if (!grow || grow.status !== 'Completed' || !grow.endDate) return null
+  const datum = new Date(grow.endDate)
+  return Number.isNaN(datum.getTime()) ? null : datum.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+}
 
 function Row({ label, value, faint }: { label: string; value: string; faint?: boolean }) {
   return (

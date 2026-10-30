@@ -327,6 +327,11 @@ public sealed class RundwegVollstaendigTests
             + "Felder sind Uhrzeiten im Format HH:mm — \"1\" ist keine, das PUT lehnt sie "
             + "mit 400 ab. Dass kein Feld beim Speichern verlorengeht, faehrt "
             + "LichtEinstellungenRundwegTests.",
+        // cc.277
+        ["ZeltRuheAuswahlRequest"] =
+            "Eine Liste von Kennungen, kein Formular mit Feldern, die einzeln zurückkommen könnten, und das PUT lehnt "
+            + "Proben wie \"1\" mit 400 ab (nur bekannte Gerätearten). Dass die Auswahl nach dem Speichern wieder "
+            + "dasteht und Unbekanntes abgewiesen wird, fährt ZeltRuheApiTests; den Weg im Browser e2e/zelt-ruhend.spec.ts.",
         // cc.276
         ["LichtWaechterEinstellungen"] =
             "Das PUT lehnt Proben wie Modus=1 mit 400 ab (nur \"korrigieren\" oder \"melden\"), und die "
