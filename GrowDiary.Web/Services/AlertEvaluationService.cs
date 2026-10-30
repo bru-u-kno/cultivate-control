@@ -110,7 +110,9 @@ public sealed class AlertEvaluationService
         // Alarm um Alarm geschickt. Bewusst NUR im Trocknungsfenster, nicht
         // pauschal „ohne Grow": wer ein Reservoir ohne Grow-Eintrag faehrt und
         // sich Regeln setzt, meint sie ernst.
-        var trocknung = DryingWindow.DayFor(_grows, _harvests, tent.Id, DateTime.Today) is not null;
+        // Ein Trockenzelt hat nie ein Reservoir: dort gilt das immer, nicht nur im Fenster.
+        var trocknung = tent.TentType == TentType.Drying
+            || DryingWindow.DayFor(_grows, _harvests, tent.Id, DateTime.Today) is not null;
 
         // Das Zielband der laufenden Phase/Woche — einmal je Durchlauf, nicht je
         // Regel. Nur Regeln mit Quelle „Plan" brauchen es; laeuft kein Grow im

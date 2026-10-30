@@ -29,11 +29,13 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
     return () => { abgebrochen = true }
   }, [tentId, uebernehmen])
 
-  // Nicht das Zelt der Steuerung, nichts zu schalten (Rollen fehlen) oder Home Assistant stumm: kein Block.
-  if (!stand || stand.zeltId !== tentId || !stand.geraete.some((g) => g.vorhanden)) return null
+  // Nicht das Zelt der Steuerung, ein Trockenzelt, nichts zu schalten (Rollen fehlen) oder Home Assistant stumm: kein Block.
+  if (!stand || stand.zeltId !== tentId || stand.zeltTyp === 'Drying' || !stand.geraete.some((g) => g.vorhanden)) return null
 
   const vorhanden = stand.geraete.filter((g) => g.vorhanden)
   const gewaehlt = vorhanden.filter((g) => wahl[g.kennung]).map((g) => g.kennung)
+  // Ruhend, aber noch nicht alles ausgeschaltet, was in der Auswahl steht (ein Gerät hat nicht geantwortet): lässt sich nachholen.
+  const offen = vorhanden.filter((g) => g.ausschalten && !g.gemerkt)
 
   const ausfuehren = async (aktion: () => Promise<ZeltRuheErgebnis>) => {
     setArbeitet(true)
@@ -90,11 +92,19 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
       ) : (
         <>
           <div className="tn-row"><span>Ausgeschaltet</span><strong>{vorhanden.filter((g) => g.gemerkt).map((g) => g.titel).join(', ') || '–'}</strong></div>
-          <div className="tn-row"><span>Läuft weiter</span><strong>{vorhanden.filter((g) => !g.gemerkt).map((g) => g.titel).join(', ') || '–'}</strong></div>
+          <div className="tn-row"><span>Läuft weiter</span><strong>{vorhanden.filter((g) => !g.gemerkt && !g.ausschalten).map((g) => g.titel).join(', ') || '–'}</strong></div>
+          {offen.length > 0 && (
+            <div className="tn-row" data-audit="zelt-ruhe-offen"><span>Noch offen</span><strong>{offen.map((g) => g.titel).join(', ')}</strong></div>
+          )}
           <div className="co-actions zr-knoepfe">
             <button type="button" className="ls-btn is-small is-primary" disabled={arbeitet} onClick={() => void ausfuehren(schalteAktiv)}>
               {arbeitet ? 'Schaltet…' : 'Zelt wieder aktiv'}
             </button>
+            {offen.length > 0 && (
+              <button type="button" className="ls-btn is-small" disabled={arbeitet} onClick={() => void ausfuehren(() => schalteRuhend())}>
+                Rest ausschalten
+              </button>
+            )}
           </div>
           <p className="zr-hinweis">Beim Wecken stellt der CC genau das wieder an, was er ausgeschaltet hat.</p>
         </>

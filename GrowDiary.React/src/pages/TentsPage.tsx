@@ -8,8 +8,19 @@ import { toNullableInt, toNullableString } from '../components/v1-utils'
 import { classNames } from '../utils'
 import { maschinenZahl } from '../zahlenfeld'
 import { ZeltRuheBlock } from '../features/zeltruhe/ZeltRuheBlock'
+import { zeltZweckName } from '../deutsche-woerter'
 
-const tentTypes: TentType[] = ['Production', 'Mother', 'Propagation', 'Quarantine', 'MultiPurpose']
+const tentTypes: TentType[] = ['Production', 'Mother', 'Propagation', 'Quarantine', 'Drying', 'MultiPurpose']
+
+/** Eine Erklärzeile je Zweck — damit man ohne Raten wählt. */
+const tentTypeHints: Record<TentType, string> = {
+  Production: 'Pflanzen wachsen und blühen hier',
+  Mother: 'Mutterpflanzen für Stecklinge',
+  Propagation: 'Keimlinge und Stecklinge',
+  Quarantine: 'Neue Pflanzen getrennt halten',
+  Drying: 'Nach der Ernte: hängen, trocknen, aushärten',
+  MultiPurpose: 'Kein fester Zweck',
+}
 
 type LiveMetricKey = 'temperature' | 'humidity' | 'vpd' | 'light-cycle' | 'ppfd'
 
@@ -231,6 +242,7 @@ function TentsPage() {
   }
 
   if (formOpen) {
+    const trocknung = draft.tentType === 'Drying'
     return (
       <V1Page
         eyebrow="Physischer Raum"
@@ -244,14 +256,21 @@ function TentsPage() {
           <V1Section title="Basis">
             <form className="v1-form-grid rc2-tent-form" onSubmit={(event) => void saveTent(event)}>
               <V1Field label="Name" wide><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Hauptzelt" /></V1Field>
+              <fieldset className="v1-field is-wide" data-audit="tent-purpose">
+                <span>Wofür ist das Zelt?</span>
+                {tentTypes.map((type) => (
+                  <label key={type} className="v1-switch is-wide">
+                    <input type="radio" name="tent-purpose" checked={draft.tentType === type} onChange={() => setDraft((current) => ({ ...current, tentType: type }))} />
+                    <span><strong>{formatTentType(type)}</strong><small>{tentTypeHints[type]}</small></span>
+                  </label>
+                ))}
+              </fieldset>
               <V1Field label="Aufstellraum" hint="Der Raum, aus dem das Zelt seine Luft zieht. Stehen die Pflanzen direkt im Raum, braucht es keinen eigenen Raum.">
                 <select value={draft.raumId} onChange={(event) => setDraft((current) => ({ ...current, raumId: event.target.value }))}>
                   <option value="">Kein eigener Raum</option>
                   <option value="haupt">{raumName}</option>
                 </select>
               </V1Field>
-              <V1Field label="Zweck"><select value={draft.tentType} onChange={(event) => setDraft((current) => ({ ...current, tentType: event.target.value as TentType }))}>{tentTypes.map((type) => <option key={type} value={type}>{formatTentType(type)}</option>)}</select></V1Field>
-              <V1Field label="Typ"><input value={draft.kind} onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value }))} placeholder="Growzelt" /></V1Field>
               <V1Field label="Reihenfolge"><input type="number" value={draft.displayOrder} onChange={(event) => setDraft((current) => ({ ...current, displayOrder: event.target.value }))} /></V1Field>
 
               <div className="v1-form-divider">Größe</div>
@@ -259,12 +278,14 @@ function TentsPage() {
               <V1Field label="Tiefe cm"><input type="number" value={draft.depthCm} onChange={(event) => setDraft((current) => ({ ...current, depthCm: event.target.value }))} /></V1Field>
               <V1Field label="Höhe cm"><input type="number" value={draft.tentHeightCm} onChange={(event) => setDraft((current) => ({ ...current, tentHeightCm: event.target.value }))} /></V1Field>
 
-              <div className="v1-form-divider">Technik im Raum</div>
-              <V1Field label="Lichttyp"><input value={draft.lightType} onChange={(event) => setDraft((current) => ({ ...current, lightType: event.target.value }))} placeholder="LED" /></V1Field>
-              <V1Field label="Watt"><input type="number" value={draft.lightWatt} onChange={(event) => setDraft((current) => ({ ...current, lightWatt: event.target.value }))} /></V1Field>
+              <div className="v1-form-divider">{trocknung ? 'Luft im Zelt' : 'Technik im Raum'}</div>
+              {!trocknung && <V1Field label="Lichttyp"><input value={draft.lightType} onChange={(event) => setDraft((current) => ({ ...current, lightType: event.target.value }))} placeholder="LED" /></V1Field>}
+              {!trocknung && <V1Field label="Watt"><input type="number" value={draft.lightWatt} onChange={(event) => setDraft((current) => ({ ...current, lightWatt: event.target.value }))} /></V1Field>}
               <V1Field label="Abluft Anzahl"><input type="number" value={draft.exhaustFanCount} onChange={(event) => setDraft((current) => ({ ...current, exhaustFanCount: event.target.value }))} /></V1Field>
               <V1Field label="Abluft m³/h"><input type="number" value={draft.exhaustM3h} onChange={(event) => setDraft((current) => ({ ...current, exhaustM3h: event.target.value }))} /></V1Field>
               <V1Field label="Umluft Anzahl"><input type="number" value={draft.circulationFanCount} onChange={(event) => setDraft((current) => ({ ...current, circulationFanCount: event.target.value }))} /></V1Field>
+              {!trocknung && (
+                <>
               <V1Switch className="is-wide" label="CO₂-Sensor vorhanden" checked={draft.co2Available} onChange={(checked) => setDraft((current) => ({ ...current, co2Available: checked }))} />
               <V1Switch className="is-wide" label="CO₂-Anreicherung (Brenner/Flasche)" checked={draft.hasCo2Enrichment} onChange={(checked) => setDraft((current) => ({ ...current, hasCo2Enrichment: checked }))} hint="Nur mit Anreicherung bekommt die CO₂-Kachel ein Ziel — ein Sensor allein misst Umgebungsluft, und die ist bei ~400–500 ppm normal." />
               <V1Field label="Blatttemperatur − Lufttemperatur (°C)" hint={draft.leafOffsetSyncService.trim()
@@ -280,6 +301,8 @@ function TentsPage() {
                   <input type="number" step="1" min="0" max="16" value={draft.leafOffsetSyncPort} onChange={(event) => setDraft((current) => ({ ...current, leafOffsetSyncPort: event.target.value }))} />
                 </V1Field>
               ) : null}
+                </>
+              )}
               <V1Field label="Notizen" wide><textarea rows={3} value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} /></V1Field>
               <div className="v1-form-actions"><V1Button variant="ghost" onClick={closeForm}>Abbrechen</V1Button><V1Button type="submit" variant="primary" disabled={saving === 'tent'}>{saving === 'tent' ? 'Speichert...' : 'Speichern'}</V1Button></div>
             </form>
@@ -366,15 +389,17 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
   const panelDependencies = deleteDependencies ?? createClientDependencySummary(linkedGrows, linkedHydro)
   const showDependencyPanel = deleteBlocked && hasDependencies(panelDependencies)
   const mapped = tent.sensors.filter((sensor) => sensor.isActive && sensor.haEntityId)
-  const missingCore = coreMetrics.filter((core) => !mapped.some((sensor) => sensor.metricType === core.metricType))
+  const missingCore = (tent.tentType === 'Drying' ? coreMetricsTrocknung : coreMetrics).filter((core) => !mapped.some((sensor) => sensor.metricType === core.metricType))
   const camera = (tent.cameras ?? []).find((entity) => entity.trim()) ?? tent.cameraEntityId
+  // Trockenzelt: nur Temperatur, Luftfeuchte, VPD — kein Licht, CO₂, System oder Grow.
+  const trocknung = tent.tentType === 'Drying'
 
   return (
     <div className="tn-detail">
       <section className="ls-panel" data-audit="tent-detail-panel">
         <div className="tn-head">
           <strong>{tent.name}</strong>
-          {lightPill && <span className="ls-pill">{lightPill}</span>}
+          {lightPill && !trocknung && <span className="ls-pill">{lightPill}</span>}
           <span className="tn-head-meta">{headMeta(tent)}</span>
           <div className="co-actions" data-audit="tent-card-actions">
             {/* Ohne diesen Knopf war /zelte/:id von nirgendwo erreichbar — und
@@ -382,7 +407,7 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
                 von Setups und Pflanzen, die nur dort wohnen. */}
             <V1LinkButton to={`/zelte/${tent.id}`} className="ls-btn is-small is-primary">Öffnen</V1LinkButton>
             <button type="button" className="ls-btn is-small" onClick={() => onEdit(tent)}>Bearbeiten</button>
-            <V1LinkButton to="/hydro" className="ls-btn is-small">Hydro</V1LinkButton>
+            {!trocknung && <V1LinkButton to="/hydro" className="ls-btn is-small">Hydro</V1LinkButton>}
           </div>
         </div>
         <div className="tn-groups" data-audit="tent-metrics">
@@ -393,26 +418,26 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
             <Row label="Temp" value={liveValue(live, 'temperature')} />
             <Row label="RLF" value={liveValue(live, 'humidity')} />
             <Row label="VPD" value={liveValue(live, 'vpd')} />
-            <Row label="CO₂" value={tent.co2Available ? liveValue(live, 'co2' as LiveMetricKey) : 'nicht gemappt'} faint={!tent.co2Available} />
+            {!trocknung && <Row label="CO₂" value={tent.co2Available ? liveValue(live, 'co2' as LiveMetricKey) : 'nicht gemappt'} faint={!tent.co2Available} />}
           </div>
-          <div className="tn-group">
+          {!trocknung && <div className="tn-group">
             <div className="tn-group-label">Licht</div>
             <Row label={light?.value === 'An' || light?.value === 'Aus' ? 'Status' : 'Zyklus'} value={light?.value ?? '–'} />
             <Row label="Leistung" value={tent.lightWatt ? `${tent.lightWatt} W` : '–'} />
             <Row label="PPFD" value={liveValue(live, 'ppfd')} faint={liveValue(live, 'ppfd') === '–'} />
-          </div>
+          </div>}
           <div className="tn-group">
             <div className="tn-group-label">Luft</div>
             <Row label="Abluft" value={tent.exhaustFanCount ? `${tent.exhaustFanCount} × ${tent.exhaustM3h ?? '?'} m³/h` : '–'} />
             <Row label="Umluft" value={tent.circulationFanCount ? `${tent.circulationFanCount} Ventilatoren` : '–'} />
             <Row label="Luftwechsel" value={airChanges(tent)} />
           </div>
-          <div className="tn-group">
+          {!trocknung && <div className="tn-group">
             <div className="tn-group-label">Belegung</div>
             <Row label="Grow" value={runningGrow?.name ?? '–'} />
             <Row label="System" value={hydro ? `${hydro.hydroStyle}${hydro.potCount ? ` · ${hydro.potCount} Sites` : ''}` : '–'} />
             <Row label="Fläche/Pflanze" value={areaPerPlant(tent, runningGrow)} />
-          </div>
+          </div>}
         </div>
       </section>
 
@@ -536,6 +561,12 @@ function TentCam({ tentId, entity, name }: { tentId: number; entity: string; nam
   )
 }
 
+/** Im Trockenzelt zählen nur Temperatur und Luftfeuchte (VPD wird daraus gerechnet) — kein pH, EC, Wasser. */
+const coreMetricsTrocknung: Array<{ metricType: TentDto['sensors'][number]['metricType']; label: string }> = [
+  { metricType: 'AirTemperature', label: 'Lufttemperatur' },
+  { metricType: 'Humidity', label: 'Luftfeuchte' },
+]
+
 /** Kernwerte, deren Fehlen die Zelt-Ansicht anmahnt — wie im Entwurf CO₂. */
 const coreMetrics: Array<{ metricType: TentDto['sensors'][number]['metricType']; label: string }> = [
   { metricType: 'AirTemperature', label: 'Lufttemperatur' },
@@ -624,7 +655,7 @@ function parseOffset(value: string): number {
 }
 
 function draftToRequest(draft: TentDraft) { return { name: draft.name.trim(), kind: draft.kind.trim() || 'Growzelt', tentType: draft.tentType, notes: toNullableString(draft.notes), displayOrder: toNullableInt(draft.displayOrder) ?? 0, accentColor: '#22c55e', widthCm: toNullableInt(draft.widthCm), depthCm: toNullableInt(draft.depthCm), tentHeightCm: toNullableInt(draft.tentHeightCm), lightType: toNullableString(draft.lightType), lightWatt: toNullableInt(draft.lightWatt), lightController: null, lightControllerEntityId: null, exhaustFanCount: toNullableInt(draft.exhaustFanCount), exhaustM3h: toNullableInt(draft.exhaustM3h), circulationFanCount: toNullableInt(draft.circulationFanCount), hvacController: null, hvacControllerEntityId: null, co2Available: draft.co2Available, hasCo2Enrichment: draft.hasCo2Enrichment, raumId: draft.raumId || null, cameraEntityId: null, leafTempOffsetC: parseOffset(draft.leafTempOffsetC), leafOffsetSyncService: draft.leafOffsetSyncService.trim(), leafOffsetSyncPort: toNullableInt(draft.leafOffsetSyncPort) ?? 2 } }
-function formatTentType(value: TentType) { return value === 'Production' ? 'Blüte / Run' : value === 'Mother' ? 'Mutter' : value === 'Propagation' ? 'Anzucht' : value === 'Quarantine' ? 'Quarantäne' : 'Mehrzweck' }
+function formatTentType(value: TentType) { return zeltZweckName(value) }
 function liveValue(live: TentLivePayload | null, key: LiveMetricKey) {
   const metric = live?.metrics.find((item) => item.key === key)
   return metric ? `${metric.value}${metric.unit && metric.value !== '–' ? ` ${metric.unit}` : ''}` : '–'

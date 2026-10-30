@@ -19,6 +19,8 @@ export interface ZeltRuheStand {
   seitUtc?: string | null
   /** Das Zelt, zu dem die Steuerung gehört — der Block steht nur dort. */
   zeltId?: number | null
+  /** Der Zweck dieses Zelts: ein Trockenzelt („Drying") hat weder Block noch Frage — seine Geräte folgen dem Trocknungsplan. */
+  zeltTyp?: string | null
   haErreichbar: boolean
   geraete: ZeltRuheGeraet[]
 }
@@ -50,6 +52,6 @@ export const speichereAuswahl = (geraete: string[]) =>
 
 /** Geräte, die im Ruhemodus ausgehen sollen und gerade laufen — nur danach fragt das Blatt nach der Ernte. */
 export function laufendeAuswahl(stand: ZeltRuheStand | null | undefined): ZeltRuheGeraet[] {
-  if (!stand || stand.ruhend) return []
+  if (!stand || stand.ruhend || stand.zeltTyp === 'Drying') return []
   return stand.geraete.filter((g) => g.vorhanden && g.ausschalten && g.laeuft === true)
 }

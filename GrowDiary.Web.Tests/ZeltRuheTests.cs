@@ -42,14 +42,14 @@ public sealed class ZeltRuheTests
     [Fact]
     public void Ausschalten_eines_Auswahlfelds_waehlt_Off()
     {
-        var aktion = ZeltRuheService.Ausschalten("select.rdwc_venti_aktiver_modus");
+        var aktion = ZeltRuheService.Ausschalten("select.abluft_aktiver_modus");
         Assert.NotNull(aktion);
         Assert.Equal(("select", "select_option"), (aktion!.Value.Domain, aktion.Value.Dienst));
         Assert.Equal("Off", aktion.Value.Daten!["option"]);
     }
 
     [Theory]
-    [InlineData("switch.grow_dehumi_tent", "switch")]
+    [InlineData("switch.zusatz_entfeuchter", "switch")]
     [InlineData("input_boolean.irgendwas", "input_boolean")]
     public void Ausschalten_einer_Steckdose_ist_turn_off(string entity, string domain)
     {
@@ -69,7 +69,7 @@ public sealed class ZeltRuheTests
     public void Wiederherstellen_stellt_genau_den_Zustand_von_vorher_her()
     {
         // Ein Controller, der auf „Schedule" stand, kommt auf „Schedule" zurück — nicht auf „On".
-        var auswahl = ZeltRuheService.Wiederherstellen("select.klein_abluft_aktiver_modus", "Schedule");
+        var auswahl = ZeltRuheService.Wiederherstellen("select.licht_aktiver_modus", "Schedule");
         Assert.Equal("Schedule", auswahl!.Value.Daten!["option"]);
         Assert.Equal("select_option", auswahl.Value.Dienst);
 

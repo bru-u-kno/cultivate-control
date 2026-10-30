@@ -38,6 +38,15 @@ public sealed class ZeltRuheMerker
 
     /// <summary>Der Zustand des Geräts vor dem Ausschalten, so wie Home Assistant ihn meldete („Schedule", „on" …).</summary>
     public string? Vorher { get; set; }
+
+    /// <summary>
+    /// Die Zelte, deren Fork-eigene Kühler-Regelung (<c>Tent.ChillerControlEnabled</c>, der <c>KuehlerWorker</c>) an war und
+    /// ausgeschaltet wurde. Ohne das schaltete der Worker die Steckdose binnen einer Minute wieder ein.
+    /// </summary>
+    public List<int> ChillerZelte { get; set; } = new();
+
+    /// <summary>Wird dieses Gerät beim Wecken von seiner Regelung geführt (Automatik oder Fork-Regler), statt direkt zurückgestellt?</summary>
+    public bool Gefuehrt => AutomatikWarAn == true || ChillerZelte.Count > 0;
 }
 
 /// <summary>Eine Art Gerät, die „Zelt ruhend" ausschalten kann.</summary>
@@ -93,7 +102,8 @@ public static class ZeltRuheArten
 public sealed record ZeltRuheGeraet(string Kennung, string Titel, bool Vorhanden, string Jetzt, bool? Laeuft, bool Ausschalten, bool Gemerkt);
 
 /// <param name="ZeltId">Das Zelt, zu dem die Steuerung gehört (das Zelt des neuesten Grows) — die Karte steht nur dort.</param>
-public sealed record ZeltRuheStand(bool Ruhend, DateTime? SeitUtc, int? ZeltId, bool HaErreichbar, IReadOnlyList<ZeltRuheGeraet> Geraete);
+/// <param name="ZeltTyp">Der Zweck dieses Zelts („Production", „Drying" …). Ein Trockenzelt hat weder Karte noch Frage: seine Geräte folgen dem Trocknungsplan.</param>
+public sealed record ZeltRuheStand(bool Ruhend, DateTime? SeitUtc, int? ZeltId, string? ZeltTyp, bool HaErreichbar, IReadOnlyList<ZeltRuheGeraet> Geraete);
 
 /// <summary>Was bei einem Schaltvorgang mit jedem Gerät passiert ist.</summary>
 public sealed record ZeltRuheErgebnis(bool Ok, string Zusammenfassung, IReadOnlyList<ZeltRuheSchritt> Schritte, ZeltRuheStand Stand);

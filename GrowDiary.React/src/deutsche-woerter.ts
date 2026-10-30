@@ -274,6 +274,7 @@ const ZELTZWECK_NAMEN: Record<TentType, string> = {
   Mother: 'Mutter',
   Quarantine: 'Quarantäne',
   Propagation: 'Anzucht',
+  Drying: 'Trocknung',
   MultiPurpose: 'Mehrzweck',
 }
 

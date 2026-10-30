@@ -155,6 +155,7 @@ builder.Services.AddScoped<ChillerSteuerungService>();
 builder.Services.AddScoped<EntfeuchterSteuerungService>();
 builder.Services.AddScoped<EntfeuchterZusatzSteuerungService>(); // Fork AI (A-009)
 builder.Services.AddScoped<ZeltRuheService>(); // Fork AI (cc.277): Zelt ruhend
+builder.Services.AddScoped<IZeltRuheWerkzeug, ZeltRuheWerkzeug>();
 // Fork AI (forkai.45): stellt fest, welche Helfer und Automationen einer
 // Steuerung in Home Assistant fehlen.
 builder.Services.AddScoped<SteuerungBestandService>();

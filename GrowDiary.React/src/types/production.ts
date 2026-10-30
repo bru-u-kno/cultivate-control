@@ -1,7 +1,7 @@
 import type { MotherHealthStatus, PlantRole, PlantStatus, QuarantineResult, SetupStatus, SetupType, StrainDominance, WaterSource } from './shared'
 import type { AddbackLogDto, AddbackLogKind, JournalEntryDto, MeasurementDto } from './grow'
 
-export type TentType = 'Production' | 'Mother' | 'Quarantine' | 'Propagation' | 'MultiPurpose'
+export type TentType = 'Production' | 'Mother' | 'Quarantine' | 'Propagation' | 'Drying' | 'MultiPurpose'
 export type TentStatus = 'Active' | 'Archived'
 export interface SetupDto {
   id: number
