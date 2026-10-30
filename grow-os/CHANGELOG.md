@@ -5,6 +5,13 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.283
+
+**Korrektur: Der Hinweis unter „Zelt wieder aktiv“ nennt die App beim Namen.**
+
+- **Was war:** Unter „Zelt wieder aktiv“ stand der Hinweis „Beim Wecken stellt der CC genau das wieder an, was er ausgeschaltet hat.“ Dieses Kürzel kennt außerhalb der Entwicklung niemand.
+- **Was jetzt ist:** Der Hinweis nennt die App beim Namen: „Beim Wecken stellt Cultivate Control genau das wieder an, was es ausgeschaltet hat.“ Dieselbe Korrektur steht im Eintrag zu cc.278 dieser Release Notes.
+
 ## 2.0.0-cc.282
 
 **Korrektur: Die Zweck-Auswahl im Formular „Zelt anlegen“ hat keinen grauen Rahmen mehr.**
@@ -57,7 +64,7 @@
 - **Wo du es findest:** Zelte & Räume › Zelt-Karte, neuer Block „Betrieb“ (nur an dem Zelt, zu dem die Steuerung gehört — dem Zelt des neuesten Grows). Er zeigt „In Betrieb“ oder „Ruhend seit …“, dazu jedes Gerät mit Haken „im Ruhemodus ausschalten“ und seinem Zustand jetzt. Knöpfe: „Zelt ruhend schalten“ und „Zelt wieder aktiv“.
 - **Frage nach der Ernte:** Nach „Speichern & Grow abschließen“ fragt ein Blatt, ob die Geräte im leeren Zelt ausgeschaltet werden sollen. Es nennt nur, was im Ruhemodus ausgehen würde und gerade läuft. „Alles laufen lassen“ ändert nichts; läuft nichts davon, erscheint die Frage gar nicht.
 - **Was geschaltet wird, und in welcher Reihenfolge:** Je Gerät zuerst die Automatik aus (über den Speichern-Weg der jeweiligen Steuerung, damit gespeicherter Stand und Home Assistant übereinstimmen), danach das Gerät selbst. Umgekehrt schaltete die Automatik es im nächsten Takt wieder ein. Auswahlfelder von AC-Infinity-Controllern gehen nacheinander, mit Pause und Nachlesen, weil die Wolke schnelle Folgebefehle verwirft.
-- **Genau das wieder, was war:** Der CC merkt sich je Gerät den Zustand davor (zum Beispiel „Zeitplan“ beim Licht) und stellt ihn beim Wecken wieder her — erst das Gerät, dann die Automatik. Was schon aus war, bleibt aus. Klappt etwas nicht, bleibt es gemerkt, und ein zweiter Versuch holt es nach; im Ergebnis steht je Gerät, was passiert ist. Geräte mit einer Regelung (Automatik oder der Kühler-Regler des CC) bekommen beim Wecken nur diese Regelung zurück — sie schaltet mit ihren Schutzzeiten selbst, ein Ventil oder ein Kompressor springt also nicht von allein an.
+- **Genau das wieder, was war:** Cultivate Control merkt sich je Gerät den Zustand davor (zum Beispiel „Zeitplan“ beim Licht) und stellt ihn beim Wecken wieder her — erst das Gerät, dann die Automatik. Was schon aus war, bleibt aus. Klappt etwas nicht, bleibt es gemerkt, und ein zweiter Versuch holt es nach; im Ergebnis steht je Gerät, was passiert ist. Geräte mit einer Regelung (Automatik oder der Kühler-Regler von Cultivate Control) bekommen beim Wecken nur diese Regelung zurück — sie schaltet mit ihren Schutzzeiten selbst, ein Ventil oder ein Kompressor springt also nicht von allein an.
 - **Sicher gegen Abbruch und Teilfehler:** Der Merker steht im Speicher, bevor ein Gerät angefasst wird, und wird nach jedem Gerät gespeichert. Schließt du die App mitten im Schalten, führt „Zelt wieder aktiv“ trotzdem zurück. Scheitert das Ausschalten einer Automatik, bleibt das Gerät unberührt und der alte Stand steht wieder. Ist das Zelt schon ruhend und ein Gerät hat vorher nicht geantwortet, schaltet „Rest ausschalten“ nur das Fehlende nach. Zwei gleichzeitige Aufrufe laufen nacheinander und überschreiben sich nicht.
 - **Wasserkühler:** Die Fork-eigene Kühlerregelung wird mit ausgeschaltet und beim Wecken wieder eingeschaltet. Sonst hätte sie die Steckdose binnen einer Minute wieder an gemacht.
 - **Voreinstellung:** Licht, CO₂-Begasung, Abluft, Zusatz-Entfeuchter und Wasserkühler gehen aus; Entfeuchter und Zuluft laufen weiter, solange du sie nicht ausdrücklich ankreuzt. Sie können auch ohne Pflanzen gebraucht werden (Raumluft, Trocknen).

@@ -106,7 +106,7 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
               </button>
             )}
           </div>
-          <p className="zr-hinweis">Beim Wecken stellt der CC genau das wieder an, was er ausgeschaltet hat.</p>
+          <p className="zr-hinweis">Beim Wecken stellt Cultivate Control genau das wieder an, was es ausgeschaltet hat.</p>
         </>
       )}
 
