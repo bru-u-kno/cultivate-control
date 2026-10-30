@@ -103,6 +103,9 @@ function TentDetailPage() {
   const quarantineSetups = useMemo(() => setups.filter((setup) => setup.setupType === 'Quarantine'), [setups])
   const productionSetups = useMemo(() => setups.filter((setup) => setup.setupType === 'Production'), [setups])
   const score = buildScore(live?.metrics ?? [], tent)
+  // Trockenzelt: nur Temperatur, Luftfeuchte, VPD — kein Licht, Reservoir, Hydro, Grow, Setup.
+  const trocknung = tent?.tentType === 'Drying'
+  const zeltwerte = trocknung ? tentMetricDefinitions.slice(0, 3) : tentMetricDefinitions
 
   if (loading) return <V1Page eyebrow="Zelt" title="Lade Zelt..."><V1Empty title="Live-Daten werden geladen..." /></V1Page>
   if (!tent) return <V1Page eyebrow="Zelt" title="Nicht gefunden" action={<V1LinkButton to="/zelte">Zurück</V1LinkButton>}><V1Empty title="Zelt nicht gefunden." /></V1Page>
@@ -112,7 +115,7 @@ function TentDetailPage() {
       eyebrow={formatTentType(tent.tentType)}
       title={tent.name}
       className="tent-detail-v2"
-      action={<div className="v1-action-row"><V1LinkButton to="/zelte" variant="ghost">Zelte</V1LinkButton><V1LinkButton to="/home-assistant">HA</V1LinkButton><V1LinkButton to="/hydro">Hydro</V1LinkButton></div>}
+      action={<div className="v1-action-row"><V1LinkButton to="/zelte" variant="ghost">Zelte</V1LinkButton><V1LinkButton to="/home-assistant">HA</V1LinkButton>{!trocknung && <V1LinkButton to="/hydro">Hydro</V1LinkButton>}</div>}
     >
       {error && <V1Alert title="Fehler" message={error} tone="warn" />}
       {notice && <V1Alert title="Erledigt" message={notice} tone="ok" />}
@@ -121,19 +124,19 @@ function TentDetailPage() {
         <V1Card tone={score.tone} className="v1-live-now-card">
           <div className="v1-card-title-row"><div><span className="v1-card-kicker">Live</span><h2>{score.label}</h2></div><V1Badge tone={score.tone}>{score.value}%</V1Badge></div>
           <div className="v1-info-grid compact">
-            {mapMetrics(live?.metrics ?? [], tentMetricDefinitions.slice(0, 5)).map((metric) => <Info key={metric.key} label={metric.label} value={formatMetricValue(metric)} />)}
+            {mapMetrics(live?.metrics ?? [], tentMetricDefinitions.slice(0, trocknung ? 3 : 5)).map((metric) => <Info key={metric.key} label={metric.label} value={formatMetricValue(metric)} />)}
           </div>
-          <div className="v1-action-row">{grows[0] ? <V1LinkButton to={`/addback?growId=${grows[0].id}`} variant="primary">Addback</V1LinkButton> : <V1LinkButton to="/grows/new" variant="primary">Grow starten</V1LinkButton>}<V1LinkButton to="/messung">Messung</V1LinkButton></div>
+          <div className="v1-action-row">{trocknung ? null : grows[0] ? <V1LinkButton to={`/addback?growId=${grows[0].id}`} variant="primary">Addback</V1LinkButton> : <V1LinkButton to="/grows/new" variant="primary">Grow starten</V1LinkButton>}<V1LinkButton to="/messung">Messung</V1LinkButton></div>
         </V1Card>
 
         <V1Card className="v1-live-now-card">
           <div className="v1-card-title-row"><div><span className="v1-card-kicker">Raum</span><h2>{formatSize(tent)}</h2></div><V1Badge tone={tent.status === 'Active' ? 'ok' : 'neutral'}>{tent.status === 'Active' ? 'aktiv' : 'Archiv'}</V1Badge></div>
           <div className="v1-info-grid compact tent-detail-room-grid tent-detail-fact-list">
-            <Info label="Grows" value={String(grows.length)} />
-            <Info label="Hydro" value={String(activeHydroSetups.length)} />
-            <Info label="Setups" value={String(setups.length)} />
+            {!trocknung && <Info label="Grows" value={String(grows.length)} />}
+            {!trocknung && <Info label="Hydro" value={String(activeHydroSetups.length)} />}
+            {!trocknung && <Info label="Setups" value={String(setups.length)} />}
             <Info label="Sensoren" value={String(tent.sensors.filter((sensor) => sensor.isActive).length)} />
-            <Info label="Licht" value={tent.lightWatt ? `${tent.lightWatt} W` : tent.lightType ?? 'offen'} />
+            {!trocknung && <Info label="Licht" value={tent.lightWatt ? `${tent.lightWatt} W` : tent.lightType ?? 'offen'} />}
             <Info label="Klima" value={`${tent.exhaustFanCount ?? 0} Abluft · ${tent.circulationFanCount ?? 0} Umluft`} />
           </div>
         </V1Card>
@@ -146,11 +149,11 @@ function TentDetailPage() {
       </section>
 
       <div className="v1-live-metrics-pair">
-        <V1Section title="Zeltwerte"><div className="v1-metric-grid compact">{mapMetrics(live?.metrics ?? [], tentMetricDefinitions).map((metric) => <MetricCard key={metric.key} metric={metric} />)}</div></V1Section>
+        <V1Section title="Zeltwerte"><div className="v1-metric-grid compact">{mapMetrics(live?.metrics ?? [], zeltwerte).map((metric) => <MetricCard key={metric.key} metric={metric} />)}</div></V1Section>
         {/* Die Reservoirwerte haben als einzige einen hinterlegten Zielbereich —
             hier zeigt die Kachel ihn als Band mit Marker, statt die Zahl allein
             zu lassen. */}
-        <V1Section title="Reservoir">
+        {!trocknung && <V1Section title="Reservoir">
           <div className="gos-metric-row">
             {mapMetrics(live?.metrics ?? [], hydroMetricDefinitions).map((metric) => (
               <MetricTile
@@ -164,13 +167,14 @@ function TentDetailPage() {
               />
             ))}
           </div>
-        </V1Section>
+        </V1Section>}
       </div>
 
       <TentHistorySection tentId={tent.id} />
 
-      <LightScheduleSection tentId={tent.id} />
+      {!trocknung && <LightScheduleSection tentId={tent.id} />}
 
+      {!trocknung && <>
       <V1Section title="Hydro-Systeme" action={<V1LinkButton to="/hydro/new">Hydro anlegen</V1LinkButton>}>
         {activeHydroSetups.length === 0 ? <V1Empty title="Kein aktives Hydro-Setup" text="DWC/RDWC-Systeme werden separat angelegt und dann dem Zelt zugeordnet." /> : <div className="v1-card-grid v1-card-grid-compact">{activeHydroSetups.map((setup) => <HydroSetupCard key={setup.id} setup={setup} />)}</div>}
       </V1Section>
@@ -182,6 +186,7 @@ function TentDetailPage() {
       <V1Section title="Setups & Pflanzen">
         {setups.length === 0 ? <V1Empty title="Keine aktiven Plant-Setups" /> : <div className="v1-card-grid">{setups.map((setup) => <SetupCard key={setup.id} setup={setup} plants={plantsBySetupId[setup.id] ?? []} quarantineSetups={quarantineSetups} productionSetups={productionSetups} grows={grows} onChanged={(message) => { setNotice(message); setRefresh((value) => value + 1) }} />)}</div>}
       </V1Section>
+      </>}
     </V1Page>
   )
 }

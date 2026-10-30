@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.278
+
+**Neu: Trockenzelt — Zelte lassen sich jetzt mit dem Zweck „Trocknung“ anlegen, und das Feld „Typ“ ist weg.**
+
+- **Anlass:** Beim Anlegen eines Trockenzelts gab es unter „Zweck“ keinen passenden Eintrag, und das Freitextfeld „Typ“ blieb ohne Wirkung — es wurde gespeichert, aber nirgends angezeigt oder ausgewertet. Gemessen am Code: kein Bildschirm und keine Rechnung liest es.
+- **Zweck als Auswahl:** „Wofür ist das Zelt?“ ist jetzt eine Liste mit Erklärzeile je Eintrag: Blüte / Run, Mutter, Anzucht, Quarantäne, **Trocknung**, Mehrzweck. Bestehende Zelte behalten ihren Zweck.
+- **Trockenzelt ist schlank:** Das Formular zeigt nur Name, Raum, Größe sowie Abluft und Umluft — kein Licht, kein CO₂, kein Blatt-Offset. Die Zeltkarte und die Zeltseite zeigen nur Temperatur, Luftfeuchte und VPD; Reservoir (pH, EC, Wassertemperatur), Hydro, Licht, Grow und Setups entfallen. Als fehlende Kernsensoren werden nur Temperatur und Luftfeuchte angemahnt (VPD wird daraus gerechnet).
+- **Keine falschen Alarme:** Reservoir-Regeln (pH, EC, Wasser …) melden in einem Trockenzelt nie. Ein Trockenzelt nimmt auch kein Hydro-Setup auf und erscheint nicht in der Zeltwahl beim Grow-Start.
+- **Typ entfällt:** Das Feld ist aus dem Formular entfernt. Alte Werte bleiben unsichtbar gespeichert und stören nichts.
+- **Nicht Teil dieses Releases:** Eine Ernte einem Trockenzelt zuzuordnen (der Grow trocknet bisher in seinem eigenen Zelt) kommt separat.
+
 ## 2.0.0-cc.276
 
 **Neu: Der Licht-Wächter — er prüft mit dem Lichtsensor, ob das Licht wirklich so ist, wie der Lichtplan es verlangt.**
