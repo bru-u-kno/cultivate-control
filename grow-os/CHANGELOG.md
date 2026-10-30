@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.279
+
+**Neu: Programme ohne laufenden Grow ansehen und bearbeiten — die Seite „Plan“ hat jetzt die Auswahl „Plan von“.**
+
+- **Anlass:** Zwischen zwei Grows stand auf der Seite „Plan“ nur „Kein laufender Grow“. SKX, Athena und eigene Programme ließen sich nirgends ändern; bearbeiten ging nur über den Plan eines laufenden Grows.
+- **Wo du es findest:** Plan › oben „Plan von“. „Laufender Grow“ zeigt den Plan wie bisher, die übrigen Einträge sind die Programme: die mitgelieferten und deine eigenen. Die Adresse `/plan?programm=…` öffnet ein Programm direkt.
+- **Vorlagen bleiben, wie sie sind:** Änderst du etwas in einer mitgelieferten Vorlage, legt „Als eigenes Programm speichern“ ein neues Programm an (Name frei wählbar, Vorschlag „… (eigen)“). Die Seite wechselt danach auf die Kopie, und die Vorlage hat noch ihre alten Werte. Ein eigenes Programm wird an Ort und Stelle geändert.
+- **Wirkt auf laufende Grows:** Nutzen Grows ohne eigenen Plan ein eigenes Programm, steht über dem Blatt „Gilt sofort für N laufende Grows ohne eigenen Plan“. Die Werte gehen dann gleich an Home Assistant, nicht erst beim Lauf um 06:00. Scheitert die Übergabe, bleibt das Gespeicherte gespeichert und die Meldung sagt es.
+- **Gleiche Bedienung wie im Plan eines Grows:** dasselbe Wochen-Blatt mit Wischen, Punktreihe, „zurück auf Start“ und Speicherleiste. Das Blatt ist jetzt ein gemeinsamer Baustein; die Prüfregeln (Bereich je Feld, „von“ nicht über „bis“, EC-Ziel im Band) stehen ebenfalls nur noch an einer Stelle.
+- **Grenzen:** Hier stehen die Ziele je Woche (EC, pH, Klima, VPD, CO₂ …). Die Dosierung (ml je Liter) bearbeitest du weiter im Plan eines Grows. Canna Aqua und Hydroponic Research VBX bringen keine Wochenwerte mit, ihre Ziele kommen aus dem Standard; die Seite sagt das, statt leer zu bleiben.
+- **Schritt auf dem Weg zur Trocknung:** Die Trocknungs-Etappen kommen als Nächstes in dieselben Programme.
+
 ## 2.0.0-cc.278
 
 **Neu: „Zelt ruhend“ — zwischen zwei Durchgängen alle nicht benötigten Geräte ausschalten und später genau das wieder einschalten, was ausgeschaltet wurde.**
