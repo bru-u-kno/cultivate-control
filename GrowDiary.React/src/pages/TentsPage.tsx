@@ -256,15 +256,16 @@ function TentsPage() {
           <V1Section title="Basis">
             <form className="v1-form-grid rc2-tent-form" onSubmit={(event) => void saveTent(event)}>
               <V1Field label="Name" wide><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Hauptzelt" /></V1Field>
-              <fieldset className="v1-field is-wide" data-audit="tent-purpose">
-                <span>Wofür ist das Zelt?</span>
+              {/* Kein <fieldset>: der Browser zeichnet dort einen eigenen Rahmen, den kein Formularfeld sonst hat. */}
+              <div className="v1-field is-wide" role="radiogroup" aria-labelledby="tent-purpose-label" data-audit="tent-purpose">
+                <span id="tent-purpose-label">Wofür ist das Zelt?</span>
                 {tentTypes.map((type) => (
                   <label key={type} className="v1-switch is-wide">
                     <input type="radio" name="tent-purpose" checked={draft.tentType === type} onChange={() => setDraft((current) => ({ ...current, tentType: type }))} />
                     <span><strong>{formatTentType(type)}</strong><small>{tentTypeHints[type]}</small></span>
                   </label>
                 ))}
-              </fieldset>
+              </div>
               <V1Field label="Aufstellraum" hint="Der Raum, aus dem das Zelt seine Luft zieht. Stehen die Pflanzen direkt im Raum, braucht es keinen eigenen Raum.">
                 <select value={draft.raumId} onChange={(event) => setDraft((current) => ({ ...current, raumId: event.target.value }))}>
                   <option value="">Kein eigener Raum</option>

@@ -18,6 +18,8 @@ test('Zweck Trocknung blendet Licht, CO₂ und Blatt-Offset aus; „Typ" gibt es
 
   await expect(form.getByText('Typ', { exact: true })).toHaveCount(0)
   await expect(form.getByLabel(/Trocknung/)).toBeVisible()
+  // Die Zweck-Auswahl hat keinen eigenen Rahmen (ein <fieldset> zeichnete den Browser-Standardrahmen, cc.281).
+  await expect(form.locator('[data-audit=tent-purpose]')).toHaveCSS('border-top-width', '0px')
   await expect(form.getByText('Lichttyp')).toBeVisible()
   await expect(form.getByText('CO₂-Sensor vorhanden')).toBeVisible()
 

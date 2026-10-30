@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.282
+
+**Korrektur: Die Zweck-Auswahl im Formular „Zelt anlegen“ hat keinen grauen Rahmen mehr.**
+
+- **Was war:** Seit cc.277 stand die Auswahl „Wofür ist das Zelt?“ in einem Feldrahmen, den der Browser von sich aus zeichnet. Kein anderes Feld im Formular hat so einen Rahmen, auf dem Handy fiel er deutlich auf.
+- **Was jetzt ist:** Die Auswahl steht ohne Rahmen wie die übrigen Felder. Für Screenreader bleibt sie eine benannte Auswahlgruppe.
+- **Wie es geprüft wird:** Ein Test misst den Rahmen der Auswahl (0 px) und wird rot, sobald wieder ein Browser-Rahmen auftaucht.
+
 ## 2.0.0-cc.281
 
 **Neu: Eine Ernte kann in einem Trockenzelt hängen — das Trockenzelt führt dann die Trocknung, das Zelt des Grows ist frei.**
