@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.278
+## 2.0.0-cc.277
 
 **Neu: Trockenzelt — Zelte lassen sich jetzt mit dem Zweck „Trocknung“ anlegen, und das Feld „Typ“ ist weg.**
 
