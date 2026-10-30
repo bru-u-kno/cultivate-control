@@ -10,13 +10,13 @@ import { darfUeberspringen } from './pflicht'
  * „Modus – · Stufe –". Modus lesen, Stufe zeigen, Zeitplan erkennen — nichts
  * davon kam im Tor je vor, obwohl genau das die Seite ausmacht.
  */
-test('Demobestand: Licht mit sechs Rollen, Zeitplan Blüte und Stufe', async ({ page }) => {
+test('Demobestand: Licht mit sieben Rollen, Zeitplan Blüte und Stufe', async ({ page }) => {
   const antwort = await page.request.get('/api/steuerung/licht').catch(() => null)
   darfUeberspringen(!antwort?.ok(), 'Kein Backend erreichbar — laeuft die App unter GROW_OS_URL?')
 
   await page.goto('/steuerung/licht', { waitUntil: 'networkidle' })
   const seite = page.locator('body')
-  await expect(seite, 'Die Licht-Rollen des Demobestands sind nicht zugeordnet.').toContainText(/Geräte\s*6\s*\/\s*6\s*zugeordnet/)
+  await expect(seite, 'Die Licht-Rollen des Demobestands sind nicht zugeordnet.').toContainText(/Geräte\s*7\s*\/\s*7\s*zugeordnet/)
   await expect(seite).toContainText(/Zeitplan \(Blüte\)/i)
   await expect(seite).toContainText('08:00 – 20:00')
   await expect(seite).toContainText('Stufe 7')

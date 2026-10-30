@@ -17,6 +17,7 @@
 - **Neue Geräte-Rolle „Lichtsensor · Helligkeit“** (Geräte › Licht). Ohne zugeordneten Sensor prüft der Wächter nur Betriebsart und Zeiten.
 - **Zeitumstellung im Test:** Ein Prüffall der Wasserfühler (Nullbild nach Mitternacht) brach seit der Umstellung auf Winterzeit am 25.10. ab, weil er 01:00 Ortszeit wählte, was in der Winterzeit denselben UTC-Tag ergibt. Er nimmt jetzt 00:30 und läuft in beiden Zeiten.
 - **Wackelnde Prüfungen:** Eine globale Beschriftungsquelle („Keller Temp.“ statt „Außen Temp.“) zeigte nach einem App-Start im Test auf eine gelöschte Datenbank; spätere Prüfungen scheiterten je nach Reihenfolge. Fällt die Quelle aus, heißt es jetzt wie bisher „Außen“.
+- **Prüfung der Licht-Rollen:** Der Prüffall zum Demobestand erwartete sechs zugeordnete Licht-Rollen; mit dem Lichtsensor sind es sieben.
 - **Umlaut-Prüfung mit mehr Zeit:** Sie liest alle Quelldateien und überschritt im Commit-Tor, wenn die Backend-Mappe gleichzeitig lief, die Grenze von fünf Sekunden und meldete einen Fehler, den es nicht gab. Sie darf jetzt 30 Sekunden brauchen.
 
 ## 2.0.0-cc.275
