@@ -78,6 +78,10 @@ public sealed class KiEinstufungBTests
         ["SteuerungApiController.ChillerSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtBefehl"] = "GeraeteSchalten",
+        // cc.276: Licht-Wächter. Schaltet nichts selbst beim Speichern; die Einstellung entscheidet
+        // aber, ob er später den Zeitplan am Controller zurücksetzt — deshalb beide Stufen.
+        ["SteuerungApiController.LichtWaechterSpeichern"] = "GeraeteSchalten, Verwaltung",
+        ["SteuerungApiController.LichtWaechterPause"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.Probeschaltung"] = "GeraeteSchalten",
         ["SteuerungApiController.AutomationenAnlegen"] = "Verwaltung",
         ["SteuerungApiController.Absichern"] = "Verwaltung",

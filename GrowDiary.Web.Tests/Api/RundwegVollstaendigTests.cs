@@ -327,6 +327,11 @@ public sealed class RundwegVollstaendigTests
             + "Felder sind Uhrzeiten im Format HH:mm — \"1\" ist keine, das PUT lehnt sie "
             + "mit 400 ab. Dass kein Feld beim Speichern verlorengeht, faehrt "
             + "LichtEinstellungenRundwegTests.",
+        // cc.276
+        ["LichtWaechterEinstellungen"] =
+            "Das PUT lehnt Proben wie Modus=1 mit 400 ab (nur \"korrigieren\" oder \"melden\"), und die "
+            + "Pause wird vom PUT bewusst nicht überschrieben. Dass kein Feld beim Speichern "
+            + "verlorengeht, fährt LichtWaechterServiceTests.",
         // Fork AI (forkai.20)
         ["Co2Einstellungen"] =
             "Der Rundweg faehrt jedes Feld mit einer festen Probe (1 bzw. true). Die "

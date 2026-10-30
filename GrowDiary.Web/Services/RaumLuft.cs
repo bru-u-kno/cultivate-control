@@ -80,8 +80,29 @@ public static class AussenBeschriftung
     public static void NurImAblauf(Func<string?>? quelle) => Lokal.Value = quelle;
 
     /// <summary>„Keller Temp." statt „Außen Temp.", solange die Raumwerte vom Raum kommen.</summary>
-    public static string Vorsatz() => (Lokal.Value ?? Quelle)?.Invoke() is { Length: > 0 } name ? name : "Außen";
+    public static string Vorsatz() => Name() is { Length: > 0 } name ? name : "Außen";
 
     /// <summary>Der Raumname für die Beschriftung, oder <c>null</c>, wenn „Außen" gilt.</summary>
-    public static string? Raumname() => (Lokal.Value ?? Quelle)?.Invoke() is { Length: > 0 } name ? name : null;
+    public static string? Raumname() => Name() is { Length: > 0 } name ? name : null;
+
+    /// <summary>
+    /// Fragt die Quelle — und lässt eine ausgefallene Quelle „Außen“ heißen, statt die Anzeige zu kippen.
+    /// </summary>
+    /// <remarks>
+    /// Die Quelle hängt an der Datenbank der laufenden Anwendung. Eine Beschriftung darf nie ein Grund sein, eine Kachel oder
+    /// eine Meldung nicht zu bauen. Sichtbar wurde es in der Testmappe (29.10.2026): Ein Test, der die ganze Anwendung startet,
+    /// setzt die globale Quelle auf seine Temp-Datenbank; ist sie nach dem Test gelöscht, scheiterten spätere Einzeltests
+    /// mit „unable to open database file“ — je nach Reihenfolge, daher wackelnd.
+    /// </remarks>
+    private static string? Name()
+    {
+        try
+        {
+            return (Lokal.Value ?? Quelle)?.Invoke();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 }

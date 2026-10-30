@@ -110,6 +110,9 @@ public static class DemoData
     /// <summary>Ist der Controller-Port erreichbar? — Licht-Rolle „Lampe · Port online".</summary>
     public const string LichtPortOnline = "binary_sensor.demo_licht_status";
 
+    /// <summary>Lichtsensor der Demo-Lampe in Prozent — Licht-Rolle „Lichtsensor · Helligkeit“ (Licht-Wächter).</summary>
+    public const string LichtSensor = "sensor.demo_licht_helligkeit";
+
     // --- Fork AI (A-009, 06.10.2026): zwei Entfeuchter im Testbestand --------------
     // Der Bestand hatte keinen. Ohne sie zeigt die Seite „Zusatz-Entfeuchter" im
     // Testbetrieb nur „Zustand unbekannt", und weder das Zusammenspiel (Führung läuft /
@@ -445,6 +448,7 @@ public static class DemoData
                  {
                      (StromZaehler, Math.Round(StromZaehlerKwh(nowUtc), 3), "kWh", "Demo Steckdosenleiste · Energie"),
                      (StromLeistung, Math.Round(StromLeistungW(nowUtc), 0), "W", "Demo Steckdosenleiste · Leistung"),
+                     (LichtSensor, LightOn(nowUtc) ? 100.0 : 0.3, "%", "Demo LED · Helligkeit"),
                  })
         {
             if (!string.Equals(entityId, kennung, StringComparison.OrdinalIgnoreCase)) continue;
@@ -600,7 +604,7 @@ public static class DemoData
         // Die benannten Geraete: ohne sie steht im Testbetrieb keine Steckdose
         // und kein Dimmfeld in der Auswahl — und dann laesst sich weder der
         // Kuehler noch der AC-Versuch ueberhaupt einrichten.
-        foreach (var kennung in new[] { LichtLeistung, LichtModus, LichtEinZeit, LichtAusZeit, LichtZustand, LichtPortOnline, StromZaehler, StromLeistung,
+        foreach (var kennung in new[] { LichtLeistung, LichtModus, LichtEinZeit, LichtAusZeit, LichtZustand, LichtPortOnline, LichtSensor, StromZaehler, StromLeistung,
                                        EntfeuchterFuehrungModus, EntfeuchterFuehrungZustand, ZusatzSchalter, ZusatzLeistung, ZusatzEnergie })
         {
             var zustand = EntityState(kennung, nowUtc);

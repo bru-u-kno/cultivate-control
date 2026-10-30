@@ -1081,6 +1081,7 @@ public static partial class Demobestand
                      (LichtSteuerungService.Rollen.AusZeit, DemoData.LichtAusZeit),
                      (LichtSteuerungService.Rollen.Zustand, DemoData.LichtZustand),
                      (LichtSteuerungService.Rollen.Status, DemoData.LichtPortOnline),
+                     (LichtSteuerungService.Rollen.Sensor, DemoData.LichtSensor),
                  })
         {
             steuerung.SetGeraet(LichtSteuerungService.Modul, rolle, entitaet);

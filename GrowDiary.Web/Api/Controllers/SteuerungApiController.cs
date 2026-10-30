@@ -31,6 +31,7 @@ public sealed class SteuerungApiController : ApiControllerBase
 {
     private readonly Co2SteuerungService _co2;
     private readonly LichtSteuerungService _licht;
+    private readonly LichtWaechterService _waechter;
     private readonly ZuluftSteuerungService _zuluft;
     private readonly ChillerSteuerungService _chiller;
     private readonly EntfeuchterSteuerungService _entfeuchter;
@@ -47,10 +48,11 @@ public sealed class SteuerungApiController : ApiControllerBase
     private readonly SteuerungAbsicherungService _absicherung;
     private readonly SteuerungProbeService _probe;
 
-    public SteuerungApiController(Co2SteuerungService co2, LichtSteuerungService licht, ZuluftSteuerungService zuluft, ChillerSteuerungService chiller, EntfeuchterSteuerungService entfeuchter, EntfeuchterZusatzSteuerungService zusatz, GrowRepository grows, HomeAssistantService ha, HomeAssistantSettingsRepository haSettings, KostenRepository kosten, SteuerungGeraeteService geraete, SteuerungBestandService bestand, SteuerungHelferService helfer, SteuerungRechenwertService rechenwerte, SteuerungAutomationService automationen, SteuerungAbsicherungService absicherung, SteuerungProbeService probe)
+    public SteuerungApiController(Co2SteuerungService co2, LichtSteuerungService licht, LichtWaechterService waechter, ZuluftSteuerungService zuluft, ChillerSteuerungService chiller, EntfeuchterSteuerungService entfeuchter, EntfeuchterZusatzSteuerungService zusatz, GrowRepository grows, HomeAssistantService ha, HomeAssistantSettingsRepository haSettings, KostenRepository kosten, SteuerungGeraeteService geraete, SteuerungBestandService bestand, SteuerungHelferService helfer, SteuerungRechenwertService rechenwerte, SteuerungAutomationService automationen, SteuerungAbsicherungService absicherung, SteuerungProbeService probe)
     {
         _co2 = co2;
         _licht = licht;
+        _waechter = waechter;
         _zuluft = zuluft;
         _chiller = chiller;
         _entfeuchter = entfeuchter;
@@ -544,6 +546,41 @@ public sealed class SteuerungApiController : ApiControllerBase
         return seite;
     }
 
+    /// <summary>Der Licht-Wächter: Einstellungen, Plan, Lichtsensor und die jüngste Prüfung.</summary>
+    [HttpGet("licht/waechter")]
+    [ProducesResponseType(typeof(WaechterStand), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WaechterStand>> LichtWaechter(CancellationToken ct)
+        => Ok(await _waechter.StandAsync(ct));
+
+    /// <summary>Wächter an/aus, Modus (korrigieren oder nur melden) und „Hell ab“ speichern. Die Pause bleibt unberührt.</summary>
+    [HttpPut("licht/waechter")]
+    [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(WaechterStand), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WaechterStand>> LichtWaechterSpeichern([FromBody] LichtWaechterEinstellungen request, CancellationToken ct)
+    {
+        if (request is null) return BadRequestError("waechter_invalid", "Es wurde nichts übergeben.");
+        request.PauseBisUtc = _waechter.Einstellungen.PauseBisUtc;
+        var (gespeichert, fehler) = _waechter.Speichern(request);
+        if (gespeichert is null)
+        {
+            foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
+            return ValidationError();
+        }
+        return Ok(await _waechter.StandAsync(ct));
+    }
+
+    /// <summary>Der Wächter schweigt für 1, 2 oder 72 Stunden (bis zur Ernte) — oder die Pause wird mit 0 aufgehoben.</summary>
+    [HttpPost("licht/waechter/pause")]
+    [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(WaechterStand), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WaechterStand>> LichtWaechterPause([FromBody] LichtWaechterPauseRequest request, CancellationToken ct)
+    {
+        if (request is null || request.Stunden is not (0 or 1 or 2 or 72))
+            return BadRequestError("pause_invalid", "Pause: 0 (aufheben), 1, 2 oder 72 Stunden.");
+        _waechter.Pausieren(request.Stunden);
+        return Ok(await _waechter.StandAsync(ct));
+    }
+
     /// <summary>Aus, An, Preset anwenden, Stufe setzen — oder eine gemeldete Fehlmeldung wegräumen.</summary>
     [HttpPost("licht/befehl")]
     [KiStufe(KiStufe.GeraeteSchalten)]
@@ -983,6 +1020,8 @@ public sealed record ChillerSeiteDto(ChillerEinstellungen Einstellungen, Chiller
 }
 
 public sealed record LichtBefehlRequest(string? Art, string? Preset, int? Stufe);
+
+public sealed record LichtWaechterPauseRequest(int Stunden);
 
 public sealed record LichtSeiteDto(LichtEinstellungen Einstellungen, LichtLive Live)
 {

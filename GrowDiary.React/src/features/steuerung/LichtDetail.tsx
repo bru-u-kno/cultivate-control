@@ -1,4 +1,5 @@
 import { SteuerungWechsel } from './SteuerungWechsel'
+import LichtWaechter from './LichtWaechter'
 import { HaStummHinweis } from './HaStummHinweis'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
@@ -328,6 +329,8 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
           </V1Card>
         </V1Section>
       )}
+
+      {reiter === 'waechter' && <LichtWaechter />}
 
       {reiter === 'erweitert' && (
         <V1Section title="Erweitert">

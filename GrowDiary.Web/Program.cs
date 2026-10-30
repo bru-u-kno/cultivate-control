@@ -149,6 +149,7 @@ builder.Services.AddScoped<GeraeteUebersichtService>();
 builder.Services.AddScoped<Co2SteuerungService>();
 builder.Services.AddScoped<WochenplanSyncService>(); // Fork AI (forkai.53)
 builder.Services.AddScoped<LichtSteuerungService>();
+builder.Services.AddScoped<LichtWaechterService>();
 builder.Services.AddScoped<ZuluftSteuerungService>();
 builder.Services.AddScoped<ChillerSteuerungService>();
 builder.Services.AddScoped<EntfeuchterSteuerungService>();

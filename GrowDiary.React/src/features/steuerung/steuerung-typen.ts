@@ -303,6 +303,25 @@ export type LichtLive = {
   standUtc: string
 }
 
+/** Licht-Wächter: prüft nach jeder Ein- und Ausschaltzeit mit dem Lichtsensor, ob das Licht zum Lichtplan passt. */
+export type LichtWaechterEinstellungen = {
+  aktiv: boolean
+  /** `korrigieren` oder `melden`. */
+  modus: 'korrigieren' | 'melden'
+  hellAbProzent: number
+  pauseBisUtc: string | null
+}
+
+export type LichtWaechterStand = {
+  einstellungen: LichtWaechterEinstellungen
+  planVorhanden: boolean
+  plan: string | null
+  sensorZugeordnet: boolean
+  sensor: number | null
+  pausiert: boolean
+  letzter: { phase: string; hell: boolean; ergebnis: 'ok' | 'korrigiert' | 'gemeldet'; text: string; geprueftUtc: string } | null
+}
+
 export type LichtSeite = {
   einstellungen: LichtEinstellungen
   live: LichtLive
@@ -322,10 +341,11 @@ export type LichtSeite = {
  */
 export const LICHT_MODI = { aus: 'Off', an: 'On', zeitplan: 'Schedule' } as const
 
-export type LichtReiter = 'betrieb' | 'zeitplan' | 'erweitert'
+export type LichtReiter = 'betrieb' | 'zeitplan' | 'waechter' | 'erweitert'
 export const LICHT_REITER: Array<{ value: LichtReiter; label: string }> = [
   { value: 'betrieb', label: 'Betrieb' },
   { value: 'zeitplan', label: 'Zeitplan' },
+  { value: 'waechter', label: 'Wächter' },
   { value: 'erweitert', label: 'Erweitert' },
 ]
 

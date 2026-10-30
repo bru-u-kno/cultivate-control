@@ -129,6 +129,9 @@ public static class SteuerungGeraeteRollen
             Hinweis: "Brennt die Lampe wirklich — nicht nur „Port online“."),
         new("licht", "licht_status", "Lampe · Port online", GruppeMessen,
             new[] { "binary_sensor" }, Pflicht: false),
+        new("licht", "licht_sensor", "Lichtsensor · Helligkeit", GruppeMessen,
+            new[] { "sensor" }, Pflicht: false, Einheit: "%",
+            Hinweis: "Misst, ob es im Zelt wirklich hell ist (z. B. der Lichtsensor am CO₂-Fühler). Ohne ihn kann der Licht-Wächter nur Betriebsart und Zeiten prüfen."),
 
         // Zuluft: zwei Fuehlerpaare und ein Luefter-Port. Temperatur und Feuchte
         // stehen getrennt, weil die absolute Feuchte aus beiden gerechnet wird —

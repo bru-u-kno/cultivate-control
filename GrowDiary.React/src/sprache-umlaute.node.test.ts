@@ -51,7 +51,7 @@ describe('Umlaute in Texten', () => {
     // Mengenwächter: sieht die Prüfung ihre Grundmenge überhaupt?
     expect(stuecke).toBeGreaterThan(2000)
     expect(fehler, `Texte ohne Umlaut (Wortliste: src/sprache-umlaute.ts):\n${fehler.join('\n')}`).toEqual([])
-  })
+  }, 30_000) // liest alle Quelldateien; im Commit-Tor neben der Backend-Mappe brauchte er 7 s (Grenze war 5 s)
 
   it('die Ausnahmen gibt es noch (sonst gehört die Zeile gestrichen)', () => {
     for (const name of Object.keys(AUSNAHMEN)) expect(() => readFileSync(join(WURZEL, name), 'utf8')).not.toThrow()

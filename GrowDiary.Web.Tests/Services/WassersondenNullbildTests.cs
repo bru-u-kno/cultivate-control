@@ -236,8 +236,9 @@ public sealed class WassersondenNullbildTests : IDisposable
     /// <para><b>Der Anlass (offene Punkte 03.10.2026, B6).</b> Der Code nimmt
     /// den lokalen Tag, aber keine Prüfung hätte es gemerkt, wenn er den
     /// UTC-Tag nähme: das Nullbild der ersten Prüfung liegt um 23:15, wo beide
-    /// Tage gleich sind. Hier liegt es um 01:00 Ortszeit — in Deutschland
-    /// 23:00 oder 00:00 UTC am Vortag. Rechnete die Bereinigung den UTC-Tag
+    /// Tage gleich sind. Hier liegt es um 00:30 Ortszeit — in Deutschland
+    /// 22:30 oder 23:30 UTC am Vortag (um 01:00 fiele es in der Winterzeit auf 00:00 UTC, denselben
+    /// UTC-Tag, und die Prüfung bräche seit der Zeitumstellung vom 25.10.2026 ab). Rechnete die Bereinigung den UTC-Tag
     /// neu, bliebe das Minimum 0 im Ortstag stehen.</para>
     /// <para><b>Beisst nur außerhalb von UTC.</b> In UTC sind Ortstag und
     /// UTC-Tag dasselbe, und diese Prüfung wäre grün ohne etwas zu prüfen.
@@ -251,11 +252,11 @@ public sealed class WassersondenNullbildTests : IDisposable
         var repo = NeueDatenbank();
         var heute = DateOnly.FromDateTime(DateTime.Now);
         var tag = heute.AddDays(-2);
-        var nullbildLokal = tag.ToDateTime(new TimeOnly(1, 0), DateTimeKind.Local);
+        var nullbildLokal = tag.ToDateTime(new TimeOnly(0, 30), DateTimeKind.Local);
         var nullbild = nullbildLokal.ToUniversalTime();
 
         Assert.True(DateOnly.FromDateTime(nullbild) != tag,
-            $"Die Zeitzone dieses Laufs ({TimeZoneInfo.Local.Id}) legt 01:00 Ortszeit auf denselben UTC-Tag — "
+            $"Die Zeitzone dieses Laufs ({TimeZoneInfo.Local.Id}) legt 00:30 Ortszeit auf denselben UTC-Tag — "
             + "dann prüft dieser Fall nichts. Mit TZ=Europe/Berlin laufen lassen (so läuft das Tor).");
 
         GanzeTageSchreiben(repo, tag.AddDays(-1), tag, nullbild);

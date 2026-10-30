@@ -59,6 +59,7 @@ public sealed class LichtSteuerungService
         public const string AusZeit = "licht_aus_zeit";
         public const string Zustand = "licht_zustand";
         public const string Status = "licht_status";
+        public const string Sensor = "licht_sensor";
     }
 
     /// <summary>
@@ -196,6 +197,33 @@ public sealed class LichtSteuerungService
             Unbestaetigt: offen.Unbestaetigt,
             Fehlgeschlagen: offen.Fehlgeschlagen,
             StandUtc: DateTime.UtcNow);
+    }
+
+    // ------------------------------------------------------------ Licht-Wächter
+
+    /// <summary>Ob ein Lichtsensor zugeordnet ist, und was er in Prozent meldet (null, wenn er nichts liefert).</summary>
+    public async Task<(bool Zugeordnet, double? Prozent)> LichtSensorAsync(CancellationToken ct)
+    {
+        var geraete = _geraete.EntitiesFuerModul(Modul);
+        if (!geraete.TryGetValue(Rollen.Sensor, out var id) || string.IsNullOrWhiteSpace(id)) return (false, null);
+        var settings = _haSettings.GetEffectiveHomeAssistantSettings();
+        var stand = (await _funk.ZustandAsync(settings, id, ct))?.State;
+        return (true, Zahlenlesen.Maschine(stand));
+    }
+
+    /// <summary>
+    /// Stellt den Zeitplan wieder her: erst Ein- und Aus-Zeit, dann die Betriebsart
+    /// (Reihenfolge wie beim Preset, siehe <see cref="BefehlAsync"/>). Nur Abweichendes
+    /// wird geschrieben.
+    /// </summary>
+    public async Task<bool> ZeitplanWiederherstellenAsync(string ein, string aus, CancellationToken ct)
+    {
+        var e = Einstellungen;
+        var zeiten = new[] { (Rollen.EinZeit, ein + ":00"), (Rollen.AusZeit, aus + ":00") };
+        var zeitplan = (Rollen.Modus, AcModi.Zeitplan);
+        return await SchreibenAsync(
+            await ZeitenErreichbarAsync(ct) ? zeiten.Append(zeitplan).ToArray() : new[] { zeitplan }.Concat(zeiten).ToArray(),
+            e, ct);
     }
 
     // ----------------------------------------------------------------- Befehle

@@ -5,6 +5,20 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.276
+
+**Neu: Der Licht-Wächter — er prüft mit dem Lichtsensor, ob das Licht wirklich so ist, wie der Lichtplan es verlangt.**
+
+- **Anlass:** Am 25.10. stand die Betriebsart der Lampe auf „Aus“ statt „Zeitplan“. Das Zelt blieb 36 Stunden dunkel, und niemand hat es bemerkt, weil der Controller selbst nichts meldet. Der Wächter fängt genau das ab.
+- **Was er prüft:** Fünf Minuten nach jeder geplanten Ein- und Ausschaltzeit vergleicht er den Lichtsensor mit dem Lichtplan des Zelts. „Hell“ heißt ab 80 % (einstellbar unter „Hell ab“). Passt es nicht, geht er der Reihe nach vor: Controller erreichbar? Betriebsart „Zeitplan“? Ein- und Ausschaltzeit wie im Plan? Leistungsstufe über 0?
+- **Wo du ihn findest:** Steuerung › Licht › Reiter „Wächter“, mit einklappbaren Kacheln für Einstellungen, Ablauf, Push-Texte und Befunde.
+- **Zwei Betriebsarten:** „Nur melden“ ist die Voreinstellung: Der Wächter schickt eine Push-Meldung und ändert nichts. „Korrigieren + melden“ setzt bei falscher Betriebsart oder falschen Zeiten den Zeitplan selbst zurück (höchstens zwei Versuche je Lichtphase), prüft nach zwei Minuten, ob der Sensor es bestätigt, meldet das Ergebnis und trägt es im Tagebuch ein. Alles andere meldet er nur: Lampe, Netzteil oder Sensor defekt, Controller nicht erreichbar, Leistungsstufe 0, Lichtsensor ohne Wert.
+- **Pause:** Wer das Licht bewusst von Hand schaltet, pausiert den Wächter für 1 Stunde, 2 Stunden oder 3 Tage. Er prüft nur in den 65 Minuten nach den Planzeiten; mitten am Tag greift er nie ein.
+- **Neue Geräte-Rolle „Lichtsensor · Helligkeit“** (Geräte › Licht). Ohne zugeordneten Sensor prüft der Wächter nur Betriebsart und Zeiten.
+- **Zeitumstellung im Test:** Ein Prüffall der Wasserfühler (Nullbild nach Mitternacht) brach seit der Umstellung auf Winterzeit am 25.10. ab, weil er 01:00 Ortszeit wählte, was in der Winterzeit denselben UTC-Tag ergibt. Er nimmt jetzt 00:30 und läuft in beiden Zeiten.
+- **Wackelnde Prüfungen:** Eine globale Beschriftungsquelle („Keller Temp.“ statt „Außen Temp.“) zeigte nach einem App-Start im Test auf eine gelöschte Datenbank; spätere Prüfungen scheiterten je nach Reihenfolge. Fällt die Quelle aus, heißt es jetzt wie bisher „Außen“.
+- **Umlaut-Prüfung mit mehr Zeit:** Sie liest alle Quelldateien und überschritt im Commit-Tor, wenn die Backend-Mappe gleichzeitig lief, die Grenze von fünf Sekunden und meldete einen Fehler, den es nicht gab. Sie darf jetzt 30 Sekunden brauchen.
+
 ## 2.0.0-cc.275
 
 **Die Phase „Finish“ heißt jetzt überall „Flush“.**

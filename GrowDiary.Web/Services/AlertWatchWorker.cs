@@ -82,6 +82,17 @@ public sealed class AlertWatchWorker : BackgroundService
         // but it is edge-triggered, so re-checking costs a query and sends nothing.
         var trends = scope.ServiceProvider.GetRequiredService<TrendWatchRunner>();
         await trends.RunAsync(DateTime.Now, cancellationToken);
+
+        // Der Licht-Wächter prüft fünf Minuten nach Ein- und Ausschaltzeit; im Minutentakt
+        // kostet ein Durchgang außerhalb dieser Fenster nur einen Blick auf die Uhr.
+        try
+        {
+            await scope.ServiceProvider.GetRequiredService<LichtWaechterService>().LaufAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Licht-Wächter fehlgeschlagen.");
+        }
     }
 
     private async Task EvaluateAllTentsAsync(CancellationToken cancellationToken)
