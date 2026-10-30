@@ -110,6 +110,18 @@ public sealed class LichtWaechterService
         return e;
     }
 
+    /// <summary>
+    /// Fork AI (cc.277, „Zelt ruhend"): Pause bis zu einem festen Zeitpunkt — für die Ruhezeit des Zelts, die länger dauert
+    /// als die 72 Stunden „bis zur Ernte". „Zelt wieder aktiv" hebt sie mit <see cref="Pausieren"/>(0) auf.
+    /// </summary>
+    public LichtWaechterEinstellungen PausierenBis(DateTime bisUtc)
+    {
+        var e = Einstellungen;
+        e.PauseBisUtc = bisUtc;
+        _repo.SetEinstellungen(Modul, e);
+        return e;
+    }
+
     // ------------------------------------------------------------------ Stand
 
     public async Task<WaechterStand> StandAsync(CancellationToken ct)

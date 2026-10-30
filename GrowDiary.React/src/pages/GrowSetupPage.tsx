@@ -693,7 +693,9 @@ function RunStep({ form, patch, strains, erfasstePflanzen, belegteToepfe, pflanz
 }
 
 
-function TentStep({ tents, selectedId, onSelect }: { tents: TentDto[]; selectedId: number | null; onSelect: (id: number) => void }) {
+function TentStep({ tents: alleZelte, selectedId, onSelect }: { tents: TentDto[]; selectedId: number | null; onSelect: (id: number) => void }) {
+  // Ein Trockenzelt hat kein System und keinen Grow: hier nicht zur Wahl.
+  const tents = alleZelte.filter((tent) => tent.tentType !== 'Drying')
   if (tents.length === 0) return <V1Empty title="Kein Zelt angelegt" action={<V1LinkButton to="/zelte/new" variant="primary">Zelt anlegen</V1LinkButton>} />
   return <V1Section title="Zelt"><div className="grow-select-grid">{tents.map((tent) => <button type="button" key={tent.id} className={classNames('grow-select-card', selectedId === tent.id && 'active')} onClick={() => onSelect(tent.id)}><span className="grow-card-topline"><strong>{tent.name}</strong><V1Badge tone={tent.status === 'Active' ? 'ok' : 'neutral'}>{tent.status === 'Active' ? 'aktiv' : 'archiviert'}</V1Badge></span><span className="grow-card-meta">{zeltZweckName(tent.tentType)} · {formatTentSize(tent)}</span><span className="grow-card-facts"><b>{tent.activeGrowCount} {tent.activeGrowCount === 1 ? 'Grow' : 'Grows'}</b><b>{tent.activeSetupCount} {tent.activeSetupCount === 1 ? 'Setup' : 'Setups'}</b></span></button>)}</div></V1Section>
 }

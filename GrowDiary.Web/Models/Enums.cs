@@ -286,6 +286,7 @@ public enum TentType
     Mother,
     Quarantine,
     Propagation,
+    Drying,
     MultiPurpose
 }
 

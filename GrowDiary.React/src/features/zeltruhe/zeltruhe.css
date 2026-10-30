@@ -1,0 +1,15 @@
+/* Fork AI (cc.277, „Zelt ruhend"): Block „Betrieb" in der Zelt-Karte und das Blatt nach der Ernte. */
+.zr-liste { display: grid; gap: var(--s-2); padding: var(--s-1) 0; }
+/* Die Zelt-Karte ordnet ihre Blöcke in Spalten. Der Betrieb-Block mit der Geräteliste braucht die volle Breite, sonst
+   wird er zur schmalen fünften Spalte und schiebt „Belegung" in die zweite Reihe (Desktop-Prüfung cc.277). */
+.tn-group.zr-block { grid-column: 1 / -1; }
+.tn-group.zr-block .zr-liste { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.zr-unterlabel { margin-top: var(--s-3); }
+.zr-knoepfe { margin-top: var(--s-3); }
+.zr-hinweis { margin: var(--s-2) 0 0; font-size: 0.8rem; color: var(--muted); }
+.zr-ergebnis { margin-top: var(--s-3); font-size: 0.85rem; }
+.zr-ergebnis p { margin: 0; }
+.zr-ergebnis ul { margin: var(--s-1) 0 0; padding-left: 1.1rem; }
+.zr-blatt-knopf { width: 100%; }
+/* Im Blatt steht der Hinweis über dem Knopf — ohne Abstand klebt er daran. */
+.forkai-sheet .zr-liste { margin-bottom: var(--s-3); }

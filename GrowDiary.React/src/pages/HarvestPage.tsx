@@ -8,6 +8,8 @@ import { summariseYield } from '../features/harvest/harvest-yield'
 import { parsePlantWeights, progressLabel, serialisePlantWeights, totals, type PlantWeight } from '../features/harvest/plant-weights-model'
 import { zahlOderNull, feldText } from '../zahlenfeld'
 import '../features/harvest/harvest.css'
+import { ZeltRuheBlatt } from '../features/zeltruhe/ZeltRuheBlatt'
+import { laufendeAuswahl, ladeZeltRuhe, type ZeltRuheGeraet } from '../features/zeltruhe/zeltruhe-api'
 
 interface HarvestFormState {
   harvestedAtLocal: string
@@ -29,6 +31,8 @@ function HarvestPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<'save' | 'complete' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Fork AI (cc.277): Nach dem Abschluss fragt das Blatt, ob die Geräte im leeren Zelt ausgeschaltet werden sollen.
+  const [ruheFrage, setRuheFrage] = useState<ZeltRuheGeraet[] | null>(null)
   // Fork AI (Grow-Plan): den eingefrorenen Endstand gleich als Programm ablegen.
   const [alsProgramm, setAlsProgramm] = useState(false)
   const [programmName, setProgrammName] = useState('')
@@ -119,7 +123,10 @@ function HarvestPage() {
         })
       }
       if (complete) {
-        navigate('/archiv')
+        // Die Frage ist ein Vorschlag: Fehlt der Zugang oder läuft nichts davon, geht es wie bisher ins Archiv.
+        const laufend = await ladeZeltRuhe().then(laufendeAuswahl).catch(() => [])
+        if (laufend.length > 0) setRuheFrage(laufend)
+        else navigate('/archiv')
       } else {
         navigate(`/grows/${growId}`)
       }
@@ -293,6 +300,7 @@ function HarvestPage() {
           </div>
         </form>
       )}
+      {ruheFrage && <ZeltRuheBlatt geraete={ruheFrage} onFertig={() => navigate('/archiv')} />}
     </V1Page>
   )
 }

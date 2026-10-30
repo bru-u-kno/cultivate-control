@@ -30,4 +30,14 @@ public sealed class SetupTentCompatibilityPolicyTests
     {
         Assert.True(SetupTentCompatibilityPolicy.IsCompatible(TentType.MultiPurpose, setupType));
     }
+
+    [Theory]
+    [InlineData(SetupType.Production)]
+    [InlineData(SetupType.Mother)]
+    [InlineData(SetupType.Quarantine)]
+    [InlineData(SetupType.Propagation)]
+    public void IsCompatible_TakesNoSetupInDryingTent(SetupType setupType)
+    {
+        Assert.False(SetupTentCompatibilityPolicy.IsCompatible(TentType.Drying, setupType));
+    }
 }

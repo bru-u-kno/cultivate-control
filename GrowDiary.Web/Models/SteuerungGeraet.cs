@@ -106,6 +106,12 @@ public static class SteuerungGeraeteRollen
             Hinweis: "Erreichbar oder nicht — nicht, ob das Ventil offen ist. Ohne sie dosiert die Vorlage auch, wenn der Port nicht antwortet."),
         new("co2", "abluft_stufe", "Abluft · Stufe", GruppeSchalten,
             new[] { "number" }, Pflicht: false),
+        // Fork AI (cc.277, Zelt ruhend): Die Stufe regelt die Drosselung, ein- und ausgeschaltet
+        // wird der Abluft-Port aber über seine Betriebsart. Ohne diese Rolle kann „Zelt ruhend"
+        // die Abluft nicht ausschalten (sie fehlt dann in der Auswahl).
+        new("co2", "abluft_schalter", "Abluft · schalten", GruppeSchalten,
+            new[] { "select", "switch", "input_boolean" }, Pflicht: false,
+            Hinweis: "Was die Abluft wirklich ein- und ausschaltet — z. B. bei AC Infinity der Modus-Auswahlpunkt des Abluft-Ports. Nur für „Zelt ruhend“ nötig."),
         new("co2", "licht", "Licht-Status", GruppeUmfeld,
             new[] { "binary_sensor", "switch", "light" },
             Hinweis: "Begast wird nur bei Licht."),

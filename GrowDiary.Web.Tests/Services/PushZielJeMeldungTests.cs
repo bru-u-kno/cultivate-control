@@ -111,6 +111,22 @@ public sealed class PushZielJeMeldungTests : IDisposable
         Assert.Contains($"\"clickAction\":\"/app/{Slug}/aufgaben\"", Push(handler));
     }
 
+    [Fact]
+    public async Task Trockenzelt_meldet_keine_Reservoirwerte()
+    {
+        // Ein Trockenzelt hat kein Reservoir: eine pH-Regel darf dort nie klingeln.
+        var handler = Handler();
+        var alarme = new AlertEvaluationService(_rules, Benachrichtigung(handler), NullLogger<AlertEvaluationService>.Instance);
+        _tent.TentType = TentType.Drying;
+
+        await alarme.EvaluateAsync(_tent, new Dictionary<string, HomeAssistantState>
+        {
+            ["reservoir-ph"] = new HomeAssistantState { State = "5", NumericValue = 5.0 },
+        });
+
+        Assert.DoesNotContain(handler.Requests, r => r.Uri.AbsolutePath.Contains("/api/services/notify/", StringComparison.Ordinal));
+    }
+
     private static string Push(RecordingHttpHandler handler)
         => Assert.Single(handler.Requests, r => r.Uri.AbsolutePath.Contains("/api/services/notify/", StringComparison.Ordinal)).Body!;
 

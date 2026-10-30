@@ -5,6 +5,33 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.278
+
+**Neu: „Zelt ruhend“ — zwischen zwei Durchgängen alle nicht benötigten Geräte ausschalten und später genau das wieder einschalten, was ausgeschaltet wurde.**
+
+- **Anlass:** Nach der Ernte am 30.10. liefen Abluft, Entfeuchter und weitere Geräte im leeren Zelt weiter, und es gab keinen Ort, an dem man sie gemeinsam und nachvollziehbar abschaltet. Einzeln über Home Assistant geht das, vergisst aber leicht eine Automatik, die das Gerät im nächsten Takt wieder einschaltet.
+- **Wo du es findest:** Zelte & Räume › Zelt-Karte, neuer Block „Betrieb“ (nur an dem Zelt, zu dem die Steuerung gehört — dem Zelt des neuesten Grows). Er zeigt „In Betrieb“ oder „Ruhend seit …“, dazu jedes Gerät mit Haken „im Ruhemodus ausschalten“ und seinem Zustand jetzt. Knöpfe: „Zelt ruhend schalten“ und „Zelt wieder aktiv“.
+- **Frage nach der Ernte:** Nach „Speichern & Grow abschließen“ fragt ein Blatt, ob die Geräte im leeren Zelt ausgeschaltet werden sollen. Es nennt nur, was im Ruhemodus ausgehen würde und gerade läuft. „Alles laufen lassen“ ändert nichts; läuft nichts davon, erscheint die Frage gar nicht.
+- **Was geschaltet wird, und in welcher Reihenfolge:** Je Gerät zuerst die Automatik aus (über den Speichern-Weg der jeweiligen Steuerung, damit gespeicherter Stand und Home Assistant übereinstimmen), danach das Gerät selbst. Umgekehrt schaltete die Automatik es im nächsten Takt wieder ein. Auswahlfelder von AC-Infinity-Controllern gehen nacheinander, mit Pause und Nachlesen, weil die Wolke schnelle Folgebefehle verwirft.
+- **Genau das wieder, was war:** Der CC merkt sich je Gerät den Zustand davor (zum Beispiel „Zeitplan“ beim Licht) und stellt ihn beim Wecken wieder her — erst das Gerät, dann die Automatik. Was schon aus war, bleibt aus. Klappt etwas nicht, bleibt es gemerkt, und ein zweiter Versuch holt es nach; im Ergebnis steht je Gerät, was passiert ist. Geräte mit einer Regelung (Automatik oder der Kühler-Regler des CC) bekommen beim Wecken nur diese Regelung zurück — sie schaltet mit ihren Schutzzeiten selbst, ein Ventil oder ein Kompressor springt also nicht von allein an.
+- **Sicher gegen Abbruch und Teilfehler:** Der Merker steht im Speicher, bevor ein Gerät angefasst wird, und wird nach jedem Gerät gespeichert. Schließt du die App mitten im Schalten, führt „Zelt wieder aktiv“ trotzdem zurück. Scheitert das Ausschalten einer Automatik, bleibt das Gerät unberührt und der alte Stand steht wieder. Ist das Zelt schon ruhend und ein Gerät hat vorher nicht geantwortet, schaltet „Rest ausschalten“ nur das Fehlende nach. Zwei gleichzeitige Aufrufe laufen nacheinander und überschreiben sich nicht.
+- **Wasserkühler:** Die Fork-eigene Kühlerregelung wird mit ausgeschaltet und beim Wecken wieder eingeschaltet. Sonst hätte sie die Steckdose binnen einer Minute wieder an gemacht.
+- **Voreinstellung:** Licht, CO₂-Begasung, Abluft, Zusatz-Entfeuchter und Wasserkühler gehen aus; Entfeuchter und Zuluft laufen weiter, solange du sie nicht ausdrücklich ankreuzt. Sie können auch ohne Pflanzen gebraucht werden (Raumluft, Trocknen).
+- **Licht-Wächter:** Solange das Zelt ruht, ist der Wächter angehalten — sonst meldete er jede geplante Hellzeit als Abweichung. „Zelt wieder aktiv“ hebt die Pause auf.
+- **Neue Geräte-Rolle „Abluft · schalten“** (Geräte › CO₂). Die Stufe regelt die Drosselung; ein- und ausgeschaltet wird die Abluft über die Betriebsart ihres Ports. Ohne zugeordnete Rolle fehlt die Abluft in der Auswahl.
+- **Trockenzelte:** Ein Zelt mit Zweck „Trocknung“ hat weder den Block noch die Frage; seine Geräte folgen dem Trocknungsplan.
+
+## 2.0.0-cc.277
+
+**Neu: Trockenzelt — Zelte lassen sich jetzt mit dem Zweck „Trocknung“ anlegen, und das Feld „Typ“ ist weg.**
+
+- **Anlass:** Beim Anlegen eines Trockenzelts gab es unter „Zweck“ keinen passenden Eintrag, und das Freitextfeld „Typ“ blieb ohne Wirkung — es wurde gespeichert, aber nirgends angezeigt oder ausgewertet. Gemessen am Code: kein Bildschirm und keine Rechnung liest es.
+- **Zweck als Auswahl:** „Wofür ist das Zelt?“ ist jetzt eine Liste mit Erklärzeile je Eintrag: Blüte / Run, Mutter, Anzucht, Quarantäne, **Trocknung**, Mehrzweck. Bestehende Zelte behalten ihren Zweck.
+- **Trockenzelt ist schlank:** Das Formular zeigt nur Name, Raum, Größe sowie Abluft und Umluft — kein Licht, kein CO₂, kein Blatt-Offset. Die Zeltkarte und die Zeltseite zeigen nur Temperatur, Luftfeuchte und VPD; Reservoir (pH, EC, Wassertemperatur), Hydro, Licht, Grow und Setups entfallen. Als fehlende Kernsensoren werden nur Temperatur und Luftfeuchte angemahnt (VPD wird daraus gerechnet).
+- **Keine falschen Alarme:** Reservoir-Regeln (pH, EC, Wasser …) melden in einem Trockenzelt nie. Ein Trockenzelt nimmt auch kein Hydro-Setup auf und erscheint nicht in der Zeltwahl beim Grow-Start.
+- **Typ entfällt:** Das Feld ist aus dem Formular entfernt. Alte Werte bleiben unsichtbar gespeichert und stören nichts.
+- **Nicht Teil dieses Releases:** Eine Ernte einem Trockenzelt zuzuordnen (der Grow trocknet bisher in seinem eigenen Zelt) kommt separat.
+
 ## 2.0.0-cc.276
 
 **Neu: Der Licht-Wächter — er prüft mit dem Lichtsensor, ob das Licht wirklich so ist, wie der Lichtplan es verlangt.**
