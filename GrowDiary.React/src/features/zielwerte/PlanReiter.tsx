@@ -5,7 +5,7 @@ import { V1Sheet } from '../../components/V1Sheet'
 import { V1Alert, V1Badge, V1Button, V1Field, V1Section, V1Skeleton, V1Switch, V1Tabs } from '../../components/v1'
 import { classNames, ohneWaise } from '../../utils'
 import {
-  GRUPPEN, aenderungen, alsText, aufPlan, feldText, fehler, punkt, schluessel, startIndex, weichtAb,
+  aenderungen, alsText, aufPlan, fehler, punkt, schluessel, startIndex,
   type Entwurf, type Wochenwerte,
 } from '../wochenplan/wochenwerte-bearbeiten'
 import '../wochenplan/wochenplan.css'
@@ -15,6 +15,7 @@ import {
 } from './plan-reiter'
 import { wochenIndex } from './wochen-zeile'
 import { KontextSprung } from './PlanKette'
+import { WochenGitter } from './WochenGitter'
 
 const WISCH_SCHWELLE = 50
 
@@ -313,67 +314,14 @@ export function PlanReiter() {
           </div>
         </div>
 
-        <div className="wp-gitter wp-gitter-edit">
-          {GRUPPEN.map((gruppe) => {
-            const felder = gruppe.felder
-              .map((name) => woche.felder.find((f) => f.feld === name))
-              .filter((f) => f !== undefined)
-            if (felder.length === 0) return null
-            if (gruppe.nacht && wieTag) {
-              // Ruht: nachts gilt der Tageswert — zeigen, welcher, statt ein Feld anzubieten.
-              const tagFeld = woche.felder.find((f) => f.feld === gruppe.nacht?.tag)
-              const tagText = tagFeld ? (feldText(entwurf, woche.id, tagFeld) || alsText(tagFeld.plan)) : ''
-              return (
-                <div key={gruppe.titel} className="wp-zelle pr-wie-tag" data-audit={`plan-${felder[0].feld}-wie-tag`}>
-                  <div className="wp-zelle-n">{gruppe.titel}</div>
-                  <div className="pr-wie-tag-wert">= {tagText || '–'}{felder[0].einheit ? ` ${felder[0].einheit}` : ''}</div>
-                  <div className="wp-plan">wie tags</div>
-                </div>
-              )
-            }
-            const eigen = felder.some((f) => weichtAb(entwurf, woche.id, f))
-            return (
-              <div key={gruppe.titel} className={classNames('wp-zelle', eigen && 'ist-eigen')}>
-                <div className="wp-zelle-n">
-                  {gruppe.titel}
-                  {felder[0].einheit && <span className="wp-einheit"> {felder[0].einheit}</span>}
-                </div>
-                <div className="wp-eingaben">
-                  {felder.map((f, i) => (
-                    <span key={f.feld} className="wp-eingabe-paar">
-                      {i > 0 && <span className="wp-leise">–</span>}
-                      <input
-                        className="wp-eingabe"
-                        type="text"
-                        inputMode="decimal"
-                        aria-label={`${woche.label}: ${f.bezeichnung}`}
-                        data-audit={`plan-${f.feld}`}
-                        value={feldText(entwurf, woche.id, f)}
-                        placeholder={alsText(f.plan) || (gruppe.nacht ? 'wie tags' : 'eintragen')}
-                        onChange={(e) => { setEntwurf((alt) => ({ ...alt, [schluessel(woche.id, f.feld)]: e.target.value })); setMeldung(null) }}
-                      />
-                    </span>
-                  ))}
-                </div>
-                <div className="wp-plan">
-                  {gruppe.nacht && felder.every((f) => f.plan == null)
-                    ? 'leer = wie tags'
-                    : gruppe.nacht && felder.every((f) => daten.arbeit.herkunft?.[woche.id]?.[f.feld] === 'standard')
-                      ? 'aus Tag − 4 K'
-                      : <>Start {felder.map((f) => alsText(f.plan) || '–').join('–')}</>}
-                  {eigen && (
-                    <>
-                      {' · '}
-                      <button type="button" className="wp-plan-zurueck" onClick={() => setEntwurf((alt) => aufPlan(alt, woche, gruppe.felder))}>
-                        zurück
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <WochenGitter
+          woche={woche}
+          entwurf={entwurf}
+          wieTag={wieTag}
+          herkunft={daten.arbeit.herkunft?.[woche.id]}
+          onAendern={(f, text) => { setEntwurf((alt) => ({ ...alt, [schluessel(woche.id, f.feld)]: text })); setMeldung(null) }}
+          onAufPlan={(felder) => setEntwurf((alt) => aufPlan(alt, woche, felder))}
+        />
       </div>
 
       <KontextSprung text="Ab wann wird diese Woche gemeldet?" to="/grenzwerte" label="Grenzwerte" audit="plan-zu-grenzwerten" />

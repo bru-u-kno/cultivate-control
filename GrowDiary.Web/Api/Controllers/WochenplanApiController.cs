@@ -184,52 +184,15 @@ public sealed class WochenplanApiController : ApiControllerBase
         var (grow, programm) = gefunden;
         var spalten = programm.FeedChart!.Columns;
 
-        if (anfrage.Aenderungen.Count == 0) return ValidationError("Es gibt nichts zu speichern.");
-
-        var geprueft = new List<(string SpalteId, string Feld, double? Wert)>();
-        // Was nach dem Speichern in jeder betroffenen Spalte stünde — für die Paar-Prüfung.
-        var danach = new Dictionary<(string Spalte, string Feld), double?>();
-
-        foreach (var aenderung in anfrage.Aenderungen)
-        {
-            var spalte = spalten.FirstOrDefault(s => string.Equals(s.Id, aenderung.SpalteId, StringComparison.OrdinalIgnoreCase));
-            if (spalte is null)
-                return ValidationError($"Die Woche „{aenderung.SpalteId}“ gibt es im Programm {programm.Name} nicht.");
-
-            if (Wochenwertfelder.Finden(aenderung.Feld) is not { } feld)
-                return ValidationError($"„{aenderung.Feld}“ lässt sich nicht bearbeiten.");
-
-            if (aenderung.Wert is { } wert)
-            {
-                if (double.IsNaN(wert) || double.IsInfinity(wert) || wert < feld.Min || wert > feld.Max)
-                    return ValidationError(
-                        $"{spalte.Label}: {feld.Bezeichnung} muss zwischen {Zahl(feld.Min)} und {Zahl(feld.Max)} liegen.");
-            }
-
-            var neu = aenderung.Wert ?? Planwert(grow, programm, spalte, feld);
-            danach[(spalte.Id, feld.Name)] = neu;
-            geprueft.Add((spalte.Id, feld.Name, aenderung.Wert));
-        }
-
-        foreach (var spalte in spalten)
-        {
-            foreach (var feld in Wochenwertfelder.Alle.Where(f => f.Paar is not null))
-            {
-                var partner = Wochenwertfelder.Finden(feld.Paar!)!;
-                var von = danach.TryGetValue((spalte.Id, feld.Name), out var a) ? a : feld.Lesen(spalte);
-                var bis = danach.TryGetValue((spalte.Id, partner.Name), out var b) ? b : partner.Lesen(spalte);
-                if (von is { } v && bis is { } z && v > z + 1e-9)
-                    return ValidationError(
-                        $"{spalte.Label}: {feld.Bezeichnung} ({Zahl(v)}) liegt über {partner.Bezeichnung} ({Zahl(z)}).");
-            }
-
-            // Das EC-Ziel hat kein Paar — es gehört ins Band. Nur der Grow-Plan führt
-            // das Band mit; die Programm-Abweichungen ohne Plan tun es nicht.
-            var dieseSpalte = danach.Where(d => d.Key.Spalte == spalte.Id)
-                .ToDictionary(d => d.Key.Feld, d => d.Value, StringComparer.OrdinalIgnoreCase);
-            if (Wochenwertfelder.EcPruefen(spalte.Label, spalte, dieseSpalte, bandWandertMit: GrowPlanService.HatPlan(grow.Id)) is { } ecFehler)
-                return ValidationError(ecFehler);
-        }
+        var pruefung = WochenwertPruefung.Pruefen(
+            spalten,
+            programm.Name,
+            anfrage.Aenderungen,
+            (spalte, feld) => Planwert(grow, programm, spalte, feld),
+            // Nur der Grow-Plan führt das EC-Band mit; die Programm-Abweichungen ohne Plan tun es nicht.
+            bandWandertMit: GrowPlanService.HatPlan(grow.Id));
+        if (!pruefung.Gueltig) return ValidationError(pruefung.Fehler!);
+        var geprueft = pruefung.Aenderungen;
 
         // Ein Wert, der dem Plan entspricht, ist keine Abweichung — dann wird
         // die Zeile gelöscht statt eine Kopie des Planwerts abzulegen.
@@ -238,7 +201,7 @@ public sealed class WochenplanApiController : ApiControllerBase
             {
                 var spalte = spalten.First(s => s.Id == g.SpalteId);
                 var plan = Planwert(grow, programm, spalte, Wochenwertfelder.Finden(g.Feld)!);
-                return g.Wert is { } w && plan is { } p && Math.Abs(w - p) < 1e-9 ? (g.SpalteId, g.Feld, (double?)null) : g;
+                return g.Wert is { } w && plan is { } p && Math.Abs(w - p) < 1e-9 ? (g.SpalteId, g.Feld, (double?)null) : (g.SpalteId, g.Feld, g.Wert);
             })
             .ToList();
 

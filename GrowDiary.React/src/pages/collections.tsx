@@ -1,7 +1,7 @@
 import AutomationPage from './AutomationPage'
 import ZielwertePage from './ZielwertePage'
 import { TabbedCollectionPage } from './TabbedCollectionPage'
-import { PlanReiter } from '../features/zielwerte/PlanReiter'
+import { PlanInhalt } from '../features/zielwerte/PlanInhalt'
 import { MeldungenReiter } from '../features/meldungen/MeldungenReiter'
 import { WochenZeile } from '../features/zielwerte/WochenZeile'
 import { AppEinrichten } from './MobilePage'
@@ -47,8 +47,7 @@ export function PlanSeite() {
   return (
     <V1Page eyebrow="Pflanzen" title="Plan" subtitle="Die Ziele deines Grows, Woche für Woche.">
       <PlanKette aktiv="plan" />
-      <WochenZeile />
-      <PlanReiter />
+      <PlanInhalt />
     </V1Page>
   )
 }

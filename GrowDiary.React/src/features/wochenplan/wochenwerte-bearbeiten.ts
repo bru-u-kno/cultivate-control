@@ -39,6 +39,13 @@ export type Wochenwerte = {
   spalten: WochenwertSpalte[]
 }
 
+/**
+ * Was die Rechnung vom Plan braucht: die Wochen. Der Plan eines Grows und ein
+ * Programm ohne Grow teilen sie — deshalb hängt sie nicht an `Wochenwerte`
+ * (das eine Grow-Id trägt).
+ */
+export type WochenSpalten = Pick<Wochenwerte, 'spalten'>
+
 export type Aenderung = { spalteId: string; feld: string; wert: number | null }
 
 /** Schlüssel eines Feldes im Entwurf. */
@@ -115,7 +122,7 @@ export function weichtAb(entwurf: Entwurf, spalteId: string, feld: WochenwertFel
  * gleich dem Plan geht als `null` raus: das löscht die Abweichung, statt eine
  * Kopie des Planwerts abzulegen.
  */
-export function aenderungen(werte: Wochenwerte, entwurf: Entwurf): Aenderung[] {
+export function aenderungen(werte: WochenSpalten, entwurf: Entwurf): Aenderung[] {
   const liste: Aenderung[] = []
   for (const spalte of werte.spalten) {
     for (const feld of spalte.felder) {
@@ -133,7 +140,7 @@ export function aenderungen(werte: Wochenwerte, entwurf: Entwurf): Aenderung[] {
 }
 
 /** Sätze für alles, was so nicht gespeichert werden kann — leer heißt: in Ordnung. */
-export function fehler(werte: Wochenwerte, entwurf: Entwurf): string[] {
+export function fehler(werte: WochenSpalten, entwurf: Entwurf): string[] {
   const saetze: string[] = []
   for (const spalte of werte.spalten) {
     const nachName = new Map(spalte.felder.map((f) => [f.feld, f]))
@@ -162,14 +169,14 @@ export function fehler(werte: Wochenwerte, entwurf: Entwurf): string[] {
 }
 
 /** Zustand einer Woche für die Punktreihe. */
-export function punkt(werte: Wochenwerte, entwurf: Entwurf, spalte: WochenwertSpalte) {
+export function punkt(werte: WochenSpalten, entwurf: Entwurf, spalte: WochenwertSpalte) {
   const offen = aenderungen(werte, entwurf).some((a) => a.spalteId === spalte.id)
   const eigen = spalte.felder.some((f) => weichtAb(entwurf, spalte.id, f))
   return { offen, eigen }
 }
 
 /** Mit welcher Woche die Seite aufgeht: der laufenden, sonst der ersten. */
-export function startIndex(werte: Wochenwerte): number {
+export function startIndex(werte: WochenSpalten): number {
   const i = werte.spalten.findIndex((s) => s.istJetzt)
   return i < 0 ? 0 : i
 }
