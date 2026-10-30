@@ -513,6 +513,16 @@ public sealed class GrowWorkflowApiController : ApiControllerBase
             return ValidationError();
         }
 
+        if (request.DryingTentId is { } trockenzeltId)
+        {
+            var trockenzelt = _repository.GetTent(trockenzeltId);
+            if (trockenzelt is null || trockenzelt.TentType != TentType.Drying || trockenzelt.Status != TentStatus.Active)
+            {
+                ModelState.AddModelError(nameof(request.DryingTentId), "Als Trockenzelt geht nur ein aktives Zelt mit dem Zweck „Trocknung“.");
+                return ValidationError();
+            }
+        }
+
         HarvestEntry entry;
         try
         {

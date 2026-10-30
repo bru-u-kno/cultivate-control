@@ -5,7 +5,7 @@ import { apiFetch, ApiRequestError, formatApiError } from '../api'
 import type { CreateTentRequest, GrowSummary, HydroSetupDto, TentDependencyError, TentDependencySummaryDto, TentDto, TentLivePayload, TentType, UpdateTentRequest, UpdateTentSensorRequest } from '../types'
 import { V1Alert, V1Button, V1Card, V1Empty, V1Field, V1LinkButton, V1Page, V1Section, V1Switch } from '../components/v1'
 import { toNullableInt, toNullableString } from '../components/v1-utils'
-import { classNames } from '../utils'
+import { classNames, formatNumber } from '../utils'
 import { maschinenZahl } from '../zahlenfeld'
 import { ZeltRuheBlock } from '../features/zeltruhe/ZeltRuheBlock'
 import { zeltZweckName } from '../deutsche-woerter'
@@ -420,6 +420,7 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
             <Row label="VPD" value={liveValue(live, 'vpd')} />
             {!trocknung && <Row label="CO₂" value={tent.co2Available ? liveValue(live, 'co2' as LiveMetricKey) : 'nicht gemappt'} faint={!tent.co2Available} />}
           </div>
+          {trocknung && <TrocknungGruppe tentId={tent.id} />}
           {!trocknung && <div className="tn-group">
             <div className="tn-group-label">Licht</div>
             <Row label={light?.value === 'An' || light?.value === 'Aus' ? 'Status' : 'Zyklus'} value={light?.value ?? '–'} />
@@ -579,6 +580,46 @@ function abgeschlossenAm(grow: GrowSummary | null | undefined): string | null {
   if (!grow || grow.status !== 'Completed' || !grow.endDate) return null
   const datum = new Date(grow.endDate)
   return Number.isNaN(datum.getTime()) ? null : datum.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+}
+
+/** Trockenzelt: welche Charge hängt, der wievielte Tag es ist und was die Etappe als Ziel vorgibt. */
+interface TrocknungStand {
+  trocknet: boolean
+  growName: string | null
+  tag: number | null
+  tageGeplant: number | null
+  etappe: string | null
+  tempMin: number | null
+  tempMax: number | null
+  feuchteMin: number | null
+  feuchteMax: number | null
+}
+
+function TrocknungGruppe({ tentId }: { tentId: number }) {
+  const [stand, setStand] = useState<TrocknungStand | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    apiFetch<TrocknungStand>(`/api/tents/${tentId}/trocknung`, { signal: controller.signal }).then(setStand).catch(() => setStand(null))
+    return () => controller.abort()
+  }, [tentId])
+  if (!stand) return null
+  const bereich = (von: number | null, bis: number | null, einheit: string) => (von == null || bis == null ? '–' : `${formatNumber(von, 1)}–${formatNumber(bis, 1)} ${einheit}`)
+  return (
+    <div className="tn-group" data-audit="tent-drying-group">
+      <div className="tn-group-label">Trocknung</div>
+      {stand.trocknet ? (
+        <>
+          <Row label="Charge" value={stand.growName ?? '–'} />
+          <Row label="Tag" value={stand.tag == null ? '–' : `${stand.tag} von ca. ${stand.tageGeplant ?? '?'}`} />
+          <Row label="Etappe" value={stand.etappe ?? '–'} />
+          <Row label="Ziel" value={`${bereich(stand.tempMin, stand.tempMax, '°C')} · ${bereich(stand.feuchteMin, stand.feuchteMax, '%')}`} />
+          <Row label="Frei nach" value="Trockengewicht" />
+        </>
+      ) : (
+        <Row label="Charge" value="Nichts im Zelt" faint />
+      )}
+    </div>
+  )
 }
 
 function Row({ label, value, faint }: { label: string; value: string; faint?: boolean }) {

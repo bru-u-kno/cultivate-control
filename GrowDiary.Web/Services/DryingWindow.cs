@@ -33,6 +33,15 @@ public static class DryingWindow
     public static Stand? StandFor(GrowRepository? grows, HarvestRepository? harvests, int tentId, DateTime today)
     {
         if (grows is null || harvests is null) return null;
+
+        // Ein Trockenzelt (cc.281): Es trocknet die Ernte, die ihm bei der Ernte zugewiesen wurde — gleich, welcher
+        // Grow sie war. Es hat selbst keinen Grow, deshalb gilt hier die Bedingung „kein aktiver Grow“ nicht.
+        foreach (var zugewiesen in harvests.GetDryingInTent(tentId))
+        {
+            if (grows.GetGrow(zugewiesen.GrowId) is not { Status: GrowStatus.Completed, EndDate: { } zugewiesenEnde } fremder) continue;
+            if (TrocknungsTag(today, zugewiesenEnde) is { } fremderTag) return new Stand(fremder, fremderTag);
+        }
+
         if (grows.GetActiveGrowsForTent(tentId).Count > 0) return null;
 
         var geerntet = grows.GetAllGrows()
@@ -46,6 +55,9 @@ public static class DryingWindow
 
         var ernte = harvests.GetForGrow(geerntet.Id);
         if (ernte is null || ernte.DryWeightG is not null) return null;
+
+        // Hängt die Ernte in einem anderen Zelt, ist dieses Zelt (das des Grows) schon frei.
+        if (ernte.DryingTentId is { } anderes && anderes != tentId) return null;
 
         return TrocknungsTag(today, geerntet.EndDate!.Value) is { } tag ? new Stand(geerntet, tag) : null;
     }

@@ -578,6 +578,8 @@ export interface HarvestDto {
   nugStructure: string | null
   /** Einzelgewichte je Pflanze als JSON; die Summe steht in wetWeightG/dryWeightG. */
   plantWeightsJson: string | null
+  /** Das Trockenzelt der Ernte (Zweck Trocknung); null = Trocknung im Zelt des Grows. */
+  dryingTentId?: number | null
 }
 
 export interface GrowActionResultDto {

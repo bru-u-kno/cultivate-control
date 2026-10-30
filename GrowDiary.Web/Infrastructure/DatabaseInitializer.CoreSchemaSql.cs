@@ -362,6 +362,7 @@ public sealed partial class DatabaseInitializer
                 FlavorNotes TEXT NULL,
                 EffectNotes TEXT NULL,
                 NugStructure TEXT NULL,
+                DryingTentId INTEGER NULL,
                 CreatedAtUtc TEXT NOT NULL,
                 UpdatedAtUtc TEXT NOT NULL,
                 FOREIGN KEY (GrowId) REFERENCES Grows (Id) ON DELETE CASCADE

@@ -20,10 +20,10 @@ public sealed class HarvestRepository
         command.CommandText = """
             INSERT INTO HarvestEntries
                 (GrowId, HarvestedAt, WetWeightG, DryWeightG, DryDays, YieldNotes,
-                 Rating, FlavorNotes, EffectNotes, NugStructure, PlantWeightsJson, CreatedAtUtc, UpdatedAtUtc)
+                 Rating, FlavorNotes, EffectNotes, NugStructure, PlantWeightsJson, DryingTentId, CreatedAtUtc, UpdatedAtUtc)
             VALUES
                 ($growId, $harvestedAt, $wetWeightG, $dryWeightG, $dryDays, $yieldNotes,
-                 $rating, $flavorNotes, $effectNotes, $nugStructure, $plantWeightsJson, $createdAtUtc, $updatedAtUtc);
+                 $rating, $flavorNotes, $effectNotes, $nugStructure, $plantWeightsJson, $dryingTentId, $createdAtUtc, $updatedAtUtc);
             SELECT last_insert_rowid();
             """;
         command.Parameters.AddWithValue("$growId",       entry.GrowId);
@@ -37,6 +37,7 @@ public sealed class HarvestRepository
         command.Parameters.AddWithValue("$effectNotes",  (object?)entry.EffectNotes ?? DBNull.Value);
         command.Parameters.AddWithValue("$nugStructure", (object?)entry.NugStructure ?? DBNull.Value);
         command.Parameters.AddWithValue("$plantWeightsJson", (object?)entry.PlantWeightsJson ?? DBNull.Value);
+        command.Parameters.AddWithValue("$dryingTentId", (object?)entry.DryingTentId ?? DBNull.Value);
         command.Parameters.AddWithValue("$createdAtUtc", DateTime.UtcNow.ToString("O"));
         command.Parameters.AddWithValue("$updatedAtUtc", DateTime.UtcNow.ToString("O"));
         return Convert.ToInt32((long)(command.ExecuteScalar() ?? 0L));
@@ -59,6 +60,23 @@ public sealed class HarvestRepository
         return Map(reader);
     }
 
+    /// <summary>Die Ernten, die in diesem Trockenzelt hängen und noch nicht gewogen sind (neueste Ernte zuerst).</summary>
+    public List<HarvestEntry> GetDryingInTent(int tentId)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT * FROM HarvestEntries
+            WHERE DryingTentId = $tentId AND DryWeightG IS NULL
+            ORDER BY HarvestedAt DESC;
+            """;
+        command.Parameters.AddWithValue("$tentId", tentId);
+        using var reader = command.ExecuteReader();
+        var list = new List<HarvestEntry>();
+        while (reader.Read()) list.Add(Map(reader));
+        return list;
+    }
+
     public void Update(HarvestEntry entry)
     {
         using var connection = OpenConnection();
@@ -75,6 +93,7 @@ public sealed class HarvestRepository
                 EffectNotes  = $effectNotes,
                 NugStructure = $nugStructure,
                 PlantWeightsJson = $plantWeightsJson,
+                DryingTentId = $dryingTentId,
                 UpdatedAtUtc = $updatedAtUtc
             WHERE Id = $id;
             """;
@@ -89,6 +108,7 @@ public sealed class HarvestRepository
         command.Parameters.AddWithValue("$effectNotes",  (object?)entry.EffectNotes ?? DBNull.Value);
         command.Parameters.AddWithValue("$nugStructure", (object?)entry.NugStructure ?? DBNull.Value);
         command.Parameters.AddWithValue("$plantWeightsJson", (object?)entry.PlantWeightsJson ?? DBNull.Value);
+        command.Parameters.AddWithValue("$dryingTentId", (object?)entry.DryingTentId ?? DBNull.Value);
         command.Parameters.AddWithValue("$updatedAtUtc", DateTime.UtcNow.ToString("O"));
         command.ExecuteNonQuery();
     }
@@ -121,6 +141,7 @@ public sealed class HarvestRepository
             // Defensiv: die Spalte kam spaeter dazu, und dieses Repository erbt
             // nicht von RepositoryBase, hat also dessen HasColumn nicht.
             PlantWeightsJson = ColumnOrNull(reader, "PlantWeightsJson"),
+            DryingTentId = int.TryParse(ColumnOrNull(reader, "DryingTentId"), CultureInfo.InvariantCulture, out var trockenzelt) ? trockenzelt : null,
             CreatedAtUtc = ParseUtcOrDefault(reader["CreatedAtUtc"]),
             UpdatedAtUtc = ParseUtcOrDefault(reader["UpdatedAtUtc"])
         };

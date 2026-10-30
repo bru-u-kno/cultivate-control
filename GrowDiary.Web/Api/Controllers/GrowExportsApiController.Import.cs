@@ -353,6 +353,7 @@ public sealed partial class GrowExportsApiController
             // Der Export schreibt das Feld hinaus, der Import warf es weg —
             // ein Ausfuhr/Einfuhr-Rundweg verlor die Einzelgewichte still.
             PlantWeightsJson = dto.PlantWeightsJson
+            // DryingTentId bewusst nicht: Zelt-Nummern gelten nur in der Installation, aus der exportiert wurde.
         };
 
 

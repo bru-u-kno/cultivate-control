@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.281
+
+**Neu: Eine Ernte kann in einem Trockenzelt hängen — das Trockenzelt führt dann die Trocknung, das Zelt des Grows ist frei.**
+
+- **Anlass:** Seit cc.277 gibt es den Zeltzweck „Trocknung“, aber die Ernte trocknete weiter im Zelt des Grows. Ein eigenes Trockenzelt blieb leer.
+- **Ernte-Seite:** Gibt es ein aktives Zelt mit Zweck „Trocknung“, steht unter „Trocknungsdauer“ das Feld „Trocknet in“ — „Im selben Zelt“ (wie bisher) oder das Trockenzelt. Ohne Trockenzelt erscheint das Feld nicht, und nichts ändert sich. Der Server nimmt nur ein aktives Zelt mit diesem Zweck an.
+- **Trockenzelt:** Die Zeltkarte bekommt den Block „Trocknung“: Charge, Tag („4 von ca. 10“), Etappe, Ziel in °C und % und „Frei nach: Trockengewicht“. Die Temperatur- und Feuchte-Kacheln zeigen die Etappen-Ziele aus dem Programm des geernteten Grows.
+- **Zelt des Grows:** Es gilt ab der Ernte nicht mehr als Trockenraum. Die Trocknungs-Ziele und die stillgelegten Reservoir-Alarme enden dort.
+- **Ende:** Wie bisher mit dem Trockengewicht oder nach der Trocknungsfrist. Danach ist das Trockenzelt wieder leer.
+- **Export/Import:** Das Trockenzelt wird nicht mitexportiert; Zelt-Nummern gelten nur in der eigenen Installation.
+
 ## 2.0.0-cc.280
 
 **Neu: Trocknung in Etappen — Dauer, Temperatur und Feuchte je Etappe, frei änderbar im Programm.**

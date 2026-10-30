@@ -53,6 +53,9 @@ public sealed class HarvestUpsertRequest
     /// rechnen mit denen, damit aeltere Ernten ohne Aufschluesselung zaehlen.
     /// </summary>
     public string? PlantWeightsJson { get; set; }
+
+    /// <summary>Das Trockenzelt der Ernte (Zweck Trocknung); leer = Trocknung im Zelt des Grows.</summary>
+    public int? DryingTentId { get; set; }
 }
 
 public sealed record HarvestDto(
@@ -67,7 +70,8 @@ public sealed record HarvestDto(
     string? FlavorNotes,
     string? EffectNotes,
     string? NugStructure,
-    string? PlantWeightsJson);
+    string? PlantWeightsJson,
+    int? DryingTentId = null);
 
 public sealed record GrowActionResultDto(
     GrowDetailDto Grow,

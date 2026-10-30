@@ -21,6 +21,13 @@ public sealed class HarvestEntry
     /// Aufschluesselung weiter zaehlen.
     /// </summary>
     public string? PlantWeightsJson { get; set; }
+
+    /// <summary>
+    /// Das Trockenzelt, in dem die Ernte hängt (cc.281). <c>null</c> = sie trocknet im Zelt des Grows, wie bisher.
+    /// Gesetzt: Dieses Zelt (Zweck „Trocknung") führt die Trocknung, das Zelt des Grows ist ab der Ernte frei.
+    /// </summary>
+    public int? DryingTentId { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

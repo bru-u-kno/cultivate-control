@@ -207,6 +207,8 @@ public sealed partial class DatabaseInitializer
         // die Aufschluesselung hier. Als JSON statt eigener Tabelle, weil sie nur
         // gemeinsam mit ihrem Ernteeintrag gelesen und geschrieben wird.
         EnsureColumn(connection, "HarvestEntries", "PlantWeightsJson", "TEXT NULL");
+        // cc.281: Das Trockenzelt der Ernte (Zweck „Trocknung"); leer = Trocknung im Zelt des Grows.
+        EnsureColumn(connection, "HarvestEntries", "DryingTentId", "INTEGER NULL");
         // Sprint E4 — SOP Scheduling
         EnsureColumn(connection, "SopInstances",     "DueAtUtc",               "TEXT NULL");
         EnsureColumn(connection, "SopInstances",     "NextStepDueAtUtc",       "TEXT NULL");

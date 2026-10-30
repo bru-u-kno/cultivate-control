@@ -26,7 +26,8 @@ public static class GrowWorkflowMapping
             entry.FlavorNotes,
             entry.EffectNotes,
             entry.NugStructure,
-            entry.PlantWeightsJson);
+            entry.PlantWeightsJson,
+            entry.DryingTentId);
 
     public static HarvestDto CreateDefaultHarvestDto(int growId, string growName)
         => new(
@@ -66,6 +67,7 @@ public static class GrowWorkflowMapping
                ableiten liesse. */
             PlantWeightsJson = string.IsNullOrWhiteSpace(request.PlantWeightsJson)
                 ? null
-                : request.PlantWeightsJson.Trim()
+                : request.PlantWeightsJson.Trim(),
+            DryingTentId = request.DryingTentId
         };
 }

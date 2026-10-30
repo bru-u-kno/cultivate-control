@@ -2,7 +2,7 @@ import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch, ApiRequestError } from '../api'
-import type { GrowDetail, HarvestDto } from '../types'
+import type { GrowDetail, HarvestDto, TentDto } from '../types'
 import { V1Alert, V1Badge, V1Button, V1Field, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Switch } from '../components/v1'
 import { summariseYield } from '../features/harvest/harvest-yield'
 import { parsePlantWeights, progressLabel, serialisePlantWeights, totals, type PlantWeight } from '../features/harvest/plant-weights-model'
@@ -21,6 +21,8 @@ interface HarvestFormState {
   flavorNotes: string
   effectNotes: string
   nugStructure: string
+  /** Id des Trockenzelts als Text; leer = im selben Zelt. */
+  dryingTentId: string
 }
 
 function HarvestPage() {
@@ -46,6 +48,7 @@ function HarvestPage() {
      Nachkommastellen waren in dieser Tabelle ueberhaupt nicht eingebbar, und
      die Summe uebernahm den Fehler ins Grow-Feld. */
   const [plants, setPlants] = useState<ZeileMitText[]>([])
+  const [trockenzelte, setTrockenzelte] = useState<TentDto[]>([])
 
   useEffect(() => {
     if (!growId) return
@@ -56,10 +59,12 @@ function HarvestPage() {
       try {
         // Beides gleichzeitig: der Grow haengt nicht am Ernteeintrag, und zwei
         // Rundreisen nacheinander sind auf dem Pi ueber WLAN eine Sekunde zu viel.
-        const [nextHarvest, grow] = await Promise.all([
+        const [nextHarvest, grow, zelte] = await Promise.all([
           apiFetch<HarvestDto>(`/api/grows/${growId}/harvest`, { signal: controller.signal }),
           apiFetch<GrowDetail>(`/api/grows/${growId}`, { signal: controller.signal }).catch(() => null),
+          apiFetch<TentDto[]>('/api/settings/tents', { signal: controller.signal }).catch(() => [] as TentDto[]),
         ])
+        setTrockenzelte(zelte.filter((zelt) => zelt.tentType === 'Drying' && zelt.status === 'Active'))
         setHarvest(nextHarvest)
         setForm({
           harvestedAtLocal: nextHarvest.harvestedAtLocal,
@@ -71,6 +76,7 @@ function HarvestPage() {
           flavorNotes: nextHarvest.flavorNotes ?? '',
           effectNotes: nextHarvest.effectNotes ?? '',
           nugStructure: nextHarvest.nugStructure ?? '',
+          dryingTentId: nextHarvest.dryingTentId == null ? '' : String(nextHarvest.dryingTentId),
         })
         setPlants(parsePlantWeights(nextHarvest.plantWeightsJson, grow?.plantCount ?? 1).map(mitText))
         setError(null)
@@ -108,6 +114,7 @@ function HarvestPage() {
           flavorNotes: trimToNull(form.flavorNotes),
           effectNotes: trimToNull(form.effectNotes),
           nugStructure: trimToNull(form.nugStructure),
+          dryingTentId: form.dryingTentId === '' ? null : Number(form.dryingTentId),
         }),
       })
       // Closing the loop: finishing the harvest completes the grow and moves it to the
@@ -171,6 +178,14 @@ function HarvestPage() {
               <V1Field label="Trocknungsdauer" hint="Tage">
                 <input inputMode="numeric" value={form.dryDays} onChange={(event) => setForm((current) => current ? { ...current, dryDays: event.target.value } : current)} />
               </V1Field>
+              {trockenzelte.length > 0 && (
+                <V1Field label="Trocknet in" wide hint="Zur Wahl stehen Zelte mit Zweck „Trocknung“. Das Zelt des Grows ist danach frei. Ohne Trockenzelt bleibt alles wie bisher.">
+                  <select data-audit="harvest-drying-tent" value={form.dryingTentId} onChange={(event) => setForm((current) => current ? { ...current, dryingTentId: event.target.value } : current)}>
+                    <option value="">Im selben Zelt</option>
+                    {trockenzelte.map((zelt) => <option key={zelt.id} value={String(zelt.id)}>{zelt.name}</option>)}
+                  </select>
+                </V1Field>
+              )}
               <V1Field label="Frischgewicht" hint="Gramm">
                 <input inputMode="decimal" value={form.wetWeightG} onChange={(event) => setForm((current) => current ? { ...current, wetWeightG: event.target.value } : current)} />
               </V1Field>
