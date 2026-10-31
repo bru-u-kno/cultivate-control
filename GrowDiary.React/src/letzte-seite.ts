@@ -18,8 +18,11 @@ const PFAD = /^\/(?!\/)[A-Za-z0-9_\-/]*(\?[A-Za-z0-9_\-=&.%,]*)?$/
 type Gemerkt = { pfad: string; zeit: number }
 
 export function merkeSeite(pfad: string, jetzt: number = Date.now()): void {
-  if (!PFAD.test(pfad)) return
-  try { localStorage.setItem(KEY, JSON.stringify({ pfad, zeit: jetzt } satisfies Gemerkt)) } catch { /* Privatmodus */ }
+  try {
+    // Ein Pfad, den wir nicht wiederherstellen dürfen, löscht den alten Eintrag: sonst öffnete der nächste Start eine ältere Seite.
+    if (!PFAD.test(pfad)) { localStorage.removeItem(KEY); return }
+    localStorage.setItem(KEY, JSON.stringify({ pfad, zeit: jetzt } satisfies Gemerkt))
+  } catch { /* Privatmodus */ }
 }
 
 /** Nur die Zeit der letzten Nutzung nachziehen (Seite wird verlassen oder versteckt). */

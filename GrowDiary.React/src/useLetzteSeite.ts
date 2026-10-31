@@ -19,11 +19,15 @@ export function useLetzteSeite(): void {
   const { pathname, search, hash } = useLocation()
   const navigate = useNavigate()
   const start = useRef(true)
+  // Schon im ersten Render lesen: useHaTiefenlink löscht ?index= in seinem Effekt aus der HA-Adresse, noch bevor
+  // der Effekt hier läuft (Prüfer cc.295). Renderphase kommt vor allen Effekten.
+  const haZiel = useRef<boolean | null>(null)
+  if (haZiel.current === null) haZiel.current = haHatEigenesZiel()
 
   useEffect(() => {
     if (start.current) {
       start.current = false
-      const ziel = haHatEigenesZiel() ? null : wiederherstellungsZiel(pathname, search, hash)
+      const ziel = haZiel.current ? null : wiederherstellungsZiel(pathname, search, hash)
       // Der Wechsel löst diesen Effekt mit der neuen Adresse erneut aus und merkt sie dann selbst.
       if (ziel) { navigate(ziel, { replace: true }); return }
     }

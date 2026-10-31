@@ -10,6 +10,7 @@ describe('letzte Seite', () => {
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => speicher.get(k) ?? null,
       setItem: (k: string, v: string) => void speicher.set(k, v),
+      removeItem: (k: string) => void speicher.delete(k),
     })
   })
 
@@ -54,6 +55,19 @@ describe('letzte Seite', () => {
     }
     localStorage.setItem('growos.letzteSeite', '{kaputt')
     expect(wiederherstellungsZiel('/', '', '', T0 + 1000)).toBeNull()
+  })
+
+  it('eine nicht erlaubte Seite löscht den alten Eintrag statt ihn zu behalten', () => {
+    merkeSeite('/tagebuch', T0)
+    merkeSeite('/seite~mit:zeichen', T0 + 1000)
+    beruehreSeite(T0 + 2000)
+    expect(wiederherstellungsZiel('/', '', '', T0 + 3000)).toBeNull()
+  })
+
+  it('Grenze: genau 30 Minuten gelten noch, negatives Alter (Uhr zurück) nicht', () => {
+    merkeSeite('/tagebuch', T0)
+    expect(wiederherstellungsZiel('/', '', '', T0 + GUELTIG_MS)).toBe('/tagebuch')
+    expect(wiederherstellungsZiel('/', '', '', T0 - 1)).toBeNull()
   })
 
   it('ohne Eintrag bleibt es auf Live (Selbsttest: die Prüfung sieht ihre Grundmenge)', () => {
