@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.294
+
+**Grow-Abschluss: Pflanzen stehen danach auf „geerntet“, ein leeres Zelt meldet keine Alarme mehr, und der CC empfiehlt die Reinigung des leeren Systems.**
+
+- **Anlass:** Am 30.10. war ein Grow geerntet und abgeschlossen. Seine Pflanzen standen auf der Zeltseite trotzdem weiter auf „aktiv“, das Zelt schickte weiter Feuchte-Alarme aufs Handy (77 % im leeren Zelt), und nirgends stand, wie es danach weitergeht. Der Status „geerntet“ war vorhanden, gesetzt hat ihn aber nichts.
+- **Pflanzen „geerntet“:** Wird ein Grow abgeschlossen — mit „Speichern & Grow abschließen“, mit „Archivieren“ oder mit dem Status „Abgeschlossen“ im Formular —, stehen seine aktiven Produktionspflanzen danach auf „geerntet“, mit dem Enddatum des Grows. Mutterpflanzen, aussortierte und geplante Pflanzen bleiben, wie sie sind. Beim Start zieht der CC den Bestand nach: Pflanzen schon abgeschlossener Grows, die noch „aktiv“ standen, werden einmalig umgestellt (abgebrochene Grows bleiben unberührt).
+- **Keine Alarme im leeren Zelt:** Ein Zelt meldet nichts, wenn es von Hand auf „ruhend“ steht und kein Grow darin läuft oder geplant ist, oder wenn es leer ist. Leer heißt: Produktions- oder Mehrzweckzelt ohne laufenden Grow, ohne aktive Pflanze und außerhalb des Trocknungsfensters. Trockenzelte sowie Zelte mit Mutter-, Anzucht- und Quarantänepflanzen melden weiter, ebenso ein Zelt, in dem die Ernte im eigenen Zelt trocknet. Läuft in einem ruhenden Zelt ein neuer Grow, melden die Alarme sofort wieder. Beim nächsten Grow sind sie von selbst wieder an.
+- **Reinigung des leeren Systems:** Neue Routine mit den Schritten der Tiefenreinigung (HOCl-Spülung, H₂O₂, RO-Spülung), aber ohne „Pflanzen umsetzen“ und „Pflanzen zurück“, die es im leeren System nicht gibt. Der Inhalt stammt aus derselben Quelle wie die Tiefenreinigung. Sie wird nur empfohlen, nicht erzwungen.
+- **Wo die Empfehlung steht:** Unter Aufgaben › Fällige Routinen steht für den neuesten abgeschlossenen Grow eines Systems „Reinigung des leeren Systems: nach dem Grow empfohlen“, solange das System frei ist (kein laufender oder geplanter Grow darauf), der Abschluss höchstens 60 Tage zurückliegt und noch keine Reinigung danach beendet wurde. „Starten“ legt die Routine an und öffnet den Reiter „SOPs“ des Grows; läuft sie schon, heißt der Knopf „Öffnen“. Das Blatt nach der Ernte nennt die Reinigung als Angebot unter den Geräten, mit „Reinigung jetzt starten“. Wer die Begleitung auf „Experte“ gestellt hat, bekommt sie nicht.
+
 ## 2.0.0-cc.293
 
 **Geerntete Grows: Die Blüte endet mit der Ernte — kein „Tag 71 von 70“ und kein „überfällig“ mehr.**
