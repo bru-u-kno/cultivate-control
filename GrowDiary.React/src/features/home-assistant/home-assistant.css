@@ -12,6 +12,9 @@
     .ha-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
   }
 
+  /* Zeile, zu der „Mappen" gesprungen ist — nur kurz sichtbar. */
+  .ha-layout .co-row.ha-treffer { background: var(--accent-wash); box-shadow: inset 3px 0 0 var(--accent); }
+
   .ha-tent-row { padding: 10px 14px; border-bottom: 1px solid var(--hair); }
 
   /* Feste Statusspalte: 96 px reichen fuer „nicht gemappt" (83 px) und den

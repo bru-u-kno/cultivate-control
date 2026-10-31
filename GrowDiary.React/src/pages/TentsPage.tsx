@@ -9,6 +9,7 @@ import { classNames, formatNumber } from '../utils'
 import { maschinenZahl } from '../zahlenfeld'
 import { ZeltRuheBlock } from '../features/zeltruhe/ZeltRuheBlock'
 import { zeltZweckName } from '../deutsche-woerter'
+import { mappingLink } from '../features/home-assistant/mapping-link'
 
 const tentTypes: TentType[] = ['Production', 'Mother', 'Propagation', 'Quarantine', 'Drying', 'MultiPurpose']
 
@@ -314,7 +315,7 @@ function TentsPage() {
               <span className="v1-card-kicker">Mapping getrennt</span>
               <h2>Sensoren nach dem Zelt anlegen mappen</h2>
               <p>Kamera, pH, EC, VPD, Licht- und Klima-Entitäten gehören in die HA-Zuordnung. Das Zelt bleibt ein physischer Raum.</p>
-              <V1LinkButton to="/home-assistant">HA-Mapping öffnen</V1LinkButton>
+              <V1LinkButton to={mappingLink()}>HA-Mapping öffnen</V1LinkButton>
             </V1Card>
           </V1Section>
         </div>
@@ -432,7 +433,7 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
             <div className="tn-group-label">Luft</div>
             <Row label="Abluft" value={tent.exhaustFanCount ? `${tent.exhaustFanCount} × ${tent.exhaustM3h ?? '?'} m³/h` : '–'} />
             <Row label="Umluft" value={tent.circulationFanCount ? `${tent.circulationFanCount} Ventilatoren` : '–'} />
-            <Row label="Luftwechsel" value={airChanges(tent)} />
+            {!trocknung && <Row label="Luftwechsel" value={airChanges(tent)} />}
           </div>
           {!trocknung && <div className="tn-group">
             <div className="tn-group-label">Belegung</div>
@@ -471,7 +472,7 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
             <div key={core.metricType} className="co-row">
               <span className="co-dot" aria-hidden="true" />
               <span className="co-row-text" style={{ color: 'var(--muted)' }}>{core.label} — nicht gemappt</span>
-              <div className="co-row-end"><V1LinkButton to="/home-assistant" className="ls-btn is-small">Mappen</V1LinkButton></div>
+              <div className="co-row-end"><V1LinkButton to={mappingLink(tent.id, core.metricType)} className="ls-btn is-small">Mappen</V1LinkButton></div>
             </div>
           ))}
           {mapped.length === 0 && missingCore.length === 0 && (

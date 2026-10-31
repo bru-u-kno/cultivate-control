@@ -18,6 +18,7 @@ import { mapMetrics, buildScore } from '../features/live/live-model'
 import { MetricTile } from '../features/live/MetricTile'
 import { decimalsForMetric } from '../features/live/metric-tile-model'
 import '../features/live/metric-tile.css'
+import { mappingLink } from '../features/home-assistant/mapping-link'
 // Enthaelt die v1-live-/v1-camera-Regeln dieser Seite. Der Import hing bis eben
 // an DesktopLiveDashboard — einer Datei, die niemand mehr laedt; Vite haette
 // beide aus dem Bundle geworfen und diese Seite still entstylt.
@@ -115,7 +116,7 @@ function TentDetailPage() {
       eyebrow={formatTentType(tent.tentType)}
       title={tent.name}
       className="tent-detail-v2"
-      action={<div className="v1-action-row"><V1LinkButton to="/zelte" variant="ghost">Zelte</V1LinkButton><V1LinkButton to="/home-assistant">HA</V1LinkButton>{!trocknung && <V1LinkButton to="/hydro">Hydro</V1LinkButton>}</div>}
+      action={<div className="v1-action-row"><V1LinkButton to="/zelte" variant="ghost">Zelte</V1LinkButton><V1LinkButton to={mappingLink(tent.id)}>HA</V1LinkButton>{!trocknung && <V1LinkButton to="/hydro">Hydro</V1LinkButton>}</div>}
     >
       {error && <V1Alert title="Fehler" message={error} tone="warn" />}
       {notice && <V1Alert title="Erledigt" message={notice} tone="ok" />}
@@ -144,7 +145,7 @@ function TentDetailPage() {
         {live?.cameraUrl ? (
           <div className="v1-camera-card rc2-camera-card"><img src={resolveUrl(live.cameraUrl)} alt={`Livebild ${tent.name}`} className="ready" /><div className="v1-camera-label"><strong>{tent.name}</strong><span>Kamera</span></div></div>
         ) : (
-          <V1Card className="v1-camera-empty is-compact"><span className="v1-card-kicker">Kamera</span><h2>Nicht eingerichtet</h2><p>{tent.cameraEntityId ?? 'Kamera-Entity fehlt im HA-Mapping.'}</p><V1LinkButton to="/home-assistant">HA-Mapping</V1LinkButton></V1Card>
+          <V1Card className="v1-camera-empty is-compact"><span className="v1-card-kicker">Kamera</span><h2>Nicht eingerichtet</h2><p>{tent.cameraEntityId ?? 'Kamera-Entity fehlt im HA-Mapping.'}</p><V1LinkButton to={mappingLink(tent.id)}>HA-Mapping</V1LinkButton></V1Card>
         )}
       </section>
 

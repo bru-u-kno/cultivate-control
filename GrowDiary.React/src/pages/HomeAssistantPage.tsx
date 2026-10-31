@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { apiFetch, formatApiError } from '../api'
 import type { HomeAssistantEntity, HomeAssistantSettingsDto, SensorMetricType, SettingsOverviewDto, TentDto, UpdateTentRequest, UpdateTentSensorRequest } from '../types'
 import { V1Alert, V1Button, V1Empty, V1Field, V1Page, V1Skeleton, V1Switch, V1Tabs } from '../components/v1'
@@ -11,6 +11,7 @@ import { resolveUrl } from '../base'
 import { haWert } from '../utils'
 import { maschinenZahl } from '../zahlenfeld'
 import { definitions, entityOptionLabel, groups, messgroessenOptionen, RAUMWERTE_METRIKEN, vpdKpa } from '../features/home-assistant/messgroessen'
+import { lesenMappingZiel, TROCKNUNG_METRIKEN } from '../features/home-assistant/mapping-link'
 import type { RaumStand } from '../features/steuerung/steuerung-typen'
 import { vorbereiten } from '../features/geraete/entitaets-passung'
 import type { EntityDefinition } from '../features/home-assistant/messgroessen'
@@ -34,7 +35,11 @@ function HomeAssistantPage() {
   const [raum, setRaum] = useState<RaumStand | null>(null)
   const [drafts, setDrafts] = useState<Record<number, TentMappingDraft>>({})
   const [selectedTentId, setSelectedTentId] = useState<number | null>(null)
-  const [activeGroup, setActiveGroup] = useState<GroupKey>('tent')
+  // Ziel aus der Adresse (?zelt=…&messwert=…): nur beim Öffnen gelesen, danach gehört die Seite dem Nutzer.
+  const [searchParams] = useSearchParams()
+  const [ziel] = useState(() => lesenMappingZiel(searchParams))
+  const zielErledigt = useRef(false)
+  const [activeGroup, setActiveGroup] = useState<GroupKey>(ziel.definition?.group ?? 'tent')
   const [showToken, setShowToken] = useState(false)
   const [previewNonce, setPreviewNonce] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -54,7 +59,7 @@ function HomeAssistantPage() {
         setHa(overview.homeAssistant)
         setTents(sorted)
         setDrafts(Object.fromEntries(sorted.map((tent) => [tent.id, createTentDraft(tent)])))
-        setSelectedTentId((current) => current ?? sorted[0]?.id ?? null)
+        setSelectedTentId((current) => current ?? sorted.find((tent) => tent.id === ziel.tentId)?.id ?? sorted[0]?.id ?? null)
 
         // cc.263: Steht ein Zelt im Raum, kommen dessen drei Raumluft-Werte vom Raum — die Zeilen entfallen dann am Zelt.
         const raumStand = await apiFetch<RaumStand>('/api/steuerung/raum', { signal: controller.signal }).catch(() => null)
@@ -75,11 +80,27 @@ function HomeAssistantPage() {
     }
     void load()
     return () => controller.abort()
-  }, [])
+  }, [ziel])
 
   const vorbereitet = useMemo(() => entities.map(vorbereiten), [entities])
   const selectedTent = useMemo(() => tents.find((tent) => tent.id === selectedTentId) ?? tents[0] ?? null, [selectedTentId, tents])
   const selectedDraft = selectedTent ? drafts[selectedTent.id] : null
+  // Trockenzelt: nur Temperatur, Luftfeuchte, VPD — keine Gruppen Reservoir/Technik, keine Licht-/CO₂-Zeilen.
+  const trocknung = selectedTent?.tentType === 'Drying'
+  const gruppe: GroupKey = trocknung ? 'tent' : activeGroup
+  const sichtbareGruppen = trocknung ? groups.filter((group) => group.key === 'tent') : groups
+
+  // Sprung aus „Mappen": zur Zeile scrollen und sie kurz hervorheben (einmal, nach dem Laden).
+  useEffect(() => {
+    if (loading || zielErledigt.current || !ziel.definition || !selectedTent) return
+    if (ziel.tentId != null && ziel.tentId !== selectedTent.id) { zielErledigt.current = true; return }
+    zielErledigt.current = true
+    const zeile = document.querySelector(`[data-metric="${ziel.definition.metricType}"]`)
+    if (!zeile) return
+    zeile.scrollIntoView({ block: 'center' })
+    zeile.classList.add('ha-treffer')
+    window.setTimeout(() => zeile.classList.remove('ha-treffer'), 4000)
+  }, [loading, selectedTent, ziel])
   const mappedCount = selectedDraft ? selectedDraft.sensors.filter((sensor) => sensor.haEntityId.trim()).length : 0
   // Die Raumluft-Werte des gewählten Zelts kommen vom Raum (Zelt steht darin, beide Raum-Fühler gesetzt).
   const raumWerte = selectedTent?.raumId && raum?.aussenWerte && raum.fuehler ? raum : null
@@ -219,19 +240,19 @@ function HomeAssistantPage() {
                 )}
 
                 <div className="ha-tent-row co-chips" role="tablist" aria-label="Entitätsgruppe">
-                  {groups.map((group) => (
-                    <button key={group.key} type="button" role="tab" aria-selected={group.key === activeGroup} className={group.key === activeGroup ? 'co-chip active' : 'co-chip'} onClick={() => setActiveGroup(group.key)}>
+                  {sichtbareGruppen.map((group) => (
+                    <button key={group.key} type="button" role="tab" aria-selected={group.key === gruppe} className={group.key === gruppe ? 'co-chip active' : 'co-chip'} onClick={() => setActiveGroup(group.key)}>
                       {group.label}
                     </button>
                   ))}
                 </div>
 
-                {definitions.filter((definition) => definition.group === activeGroup && !(raumWerte && RAUMWERTE_METRIKEN.includes(definition.metricType))).map((definition) => {
+                {definitions.filter((definition) => definition.group === gruppe && (!trocknung || TROCKNUNG_METRIKEN.includes(definition.metricType)) && !(raumWerte && RAUMWERTE_METRIKEN.includes(definition.metricType))).map((definition) => {
                   const sensor = selectedDraft.sensors.find((item) => item.metricType === definition.metricType) ?? createSensorDraft(definition)
                   const live = liveValue(sensor.haEntityId)
                   const auswahl = messgroessenOptionen(vorbereitet, definition)
                   return (
-                    <div key={definition.metricType} className="co-row" data-audit="ha-entity-row">
+                    <div key={definition.metricType} className="co-row" data-audit="ha-entity-row" data-metric={definition.metricType}>
                       <span className="ha-metric">{definition.label}{definition.unit ? <small> {definition.unit}</small> : null}</span>
                       {/* forkai.38: Auswahl im Blatt statt Eingabefeld mit Vorschlagsliste —
                           bei dreihundert Entitaeten ist Suchen der Normalfall. */}
@@ -258,7 +279,7 @@ function HomeAssistantPage() {
                   )
                 })}
 
-                {activeGroup === 'tent' && raumWerte?.fuehler && (() => {
+                {gruppe === 'tent' && !trocknung && raumWerte?.fuehler && (() => {
                   const temp = entities.find((item) => item.entityId === raumWerte.fuehler?.tempEntityId.trim())
                   const rh = entities.find((item) => item.entityId === raumWerte.fuehler?.rhEntityId.trim())
                   const t = maschinenZahl(temp?.state) ?? NaN
@@ -281,7 +302,7 @@ function HomeAssistantPage() {
                   )
                 })()}
 
-                {activeGroup === 'tent' && (
+                {gruppe === 'tent' && (
                   <>
                     {selectedDraft.cameras.map((camera, index) => (
                       <div key={index} className="co-row" data-audit="ha-camera-field-action">

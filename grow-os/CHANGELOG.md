@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.284
+
+**Korrektur: „Mappen“ führt jetzt direkt zum Zelt und zur fehlenden Messgröße.**
+
+- **Was war:** Wer am Zelt bei „Lufttemperatur — nicht gemappt“ auf „Mappen“ tippte, kam zwar auf die Zuordnungsseite, aber immer zum ersten Zelt der Liste (meist dem Zelt mit laufendem Grow) und mit der ganzen Zeilenliste. Das neu angelegte Trockenzelt musste man erst selbst anwählen und die Zeile suchen. Die Seite las nichts aus dem Link.
+- **Was jetzt ist:** „Mappen“ nennt Zelt und Messgröße. Die Zuordnungsseite wählt das Zelt, öffnet die passende Gruppe, scrollt zur Zeile und hebt sie kurz hervor. Die Knöpfe „HA“ und „HA-Mapping“ in der Zeltansicht öffnen ebenfalls direkt das richtige Zelt.
+- **Trockenzelt:** Die Zuordnung zeigt dort nur noch Lufttemperatur, Luftfeuchte und VPD — ohne die Gruppen RDWC/DWC und Technik und ohne Licht-, CO₂- und Außenwert-Zeilen, die ein Trockenzelt nicht hat.
+- **Luftwechsel:** Die Zeile „Luftwechsel“ entfällt beim Trockenzelt. Sie rechnete die Nennleistung des Lüfters durch das Zeltvolumen (etwa 120 pro Stunde) und sagte beim Trocknen nichts Brauchbares.
+- **Gemessen:** Im gebauten Stand bei 369 px, dunkel: Direktlink auf ein Trockenzelt ohne angelegte Sensorzeilen wählt das Zelt, zeigt drei Zeilen und die hervorgehobene Zeile steht im Bild; „Mappen“ in der Zeltliste führt auf `?zelt=…&messwert=AirTemperature`.
+
 ## 2.0.0-cc.283
 
 **Korrektur: Der Hinweis unter „Zelt wieder aktiv“ nennt die App beim Namen.**
