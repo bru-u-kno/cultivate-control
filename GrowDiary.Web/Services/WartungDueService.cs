@@ -110,8 +110,8 @@ public sealed class WartungDueService
         => FristenRechnen(_hardware.GetHardwareItems(), _hardware.GetMaintenanceEvents(), _hardware.GetCalibrationEvents());
 
     /// <summary>
-    /// Wann ist an welchem Gerät was fällig? Die eine Rechnung dafür — der
-    /// Wartungs-Reiter zeigt sie (<c>api/maintenance-due/fristen</c>),
+    /// Wann ist an welchem Gerät was fällig? Die eine Rechnung dafür —
+    /// Assistenten fragen sie ab (<c>api/maintenance-due/fristen</c>),
     /// <see cref="Offen"/> erinnert daraus.
     /// </summary>
     /// <remarks>

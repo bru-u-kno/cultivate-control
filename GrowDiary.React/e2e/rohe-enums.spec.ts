@@ -178,6 +178,8 @@ async function aufklappen(page: Page, knopfName: string): Promise<boolean> {
 
   const vorher = await laenge()
   const knopf = page.getByRole('button', { name: knopfName, exact: false }).first()
+  // Seiten, die als Reiter in einer anderen stehen (Inventar & Wartung), laden nacheinander: „networkidle“ kann zwischen den Abrufen schon feuern.
+  await knopf.waitFor({ state: 'visible', timeout: 8000 }).catch(() => undefined)
   if (await knopf.count() === 0) return false
 
   await knopf.click()
