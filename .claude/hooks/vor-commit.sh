@@ -258,6 +258,23 @@ if [ "$braucht_backend" = 1 ]; then
 fi
 [ -z "$py" ] && laut "Der Commit-Hook findet kein Python — das Tor laeuft damit NICHT."
 
+# Vorabpruefung Umgebung (31.10.2026): Ein Worktree ohne (brauchbares) node_modules macht tsc, Lint und Vitest in
+# 0-1 s "rot" ohne Befund — das sieht nach Codefehler aus, ist aber keiner (cc-wort, 31.10.: Verweis auf einen leeren
+# Ordner). Deshalb vorher pruefen und die Ursache klar nennen, statt dreimal ROT zu melden.
+if [ "$braucht_frontend" = 1 ] || [ "$braucht_waechter" = 1 ]; then
+  react="$ZIEL/GrowDiary.React"
+  if [ ! -x "$react/node_modules/.bin/tsc" ] || [ ! -x "$react/node_modules/.bin/vitest" ] || [ ! -x "$react/node_modules/.bin/eslint" ]; then
+    laut "Der Commit wurde NICHT ausgefuehrt — kein Codefehler, die UMGEBUNG ist unvollstaendig:" \
+      "In $react fehlt node_modules (oder tsc/eslint/vitest darin). Einmal ausfuehren:" \
+      "  cd $react && npm ci --no-audit --no-fund" \
+      "(Ein Verweis auf quellcode/ hilft nicht — jeder Worktree braucht sein eigenes node_modules.)"
+  fi
+  if [ "$react/package-lock.json" -nt "$react/node_modules/.package-lock.json" ]; then
+    hinweise="$hinweise
+HINWEIS: package-lock.json ist neuer als node_modules — falls das Tor wegen fehlender Pakete rot wird: npm ci in GrowDiary.React."
+  fi
+fi
+
 gesamt_start="$(jetzt)"
 ergebnis_ordner="$(mktemp -d)"
 treffer=""
