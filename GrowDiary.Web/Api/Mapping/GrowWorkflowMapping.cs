@@ -42,7 +42,8 @@ public static class GrowWorkflowMapping
             null,
             null,
             null,
-            null);
+            null,
+            Vorhanden: false);
 
     public static HarvestEntry ToEntry(this HarvestUpsertRequest request, int growId)
         => new()

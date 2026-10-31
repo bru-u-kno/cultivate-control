@@ -71,7 +71,9 @@ public sealed record HarvestDto(
     string? EffectNotes,
     string? NugStructure,
     string? PlantWeightsJson,
-    int? DryingTentId = null);
+    int? DryingTentId = null,
+    /// <summary>false = noch keine Ernte gespeichert (die Antwort ist dann nur die Vorbelegung).</summary>
+    bool Vorhanden = true);
 
 public sealed record GrowActionResultDto(
     GrowDetailDto Grow,

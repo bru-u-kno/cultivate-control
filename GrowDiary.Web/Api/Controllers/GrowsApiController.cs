@@ -26,6 +26,7 @@ public sealed class GrowsApiController : ApiControllerBase
     private readonly DeviationAnalyzerService _deviationAnalyzer;
     private readonly TreatmentRecommender _treatmentRecommender;
     private readonly Services.GrowPlan.GrowPlanService? _plaene; // Fork AI (Grow-Plan)
+    private readonly HarvestRepository? _ernten; // Das Enddatum beim Abschluss ist das Erntedatum, nicht der Tag des Knopfdrucks.
 
     public GrowsApiController(
         GrowRepository repository,
@@ -35,9 +36,11 @@ public sealed class GrowsApiController : ApiControllerBase
         SetupRepository setups,
         HydroSetupRepository hydro,
         SystemAuditRepository systemAudit,
-        Services.GrowPlan.GrowPlanService? plaene = null)
+        Services.GrowPlan.GrowPlanService? plaene = null,
+        HarvestRepository? ernten = null)
     {
         _plaene = plaene;
+        _ernten = ernten;
         _repository = repository;
         _auditRepository = auditRepository;
         _systemAudit = systemAudit;
@@ -467,6 +470,14 @@ public sealed class GrowsApiController : ApiControllerBase
         return NoContent();
     }
 
+    /// <summary>Das Erntedatum, höchstens heute — ein Vertipper in der Zukunft macht aus dem Grow kein Zukunftsende.</summary>
+    private DateTime EndeAusErnte(int growId)
+    {
+        var heute = DateTime.Today;
+        var ernte = _ernten?.GetForGrow(growId)?.HarvestedAt.Date;
+        return ernte is { } datum && datum < heute ? datum : heute;
+    }
+
     [HttpPost("{id:int}/archive")]
     [ProducesResponseType(typeof(GrowDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
@@ -481,7 +492,7 @@ public sealed class GrowsApiController : ApiControllerBase
         if (existing.Status is GrowStatus.Planning or GrowStatus.Running)
         {
             existing.Status = GrowStatus.Completed;
-            existing.EndDate ??= DateTime.Today;
+            existing.EndDate ??= EndeAusErnte(id);
             _repository.UpdateGrow(existing);
             _plaene?.Abgleichen(existing); // Fork AI (Grow-Plan): Plan einfrieren
             _auditRepository.Add(new AuditEntry

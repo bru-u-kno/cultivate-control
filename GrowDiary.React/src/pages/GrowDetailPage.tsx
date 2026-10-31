@@ -15,7 +15,7 @@ import { PlanAuswertung } from '../features/zielwerte/PlanAuswertung'
 import { GrowPlantsCard } from '../features/grow-detail/GrowPlantsCard'
 import { PhasenErinnerung } from '../features/grows/PhasenErinnerung'
 import { samenName } from '../deutsche-woerter'
-import type { GrowDeviationDto } from '../types'
+import type { GrowDeviationDto, HarvestDto } from '../types'
 import { useKiAktiv } from '../ki-aktiv'
 import { resolveUrl } from '../base'
 import { apiFetch } from '../api'
@@ -48,6 +48,16 @@ function GrowDetailPage() {
     apiFetch<GrowDeviationDto[]>(`/api/grows/${growId}/deviations`, { signal: controller.signal })
       .then(setDeviations)
       .catch(() => { /* Kurzliste ist Beigabe — der Ueberblick steht auch ohne sie. */ })
+    return () => controller.abort()
+  }, [growId])
+  // Nach „Ernte speichern“ bleibt der Grow offen — das Aushärten gehört trotzdem schon dazu.
+  const [ernteVorhanden, setErnteVorhanden] = useState(false)
+  useEffect(() => {
+    if (!growId) return
+    const controller = new AbortController()
+    apiFetch<HarvestDto>(`/api/grows/${growId}/harvest`, { signal: controller.signal })
+      .then((ernte) => setErnteVorhanden(ernte.vorhanden !== false))
+      .catch(() => { /* ohne Auskunft bleibt es bei der Regel über Status und Enddatum */ })
     return () => controller.abort()
   }, [growId])
   const openTasks = useMemo(() => bundle.tasks.filter((task) => task.status === 'Open'), [bundle.tasks])
@@ -318,7 +328,7 @@ function GrowDetailPage() {
         {/* Fork AI (Grow-Plan): Plan, Stand und Gemessenes je Woche. */}
         <PlanAuswertung growId={grow.id} />
 
-        <CuringSection growId={grow.id} harvested={grow.status === 'Completed' || Boolean(grow.endDate)} />
+        <CuringSection growId={grow.id} harvested={grow.status === 'Completed' || Boolean(grow.endDate) || ernteVorhanden} />
 
         {/* Verwaltung unten — Beenden und Löschen gehören nicht neben die
             täglichen Handlungen in der Kopfzeile. Der Export ebenso wenig: er

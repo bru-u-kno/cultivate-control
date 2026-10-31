@@ -43,8 +43,26 @@ public sealed class TrockenzeltErnteTests : IDisposable
             Name = "Charge A", TentId = _blueteZelt.Id, StartDate = Heute.AddDays(-90),
             EndDate = Heute.AddDays(-tage), Status = GrowStatus.Completed,
         });
-        var ernteId = _ernten.Create(new HarvestEntry { GrowId = growId, WetWeightG = 500, DryingTentId = trockenzeltId });
+        var ernteId = _ernten.Create(new HarvestEntry { GrowId = growId, HarvestedAt = Heute.AddDays(-tage), WetWeightG = 500, DryingTentId = trockenzeltId });
         return (growId, ernteId);
+    }
+
+    [Fact]
+    public void Das_Trockenzelt_zaehlt_ab_dem_Erntedatum_auch_ohne_Enddatum_und_bei_laufendem_Grow()
+    {
+        // Grow ohne Enddatum, abgeschlossen auf anderem Weg als über die Ernte.
+        var ohneEnde = _grows.CreateGrow(new GrowRun { Name = "Ohne Ende", TentId = _blueteZelt.Id, StartDate = Heute.AddDays(-90), Status = GrowStatus.Completed });
+        _ernten.Create(new HarvestEntry { GrowId = ohneEnde, HarvestedAt = Heute.AddDays(-1), DryingTentId = _trockenZelt.Id });
+        Assert.Equal(2, DryingWindow.StandFor(_grows, _ernten, _trockenZelt.Id, Heute)!.Tag);
+
+        // Teilernte: Der Grow läuft noch, die Ernte trocknet trotzdem im Trockenzelt.
+        var teilTelt = _grows.CreateTent(new Tent { Name = "Trockenzelt 2", TentType = TentType.Drying });
+        var laufend = _grows.CreateGrow(new GrowRun { Name = "Läuft", TentId = _blueteZelt.Id, StartDate = Heute.AddDays(-60), Status = GrowStatus.Running });
+        _ernten.Create(new HarvestEntry { GrowId = laufend, HarvestedAt = Heute.AddDays(-4), DryingTentId = teilTelt.Id });
+        var stand = DryingWindow.StandFor(_grows, _ernten, teilTelt.Id, Heute);
+        Assert.NotNull(stand);
+        Assert.Equal(laufend, stand!.Grow.Id);
+        Assert.Equal(5, stand.Tag);
     }
 
     [Fact]

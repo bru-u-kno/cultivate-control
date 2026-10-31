@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.290
+
+**Ernte erfassen verständlicher: „Ernte speichern“ lässt den Grow wirklich offen — und ein Trockenzelt trocknet ab dem Erntedatum.**
+
+- **Was war:** Auf der Erntenseite taten „Ernte speichern“ und „Speichern & Grow abschließen“ fast dasselbe: Schon die erste Ernte beendete jeden laufenden Grow. Der Text darüber sagte das auch, aber niemand rechnete damit, dass der erste Knopf abschließt. Eine Teilernte war so nicht möglich. Außerdem zeigte die Seite nicht, in welchem Zelt der Grow angebaut wurde. Und ein Trockenzelt begann erst zu trocknen, wenn der Grow ein Enddatum hatte — bei einem Grow, der ohne die Ernte abgeschlossen worden war, fehlte es, und die Trocknung startete nie.
+- **Was jetzt ist:** „Ernte speichern · Grow bleibt offen“ legt nur die Ernte an. Erst „Speichern & Grow abschließen“ beendet den Grow, friert den Plan ein und fragt nach den Geräten im leeren Zelt. Der Text bei „Plan dieses Grows“ erklärt beide Wege nebeneinander. Unter dem Namen des Grows stehen Anbauzelt, Sorte und Zeitraum als Chips (lange Namen werden gekürzt).
+- **Enddatum = Erntedatum:** Beim Abschließen übernimmt Cultivate Control als Enddatum das Erntedatum der Ernte (vorher der Tag des Knopfdrucks), höchstens aber den heutigen Tag. Wird eine Ernte für einen schon abgeschlossenen Grow ohne Enddatum gespeichert, setzt sie das Enddatum nach; ein vorhandenes bleibt unverändert.
+- **Dazu passend:** Die Aushärten-Karte an der Grow-Seite erscheint schon nach „Ernte speichern“, und „Endstand als Programm speichern“ gilt erst beim Abschließen (dann ist der Plan eingefroren). Der Hinweis am Trockenzelt-Feld sagt, wann die Trocknung im eigenen Zelt zählt.
+- **Trocknung ab Erntedatum:** Ist bei der Ernte ein Trockenzelt gewählt, zählt der Trocknungstag ab dem Erntedatum — gleich, ob der Grow schon abgeschlossen ist (Teilernte) oder kein Enddatum hat. Beim Trockenzelt-Feld steht ein entsprechender Hinweis.
+- **Messbar:** Drei neue Prüfungen (Trocknung ohne Enddatum und bei laufendem Grow; Enddatum aus der Ernte; Ernte lässt den Grow offen und der Abschluss setzt das Erntedatum) werden ohne die Korrektur rot; dazu ein Rundweg-Test der Seite.
+
 ## 2.0.0-cc.289
 
 **Zuordnung übersichtlicher: die Messgröße als große Überschrift, ein Zeltname je Zeile, einklappbar.**

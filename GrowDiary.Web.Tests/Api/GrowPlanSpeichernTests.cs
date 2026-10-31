@@ -96,6 +96,15 @@ public sealed class GrowPlanSpeichernTests
         var ernte = await client.PutAsJsonAsync($"/api/grows/{id}/harvest", new { harvestedAtLocal = "2001-04-01" });
         Assert.Equal(HttpStatusCode.OK, ernte.StatusCode);
 
+        // cc.290: Die Ernte allein beendet den Grow nicht (Teilernte); erst der Abschluss friert den Plan ein
+        // und setzt das Enddatum auf das ERNTEDATUM, nicht auf den Tag des Knopfdrucks.
+        var davor = await client.GetFromJsonAsync<JsonElement>($"/api/grows/{id}");
+        Assert.Equal("Running", davor.GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/grows/{id}/archive", null)).StatusCode);
+        var danach = await client.GetFromJsonAsync<JsonElement>($"/api/grows/{id}");
+        Assert.Equal("Completed", danach.GetProperty("status").GetString());
+        Assert.StartsWith("2001-04-01", danach.GetProperty("endDate").GetString());
+
         var ende = await client.GetAsync($"/api/grows/{id}/plan?stand=ende");
         Assert.Equal(HttpStatusCode.OK, ende.StatusCode);
 

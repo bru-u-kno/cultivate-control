@@ -580,6 +580,8 @@ export interface HarvestDto {
   plantWeightsJson: string | null
   /** Das Trockenzelt der Ernte (Zweck Trocknung); null = Trocknung im Zelt des Grows. */
   dryingTentId?: number | null
+  /** false = noch keine Ernte gespeichert (die Antwort ist nur die Vorbelegung). */
+  vorhanden?: boolean
 }
 
 export interface GrowActionResultDto {

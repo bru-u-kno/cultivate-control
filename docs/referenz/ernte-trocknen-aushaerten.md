@@ -23,8 +23,8 @@
 je Pflanze — am Trockenregal wiegt man Pflanze für Pflanze. Sind Einzelgewichte
 da, gewinnen ihre Summen über die Grow-Felder. Die Trockenausbeute steht schon
 beim Tippen daneben; ist trocken schwerer als nass, sagt die App „vermutlich
-vertauscht". Dazu Bewertung, Blütenstruktur, Aroma, Effekt. Der zweite Knopf
-speichert **und** schließt ab (`POST /api/grows/:id/archive`).
+vertauscht". Dazu Bewertung, Blütenstruktur, Aroma, Effekt. „Ernte speichern" lässt den Grow offen (Teilernte möglich); der zweite Knopf
+speichert **und** schließt ab (`POST /api/grows/:id/archive`, Enddatum = Erntedatum).
 
 **Trocknen** hat keinen eigenen Bildschirm, sondern ist ein Zustand des Zelts:
 läuft kein Grow mehr, ist der letzte kürzlich geerntet und hat noch kein

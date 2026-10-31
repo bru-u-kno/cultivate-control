@@ -247,6 +247,62 @@ public sealed class GrowWorkflowApiControllerTests : IDisposable
         Assert.Equal(gewichte, wieder.PlantWeightsJson);
     }
 
+    /// <summary>
+    /// Ein Grow, der ohne die Ernte „Completed“ wurde, hat kein Enddatum; das Speichern der Ernte holt es nach (cc.290).
+    /// Ein vorhandenes Enddatum bleibt dabei unberührt.
+    /// </summary>
+    [Fact]
+    public void SaveHarvest_SetztFehlendesEnddatumAusDemErntedatum_UndLaesstEinvorhandenesStehen()
+    {
+        var ohneEnde = AngelegterGrow();
+        var grow = _repository.GetGrow(ohneEnde)!;
+        grow.Status = GrowStatus.Completed;
+        grow.EndDate = null;
+        _repository.UpdateGrow(grow);
+
+        _controller.SaveHarvest(ohneEnde, new HarvestUpsertRequest { HarvestedAtLocal = "2026-10-30" });
+        Assert.Equal(new DateTime(2026, 10, 30), _repository.GetGrow(ohneEnde)!.EndDate);
+
+        // Zweites Speichern mit anderem Datum: das gesetzte Enddatum bleibt.
+        _controller.SaveHarvest(ohneEnde, new HarvestUpsertRequest { HarvestedAtLocal = "2026-10-31" });
+        Assert.Equal(new DateTime(2026, 10, 30), _repository.GetGrow(ohneEnde)!.EndDate);
+    }
+
+    /// <summary>
+    /// cc.290: Die Grow-Seite braucht zu wissen, ob schon geerntet wurde, auch wenn der Grow offen bleibt
+    /// (Aushärten-Karte). Vor dem Speichern ist die Antwort nur die Vorbelegung — und sagt das.
+    /// </summary>
+    [Fact]
+    public void Harvest_MeldetObEineErnteVorhandenIst()
+    {
+        var grow = AngelegterGrow();
+
+        var davor = Assert.IsType<HarvestDto>((_controller.Harvest(grow).Result as ObjectResult)?.Value ?? _controller.Harvest(grow).Value);
+        Assert.False(davor.Vorhanden);
+
+        _controller.SaveHarvest(grow, new HarvestUpsertRequest { HarvestedAtLocal = "2026-10-30" });
+
+        var danach = Assert.IsType<HarvestDto>((_controller.Harvest(grow).Result as ObjectResult)?.Value ?? _controller.Harvest(grow).Value);
+        Assert.True(danach.Vorhanden);
+    }
+
+    /// <summary>
+    /// cc.290: Ein Erntedatum in der Zukunft (Vertipper) macht beim Nachsetzen kein Enddatum in der Zukunft.
+    /// </summary>
+    [Fact]
+    public void SaveHarvest_SetztKeinEnddatumInDerZukunft()
+    {
+        var id = AngelegterGrow();
+        var grow = _repository.GetGrow(id)!;
+        grow.Status = GrowStatus.Completed;
+        grow.EndDate = null;
+        _repository.UpdateGrow(grow);
+
+        _controller.SaveHarvest(id, new HarvestUpsertRequest { HarvestedAtLocal = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd") });
+
+        Assert.Equal(DateTime.Today, _repository.GetGrow(id)!.EndDate);
+    }
+
     /// <summary>Ein Grow, an den sich eine Ernte haengen laesst.</summary>
     private int AngelegterGrow()
     {

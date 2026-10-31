@@ -6,7 +6,7 @@ import { auslaufZuruecksetzen, reiterInsBild } from './reiter-ins-bild'
 
 export type Tone = 'neutral' | 'ok' | 'warn' | 'critical' | 'accent'
 
-export function V1Page({ eyebrow, title, subtitle, action, children, className, vorKopf }: { eyebrow?: string; title: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string; /** A-015: steht ganz oben, noch über der Überschrift (z. B. die Auswahl der Steuerungen). */ vorKopf?: ReactNode }) {
+export function V1Page({ eyebrow, title, subtitle, zusatz, action, children, className, vorKopf }: { eyebrow?: string; title: string; subtitle?: string; /** Steht unter dem Untertitel (z. B. Chips mit Herkunftsangaben). */ zusatz?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; /** A-015: steht ganz oben, noch über der Überschrift (z. B. die Auswahl der Steuerungen). */ vorKopf?: ReactNode }) {
   // Als Reiter einer anderen Seite: nur Inhalt (und die Aktion der Seite), kein Kopf, kein zweites <main>.
   if (useContext(EingebettetContext)) {
     return <>{vorKopf}{action && <div className="v1-hero-action">{action}</div>}{children}</>
@@ -19,6 +19,7 @@ export function V1Page({ eyebrow, title, subtitle, action, children, className, 
           {eyebrow && <div className="v1-eyebrow">{eyebrow}</div>}
           <h1>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
+          {zusatz}
         </div>
         {action && <div className="v1-hero-action">{action}</div>}
       </section>

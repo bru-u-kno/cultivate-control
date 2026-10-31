@@ -36,10 +36,12 @@ public static class DryingWindow
 
         // Ein Trockenzelt (cc.281): Es trocknet die Ernte, die ihm bei der Ernte zugewiesen wurde — gleich, welcher
         // Grow sie war. Es hat selbst keinen Grow, deshalb gilt hier die Bedingung „kein aktiver Grow“ nicht.
+        // Der Trocknungstag zählt ab dem ERNTEDATUM, nicht ab dem Enddatum des Grows: Das Enddatum fehlt bei einem
+        // Grow, der anders als über die Ernte abgeschlossen wurde, und bei einer Teilernte läuft der Grow noch.
         foreach (var zugewiesen in harvests.GetDryingInTent(tentId))
         {
-            if (grows.GetGrow(zugewiesen.GrowId) is not { Status: GrowStatus.Completed, EndDate: { } zugewiesenEnde } fremder) continue;
-            if (TrocknungsTag(today, zugewiesenEnde) is { } fremderTag) return new Stand(fremder, fremderTag);
+            if (grows.GetGrow(zugewiesen.GrowId) is not { } fremder) continue;
+            if (TrocknungsTag(today, zugewiesen.HarvestedAt) is { } fremderTag) return new Stand(fremder, fremderTag);
         }
 
         if (grows.GetActiveGrowsForTent(tentId).Count > 0) return null;

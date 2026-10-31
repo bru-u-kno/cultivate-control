@@ -49,6 +49,8 @@ function HarvestPage() {
      die Summe uebernahm den Fehler ins Grow-Feld. */
   const [plants, setPlants] = useState<ZeileMitText[]>([])
   const [trockenzelte, setTrockenzelte] = useState<TentDto[]>([])
+  // Woher die Ernte stammt: Anbauzelt, Sorte und Zeitraum des Grows (nur Anzeige).
+  const [herkunft, setHerkunft] = useState<GrowDetail | null>(null)
 
   useEffect(() => {
     if (!growId) return
@@ -66,6 +68,7 @@ function HarvestPage() {
         ])
         setTrockenzelte(zelte.filter((zelt) => zelt.tentType === 'Drying' && zelt.status === 'Active'))
         setHarvest(nextHarvest)
+        setHerkunft(grow)
         setForm({
           harvestedAtLocal: nextHarvest.harvestedAtLocal,
           wetWeightG: formatDraftNumber(nextHarvest.wetWeightG),
@@ -123,7 +126,7 @@ function HarvestPage() {
         await apiFetch(`/api/grows/${growId}/archive`, { method: 'POST' })
       }
       // Fork AI (Grow-Plan): erst nach dem Abschluss — dann ist der Plan eingefroren.
-      if (alsProgramm && programmName.trim() !== '') {
+      if (complete && alsProgramm && programmName.trim() !== '') {
         await apiFetch(`/api/grows/${growId}/plan/als-programm`, {
           method: 'POST',
           body: JSON.stringify({ name: programmName.trim() }),
@@ -162,6 +165,7 @@ function HarvestPage() {
       eyebrow="Abschluss"
       title="Ernte erfassen"
       subtitle={harvest?.growName ?? undefined}
+      zusatz={herkunft && harvest ? <HerkunftChips grow={herkunft} geerntetAm={harvest.harvestedAtLocal} /> : undefined}
       action={<V1LinkButton to={backTo}>Zurück zum Grow</V1LinkButton>}
     >
       {error && <V1Alert title="Fehler" message={error} tone="warn" />}
@@ -179,7 +183,7 @@ function HarvestPage() {
                 <input inputMode="numeric" value={form.dryDays} onChange={(event) => setForm((current) => current ? { ...current, dryDays: event.target.value } : current)} />
               </V1Field>
               {trockenzelte.length > 0 && (
-                <V1Field label="Trocknet in" wide hint="Zur Wahl stehen Zelte mit Zweck „Trocknung“. Das Zelt des Grows ist danach frei. Ohne Trockenzelt bleibt alles wie bisher.">
+                <V1Field label="Trocknet in" wide hint="Zur Wahl stehen Zelte mit Zweck „Trocknung“. Die Trocknung dort beginnt am Erntedatum — auch wenn der Grow noch nicht abgeschlossen ist. Ohne Trockenzelt trocknet die Ernte im Zelt des Grows, sobald du den Grow abgeschlossen hast.">
                   <select data-audit="harvest-drying-tent" value={form.dryingTentId} onChange={(event) => setForm((current) => current ? { ...current, dryingTentId: event.target.value } : current)}>
                     <option value="">Im selben Zelt</option>
                     {trockenzelte.map((zelt) => <option key={zelt.id} value={String(zelt.id)}>{zelt.name}</option>)}
@@ -290,10 +294,11 @@ function HarvestPage() {
           {/* Fork AI (Grow-Plan): was mit dem Plan passiert. */}
           <V1Section title="Plan dieses Grows">
             <div className="harvest-plan" data-audit="ernte-plan">
-              <p>Mit der ersten Ernte wird der Grow abgeschlossen und sein Plan eingefroren — die Auswertung steht danach auf der Grow-Seite.</p>
+              <p><strong>Ernte speichern</strong> legt nur die Ernte an — der Grow bleibt offen, und du kannst später weiterschreiben.</p>
+              <p><strong>Speichern &amp; Grow abschließen</strong> beendet den Grow, friert seinen Plan ein und zeigt die Auswertung auf der Grow-Seite.</p>
               <V1Switch
                 label="Endstand als Programm speichern"
-                hint="Wird unter „Eigene Programme“ für den nächsten Grow angeboten."
+                hint="Gilt beim Abschließen des Grows. Wird unter „Eigene Programme“ für den nächsten Grow angeboten."
                 checked={alsProgramm}
                 onChange={(an) => {
                   setAlsProgramm(an)
@@ -310,7 +315,7 @@ function HarvestPage() {
 
           <div className="v1-form-actions">
             <V1LinkButton to={backTo}>Abbrechen</V1LinkButton>
-            <V1Button type="submit" disabled={saving !== null}>{saving === 'save' ? 'Speichert…' : 'Ernte speichern'}</V1Button>
+            <V1Button type="submit" disabled={saving !== null}>{saving === 'save' ? 'Speichert…' : 'Ernte speichern · Grow bleibt offen'}</V1Button>
             <V1Button type="button" variant="primary" disabled={saving !== null} onClick={() => void save(true)}>{saving === 'complete' ? 'Schließt ab…' : 'Speichern & Grow abschließen'}</V1Button>
           </div>
         </form>
@@ -320,6 +325,22 @@ function HarvestPage() {
   )
 }
 
+
+/** Anbauzelt, Sorte und Zeitraum als Chips unter dem Namen des Grows. */
+function HerkunftChips({ grow, geerntetAm }: { grow: GrowDetail; geerntetAm: string }) {
+  const sorte = grow.pflanzenSorten.length > 0 ? grow.pflanzenSorten.join(', ') : grow.strain
+  // Ein reines Datum („2026-10-30“) liest `new Date` als UTC — westlich von UTC käme der Vortag heraus. Deshalb lokal lesen.
+  const lokal = (wert: string) => new Date(wert.length === 10 ? `${wert}T00:00` : wert)
+  const kurz = (wert: string) => new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(lokal(wert))
+  const lang = (wert: string) => new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(lokal(wert))
+  const zeitraum = geerntetAm ? `${kurz(grow.startDate)}–${lang(geerntetAm)}` : `seit ${lang(grow.startDate)}`
+  const teile = [grow.tentName, sorte, zeitraum].filter((teil): teil is string => Boolean(teil))
+  return (
+    <div className="v1-chip-row hv-herkunft" data-audit="ernte-herkunft">
+      {teile.map((teil, index) => <span key={`${index}-${teil}`} title={teil}><i>{teil}</i></span>)}
+    </div>
+  )
+}
 
 /**
  * Eine Zahl fuer ein Eingabefeld — mit Komma.

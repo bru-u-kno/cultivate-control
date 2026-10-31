@@ -52,6 +52,13 @@ test.describe('Ernte-Rundweg', () => {
 
     await page.goto(`/grows/${eigener!.growId}/harvest`, { waitUntil: 'networkidle' })
 
+    // cc.290: Herkunft unter dem Namen (Zelt, Sorte, Zeitraum) und die beiden Wege nebeneinander erklärt.
+    const herkunft = page.locator('[data-audit="ernte-herkunft"] span')
+    expect(await herkunft.count(), 'Unter dem Grow-Namen fehlen Zelt und Zeitraum.').toBeGreaterThanOrEqual(2)
+    await expect(herkunft.last()).toHaveText(/^\d{2}\.\d{2}\.–\d{2}\.\d{2}\.\d{4}$/)
+    await expect(page.getByRole('button', { name: 'Ernte speichern · Grow bleibt offen' })).toBeVisible()
+    await expect(page.locator('[data-audit="ernte-plan"]')).toContainText('der Grow bleibt offen')
+
     const nass = page.getByLabel('Nassgewicht PL-01')
     await expect(nass).toBeVisible()
 
@@ -67,6 +74,11 @@ test.describe('Ernte-Rundweg', () => {
 
     expect(gespeichert.ok(),
       `Das Speichern antwortete mit HTTP ${gespeichert.status()}.`).toBe(true)
+
+    // cc.290: „Ernte speichern“ lässt den laufenden Grow offen — erst „Speichern & Grow abschließen“ beendet ihn.
+    const growNachher = await (await page.request.get(`/api/grows/${eigener!.growId}`)).json()
+    expect(growNachher.status,
+      '„Ernte speichern · Grow bleibt offen“ hat den Grow beendet — der Knopf hielte sein Versprechen nicht.').toBe('Running')
 
     // 1. Was WIRKLICH gespeichert wurde — nicht, was das Formular anzeigt.
     const rumpf = await gespeichert.json()
@@ -91,6 +103,12 @@ test.describe('Ernte-Rundweg', () => {
        Rundweg nur die Haelfte ab: die Pflanzenzeile kann mit Komma stehen,
        waehrend „Frischgewicht" daneben „21.5" zeigt. */
     await expect(page.getByLabel('Frischgewicht')).toHaveValue('21,5')
+
+    // cc.290: Der Grow ist noch offen, aber geerntet — die Aushärten-Karte gehört schon an die Grow-Seite.
+    await page.goto(`/grows/${eigener!.growId}`, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-audit="grow-curing"]'),
+      'Nach „Ernte speichern“ fehlt die Aushärten-Karte an der Grow-Seite (der Grow ist offen).').toBeVisible()
+    await page.goto(`/grows/${eigener!.growId}/harvest`, { waitUntil: 'networkidle' })
 
     // 3. Die Summe daneben ebenso — dort stand „21.5 g".
     const summe = page.locator('.hv-sums').first()

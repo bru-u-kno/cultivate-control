@@ -537,14 +537,10 @@ public sealed class GrowWorkflowApiController : ApiControllerBase
         var existing = _harvestRepository.GetForGrow(id);
         if (existing is null)
         {
+            // Seit cc.290 beendet die Ernte den Grow NICHT mehr von selbst: „Ernte speichern“ lässt ihn offen
+            // (Teilernte), erst „Speichern & Grow abschließen“ ruft /archive. Vorher beendete schon die erste Ernte
+            // jeden laufenden Grow — beide Knöpfe der Seite taten dasselbe.
             _harvestRepository.Create(entry);
-            if (grow.Status == GrowStatus.Running)
-            {
-                grow.Status = GrowStatus.Completed;
-                grow.EndDate = entry.HarvestedAt.Date;
-                _repository.UpdateGrow(grow);
-                _plaene?.Abgleichen(grow);
-            }
 
             _auditRepository.LogHarvestCreated(id, request.HarvestedAtLocal);
         }
@@ -553,6 +549,14 @@ public sealed class GrowWorkflowApiController : ApiControllerBase
             entry.Id = existing.Id;
             entry.CreatedAtUtc = existing.CreatedAtUtc;
             _harvestRepository.Update(entry);
+        }
+
+        // Ein Grow, der ohne die Ernte abgeschlossen wurde (z. B. über „Bearbeiten“), hat kein Enddatum. Das Erntedatum
+        // schließt die Lücke — sonst fehlt der Grow in Auswertungen, die vom Enddatum rechnen.
+        if (grow.Status == GrowStatus.Completed && grow.EndDate is null)
+        {
+            grow.EndDate = entry.HarvestedAt.Date < DateTime.Today ? entry.HarvestedAt.Date : DateTime.Today;
+            _repository.UpdateGrow(grow);
         }
 
         return Ok(_harvestRepository.GetForGrow(id)!.ToDto(grow.Name));
