@@ -73,6 +73,32 @@ test('Fertig-Erkennung: eintragen, wiederfinden, falsche Eingabe, löschen, Weg 
     await expect(page.locator('[data-audit="live-fertig"]'), 'Die Karte darf nur erscheinen, wenn das gewählte Zelt trocknet.').toHaveCount(0)
   })
 
+  await test.step('Trocknungs-Ziel: der Plan der Etappe, noch keine Ports, das Blatt ohne Home Assistant', async () => {
+    // Die Ernte liegt acht Tage zurück → Trocknungstag 9 → Etappe „Ausklang“ (Standard: 18 °C, 55 %, Band oben 19 °C / 57 %).
+    const ziel = await (await request.get(`/api/tents/${zeltId}/trocknung/ziel`)).json()
+    expect(ziel.trocknet).toBe(true)
+    expect(ziel.etappe).toBe('Ausklang')
+    expect(ziel.tempOben, 'Band oben der Temperatur: Ziel + 1 °C.').toBe(19)
+    expect(ziel.feuchteOben, 'Band oben der Luftfeuchte: Ziel + 2 Punkte, unter der Obergrenze 65 %.').toBe(57)
+    expect(ziel.geraete.map((g: { urteil: string }) => g.urteil)).toEqual(['nichtZugeordnet', 'nichtZugeordnet'])
+
+    await page.goto('/', { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-audit="live-trocknungs-ziel"]'), 'Die Karte darf nur erscheinen, wenn das gewählte Zelt trocknet.').toHaveCount(0)
+
+    const k = page.locator('[data-audit="live-trocknungs-ziel"]')
+    await page.goto(`/live/${zeltId}`, { waitUntil: 'networkidle' })
+    await expect(k, 'Im trocknenden Zelt fehlt die Karte „Trocknungs-Ziel“.').toBeVisible()
+    await expect(k).toContainText('Noch keine Geräte zugeordnet')
+    await expect(k).toContainText('Plan: 18 °C · 55 % Luftfeuchte')
+
+    // Die Demo hat kein Home Assistant: Das Blatt sagt es, statt eine leere Auswahl anzubieten, und Speichern ist gesperrt.
+    await k.getByRole('button', { name: 'Ports zuordnen' }).click()
+    await expect(page.getByRole('alert')).toContainText('nicht erreichbar')
+    await expect(page.getByRole('button', { name: 'Speichern', exact: true })).toBeDisabled()
+    await page.getByRole('button', { name: 'Abbrechen' }).click()
+    await expect(page.getByRole('alert')).toHaveCount(0)
+  })
+
   await test.step('Erste Wägung im Blatt, Wägungen früherer Tage per Schnittstelle, nach dem Neuladen wiederfinden', async () => {
     const k = await karte(page)
     await expect(k).toContainText('Noch keine Wägung')

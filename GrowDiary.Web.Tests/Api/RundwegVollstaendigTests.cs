@@ -327,6 +327,12 @@ public sealed class RundwegVollstaendigTests
             + "Felder sind Uhrzeiten im Format HH:mm — \"1\" ist keine, das PUT lehnt sie "
             + "mit 400 ab. Dass kein Feld beim Speichern verlorengeht, faehrt "
             + "LichtEinstellungenRundwegTests.",
+        // A-029 Etappe 3, Teil A
+        ["PortsRequest"] =
+            "Zwei Geräte-Kennungen aus Home Assistant (Entfeuchter, Kühlung), kein Formular mit Feldern, die einzeln "
+            + "zurückkommen könnten, und das PUT lehnt Proben wie \"1\" mit 400 ab (nur Ports, die Home Assistant als Ports "
+            + "mit eigener Automatik kennt). Setzen, Lösen, Abweisen unbekannter und doppelter Ports und dass die "
+            + "bestehende Zuordnung danach unverändert bleibt, fährt TrocknungZielApiTests.",
         // cc.277
         ["ZeltRuheAuswahlRequest"] =
             "Eine Liste von Kennungen, kein Formular mit Feldern, die einzeln zurückkommen könnten, und das PUT lehnt "

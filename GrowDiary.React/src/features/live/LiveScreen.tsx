@@ -16,6 +16,7 @@ import { PhasenUebersicht } from './PhasenUebersicht'
 import { CameraPanel } from './CameraPanel'
 import { TrendWatchPanel } from './TrendWatchPanel'
 import { FertigErkennung } from '../trocknung/FertigErkennung'
+import { ZielJeZelt } from '../trocknung/ZielJeZelt'
 import { DashboardBands } from './DashboardBands'
 import { BandTitel, KachelKlappe, KlappTitel } from './Einklappen'
 import { bereichsBilanz, useEingeklappt, type Einklappen } from './eingeklappt'
@@ -369,6 +370,7 @@ export function LiveScreen({
       <section className="ls-lower">
         <div className="ls-lower-right">
           {/* A-029 Etappe 4: nur, solange das Zelt trocknet — sonst zeichnet die Karte nichts. */}
+          <ZielJeZelt key={`ziel-${tent?.id ?? 'kein-zelt'}`} tentId={tent?.id ?? null} zu={zu('panel:ziel')} onKlappe={klappe('panel:ziel')} />
           <FertigErkennung key={tent?.id ?? 'kein-zelt'} tentId={tent?.id ?? null} zu={zu('panel:fertig')} onKlappe={klappe('panel:fertig')} />
           {topRisk ? (
             <article className={classNames('ls-panel', 'ls-risk', `is-${topRisk.severity.toLowerCase()}`, zu('panel:risiko') && 'is-zu')} data-audit="live-risk">
