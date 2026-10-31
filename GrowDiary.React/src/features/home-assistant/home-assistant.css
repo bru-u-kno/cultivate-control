@@ -79,3 +79,30 @@
   .ha-messgroesse small { color: var(--faint); font-size: var(--fs-etikett); }
   .ha-zuordnung .ha-metric-hinweis { padding: 0 14px 8px; }
 }
+
+@layer features {
+  /* Zuordnung (cc.288): Messgröße als große Überschrift, darunter eine Zeile je Zelt. */
+  .zu-segmente { margin: 10px 14px 4px; }
+  /* Die Zahl der offenen Kernwerte steht unter dem Namen: „RDWC/DWC · 13“ passte nicht in ein Viertel der Breite. */
+  .zu-segmente .vd-seg { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; height: auto; padding-block: 6px; }
+  .zu-segmente .vd-seg > span { max-width: 100%; overflow-wrap: anywhere; }
+  .zu-zahl { font-size: .72rem; font-weight: 400; color: var(--warn-text); }
+  .zu-segmente .vd-seg[aria-pressed='true'] .zu-zahl { color: inherit; }
+  .zu-schalter { padding: 8px 14px 4px; }
+  .zu-block { border-top: 1px solid var(--hair); padding: 4px 0; }
+  .zu-block > .kk-kopf { padding: 8px 14px; width: 100%; }
+  .zu-block .kk-titel { font-size: 1.12rem; font-weight: 700; color: var(--ink); }
+  .zu-block .kk-titel small { color: var(--faint); font-weight: 400; font-size: .8rem; }
+  .zu-block-zelt { padding: 0; }
+  .zu-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+  .zu-zeile { padding: 6px 14px 10px; }
+  .zu-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .zu-zelt { font-size: var(--fs-text); font-weight: 500; color: var(--muted); min-width: 0; }
+  .zu-block-zelt .zu-zelt { font-weight: 700; color: var(--ink); font-size: 1.05rem; }
+  .zu-kopf .co-row-value { flex: none; }
+  .zu-leer { padding: 4px 14px 8px; margin: 0; }
+  /* Die Auswahl bleibt in der Zeile: lange Namen werden gekürzt statt über den Rand zu laufen. */
+  .zu-zeile .v1-select { display: block; min-width: 0; max-width: 100%; }
+  .zu-zeile .v1-select-feld { max-width: 100%; min-width: 0; }
+  .zu-zeile .v1-select-feld > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+}

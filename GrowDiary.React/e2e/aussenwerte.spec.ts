@@ -23,6 +23,12 @@ const AUSSEN = [
   { key: 'outside-vpd', name: 'Außen VPD', einheit: 'kPa' },
 ] as const
 
+/** Ab vier Zelten steht „Nur offene zeigen“ von Anfang an an (cc.288) — wer alle Zeilen prüft, schaltet es aus, wie ein Nutzer es täte. */
+async function alleZeilenZeigen(page: import('@playwright/test').Page) {
+  const schalter = page.getByRole('checkbox', { name: 'Nur offene zeigen' })
+  if (await schalter.count() > 0 && await schalter.isChecked()) await schalter.uncheck()
+}
+
 test.describe('Außenwerte', () => {
   // `raumwerte.spec.ts` legt zeitweise einen Raum an — dann hießen die Karten anders. Nacheinander, nicht nebeneinander.
   test.beforeEach(async () => { await nimmSchloss() })
@@ -60,12 +66,13 @@ test.describe('Außenwerte', () => {
     darfUeberspringen(!(await backendAntwortet(request)), 'Kein Backend — das Formular braucht die laufende App.')
     await page.setViewportSize({ width: 390, height: 900 })
     await page.goto('/geraete?reiter=zuordnung', { waitUntil: 'networkidle' })
+    await alleZeilenZeigen(page)
     const zeilen = page.locator('[data-audit="ha-entity-row"]')
     expect(await zeilen.count(), 'Keine Zuordnungszeilen — die Prüfung sähe nichts.').toBeGreaterThanOrEqual(6)
 
     for (const { name } of AUSSEN) {
       // cc.285: je Messgröße ein Block mit Überschrift und Satz, darunter eine Zeile je Zelt.
-      const block = page.locator('[data-audit="ha-messgroesse"]').filter({ has: page.locator('.ls-label', { hasText: name }) })
+      const block = page.locator('[data-audit="ha-messgroesse"]').filter({ hasText: name })
       await expect(block, `Kein Block „${name}" in der Gruppe Zelt.`).toHaveCount(1)
       await expect(block.locator('.ha-metric-hinweis')).toContainText('außerhalb des Zelts')
       await expect(block.locator('.ha-metric-hinweis')).toContainText('nicht die Luft von draußen')

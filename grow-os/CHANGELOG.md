@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.288
+
+**Zuordnung übersichtlicher: die Messgröße als große Überschrift, ein Zeltname je Zeile, einklappbar.**
+
+- **Was war:** In der Zuordnung ging die Überschrift („Lufttemp“) in kleiner grauer Schrift unter, der Zeltname stand dreimal übereinander, lange Entitätsnamen liefen über den rechten Rand, und die Gruppen waren Pillen, die auf dem Handy in zwei Zeilen brachen. Mit vielen Zelten wäre die Liste unübersichtlich geworden.
+- **Was jetzt ist:** Jede Messgröße ist ein einklappbarer Block mit großer, ausgeschriebener Überschrift („Lufttemperatur °C“). Darunter steht je Zelt eine Zeile: Zeltname, Livewert rechts, die Auswahl in voller Breite (lange Namen werden gekürzt). Fehlt bei einem Kernwert ein Zelt, steht der Block offen; ist alles zugeordnet, ist er zu und sagt „alle 2 zugeordnet“.
+- **Gruppen** (Zelt, RDWC/DWC, Technik, Kameras) sind eine Leiste mit vier gleich breiten Feldern; darunter steht die Zahl der offenen Kernwerte („6 offen“).
+- **Viele Zelte:** „Nur offene zeigen“ lässt je Messgröße nur die Zelte stehen, bei denen etwas fehlt (an Voreinstellung ab vier Zelten). Zusätzlich gibt es die Ansicht „Nach Zelt“: ein Zelt in der Auswahl, darunter alle seine Messgrößen. Auf breiten Bildschirmen stehen die Zeltzeilen nebeneinander.
+- **Messbar:** Die Querschnittsprüfungen (Handy 360–768 px, Umbruch, Kontrast, Touch-Ziele, Wegweiser) laufen grün; die Zählung der offenen Werte hat einen eigenen Test.
+
 ## 2.0.0-cc.287
 
 **Einrichtung an einer Stelle: Schritte mit Stand, Anlage und Technik — und im Menü nur noch ein Eintrag.**

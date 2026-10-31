@@ -42,7 +42,7 @@ test('Direktlink wählt das Trockenzelt, zeigt nur dessen Messwerte und hebt die
   await expect(treffer).toHaveClass(/ha-treffer/)
   await expect(treffer).toBeInViewport()
   await expect(page.locator('[data-metric="AirTemperature"][data-tent="99"]')).not.toHaveClass(/ha-treffer/)
-  await page.getByRole('tab', { name: 'RDWC/DWC' }).click()
+  await page.getByRole('button', { name: /^RDWC\/DWC/ }).click()
   await expect(page.locator('[data-audit="ha-entity-row"][data-tent="99"]')).toHaveCount(0)
 })
 

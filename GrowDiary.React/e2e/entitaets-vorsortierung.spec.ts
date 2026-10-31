@@ -34,7 +34,8 @@ test('Geräte · Rollen: die Auswahl ist vorsortiert (gleiche Komponente wie im 
 
 test('Geräte · Zuordnung: Luftfeuchte und CO₂ stehen oben, nichts ist ausgeblendet', async ({ page, request }) => {
   const alle = await (await request.get('/api/home-assistant/entities')).json() as unknown[]
-  await page.goto('/geraete?reiter=zuordnung')
+  // Der Sprung (messwert=) klappt den Block der Messgröße auf und zeigt alle Zeilen.
+  await page.goto('/geraete?reiter=zuordnung&messwert=Humidity')
   await page.locator('[data-audit="ha-entity-row"][data-metric="Humidity"] button.v1-select-feld').first().click()
   let liste = await namen(page)
   // Erster Eintrag ist "— nicht zugeordnet —", dann die Entitäten.
@@ -43,6 +44,7 @@ test('Geräte · Zuordnung: Luftfeuchte und CO₂ stehen oben, nichts ist ausgeb
   expect(liste.length).toBe(alle.length + 1)
   await page.keyboard.press('Escape')
 
+  await page.goto('/geraete?reiter=zuordnung&messwert=Co2')
   await page.locator('[data-audit="ha-entity-row"][data-metric="Co2"] button.v1-select-feld').first().click()
   liste = await namen(page)
   expect(liste[1]).toBe('Demo CO₂')

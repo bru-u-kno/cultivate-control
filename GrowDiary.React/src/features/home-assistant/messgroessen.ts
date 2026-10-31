@@ -22,6 +22,8 @@ export type EntityDefinition = {
   unit?: string
   /** Ein Satz unter der Zeile, wo das Etikett allein missverständlich wäre. */
   hinweis?: string
+  /** Ausgeschriebene Überschrift, wo das kurze Etikett in Listen zu knapp ist (Zuordnung, cc.288). */
+  titel?: string
 }
 
 /**
@@ -46,7 +48,7 @@ export const groups: Array<{ key: GroupKey; label: string }> = [
 ]
 
 export const definitions: EntityDefinition[] = [
-  { metricType: 'AirTemperature', label: 'Lufttemp', group: 'tent', placeholder: 'sensor.zelt_temperatur', unit: '°C', importance: 'core' },
+  { metricType: 'AirTemperature', label: 'Lufttemp', titel: 'Lufttemperatur', group: 'tent', placeholder: 'sensor.zelt_temperatur', unit: '°C', importance: 'core' },
   { metricType: 'Humidity', label: 'Luftfeuchte', group: 'tent', placeholder: 'sensor.zelt_luftfeuchte', unit: '%', importance: 'core' },
   { metricType: 'Vpd', label: 'VPD', group: 'tent', placeholder: 'sensor.zelt_vpd', unit: 'kPa', importance: 'optional', hinweis: VPD_HINWEIS },
   { metricType: 'Ppfd', label: 'PPFD', group: 'tent', placeholder: 'sensor.lampe_ppfd', unit: 'µmol/m²/s', importance: 'optional' },
@@ -57,7 +59,7 @@ export const definitions: EntityDefinition[] = [
   { metricType: 'OutsideVpd', label: 'Außen VPD', group: 'tent', placeholder: 'sensor.controller_vpd', unit: 'kPa', importance: 'optional', hinweis: AUSSEN_HINWEIS },
   { metricType: 'ReservoirPh', label: 'pH', group: 'reservoir', placeholder: 'sensor.rdwc_ph', importance: 'core' },
   { metricType: 'ReservoirEc', label: 'EC', group: 'reservoir', placeholder: 'sensor.rdwc_ec', unit: 'mS/cm', importance: 'core' },
-  { metricType: 'ReservoirWaterTemp', label: 'Wassertemp', group: 'reservoir', placeholder: 'sensor.rdwc_wassertemperatur', unit: '°C', importance: 'core' },
+  { metricType: 'ReservoirWaterTemp', label: 'Wassertemp', titel: 'Wassertemperatur', group: 'reservoir', placeholder: 'sensor.rdwc_wassertemperatur', unit: '°C', importance: 'core' },
   { metricType: 'ReservoirLevel', label: 'Wasserstand (L)', group: 'reservoir', placeholder: 'sensor.rdwc_wasserstand_liter', unit: 'L', importance: 'core' },
   { metricType: 'ReservoirLevelCm', label: 'Wasserstand (cm)', group: 'reservoir', placeholder: 'sensor.rdwc_wasserstand_cm', unit: 'cm', importance: 'optional' },
   { metricType: 'ReservoirOrp', label: 'ORP', group: 'reservoir', placeholder: 'sensor.rdwc_orp', unit: 'mV', importance: 'optional' },

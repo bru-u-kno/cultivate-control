@@ -19,6 +19,12 @@ test.afterEach(() => { gibSchloss() })
 
 type Zelt = { id: number; name: string; raumId: string | null; sensors: Array<{ metricType: string; haEntityId: string }> }
 
+/** Ab vier Zelten steht „Nur offene zeigen“ von Anfang an an (cc.288) — wer alle Zeilen prüft, schaltet es aus, wie ein Nutzer es täte. */
+async function alleZeilenZeigen(page: import('@playwright/test').Page) {
+  const schalter = page.getByRole('checkbox', { name: 'Nur offene zeigen' })
+  if (await schalter.count() > 0 && await schalter.isChecked()) await schalter.uncheck()
+}
+
 test('Zelt im Raum: Verlauf und Zuordnung nennen den Raum statt „Außen“, die drei Zeilen am Zelt entfallen — zweimal (390 px)', async ({ page, request }) => {
   const zelte = (await (await request.get('/api/settings/tents')).json()) as Zelt[]
   const ziel = zelte[0]
@@ -39,6 +45,7 @@ test('Zelt im Raum: Verlauf und Zuordnung nennen den Raum statt „Außen“, di
     for (let runde = 0; runde < 2; runde++) {
       // Zuordnung: die drei Außen-Zeilen DIESES Zelts sind weg, je Messgröße steht eine Raumwert-Zeile dafür da.
       await page.goto('/geraete?reiter=zuordnung', { waitUntil: 'networkidle' })
+      await alleZeilenZeigen(page)
       const zeilen = page.locator('[data-audit="ha-entity-row"]')
       expect(await zeilen.count(), 'Keine Zuordnungszeilen — die Prüfung sähe nichts.').toBeGreaterThanOrEqual(5)
       await expect(zeilen.filter({ has: page.locator(`[data-tent="${ziel.id}"]`) }), `Runde ${runde + 1}: Außen-Zeilen stehen noch`).toHaveCount(0)
@@ -63,6 +70,7 @@ test('Zelt im Raum: Verlauf und Zuordnung nennen den Raum statt „Außen“, di
     await request.put(`/api/settings/tents/${ziel.id}`, { data: { ...jetzt, raumId: null } })
     await request.put('/api/steuerung/raum', { data: { name: 'Testkeller' } })
     await page.goto('/geraete?reiter=zuordnung', { waitUntil: 'networkidle' })
+    await alleZeilenZeigen(page)
     await expect(page.locator(`[data-audit="ha-raumwerte-row"][data-tent="${ziel.id}"]`)).toHaveCount(0)
     await expect(page.locator(`[data-audit="ha-entity-row"][data-metric="OutsideTemperature"][data-tent="${ziel.id}"]`)).toHaveCount(1)
   } finally {

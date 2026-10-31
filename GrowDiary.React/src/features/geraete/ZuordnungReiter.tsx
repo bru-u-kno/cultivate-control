@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiFetch, formatApiError } from '../../api'
-import { V1Alert, V1Empty, V1Skeleton } from '../../components/v1'
+import { KlappKopf } from '../../components/Klapp'
+import { V1Alert, V1Empty, V1Skeleton, V1Switch } from '../../components/v1'
 import { V1Select } from '../../components/V1Select'
 import type { V1Option } from '../../components/V1Select'
 import type { HomeAssistantEntity, SettingsOverviewDto, TentDto } from '../../types'
@@ -11,27 +12,36 @@ import { maschinenZahl } from '../../zahlenfeld'
 import type { RaumStand } from '../steuerung/steuerung-typen'
 import { vorbereiten } from './entitaets-passung'
 import { CameraPreview } from '../home-assistant/CameraPreview'
-import { lesenMappingZiel, TROCKNUNG_METRIKEN } from '../home-assistant/mapping-link'
-import { definitions, entityOptionLabel, groups, messgroessenOptionen, RAUMWERTE_METRIKEN, vpdKpa } from '../home-assistant/messgroessen'
+import { lesenMappingZiel } from '../home-assistant/mapping-link'
+import { definitions, entityOptionLabel, groups, messgroessenOptionen, vpdKpa } from '../home-assistant/messgroessen'
 import type { EntityDefinition } from '../home-assistant/messgroessen'
 import { zeltOhneSensoren } from '../home-assistant/tent-request'
+import { kommtVomRaum, kurzauskunft, offeneKernwerte, offeneZelte, standardOffen, zeltenMitZeile } from './zuordnung-zaehlung'
+import type { ZuordnungKontext } from './zuordnung-zaehlung'
+import '../live/verlauf.css'
 import '../home-assistant/home-assistant.css'
 
 /**
- * cc.285: Die EINE Stelle, an der Messgrößen Entitäten zugeordnet werden (vorher: Seite „Home Assistant“ UND der Reiter
- * „Messgrößen“ — beide schrieben dasselbe).
+ * Die EINE Stelle, an der Messgrößen Entitäten zugeordnet werden (cc.285; vorher: Seite „Home Assistant“ UND Reiter „Messgrößen“).
  *
- * <b>Aufbau.</b> Erst die Gruppe (Zelt, RDWC/DWC, Technik, Kameras), dann je Messgröße eine Überschrift mit einer Zeile je Zelt.
- * Das Trockenzelt führt nur Temperatur, Feuchte und VPD und erscheint nur dort.
+ * <b>Aufbau (cc.288).</b> Zwei Ansichten. „Nach Messgröße“: je Messgröße ein einklappbarer Block mit großer Überschrift und
+ * einer Zeile je Zelt (Zeltname einmal, Livewert rechts, Auswahl in voller Breite) — wo ein Kernwert fehlt, steht er offen,
+ * sonst zu mit Kurzauskunft. „Nur offene zeigen“ lässt bei vielen Zelten nur die Zellen stehen, die noch fehlen.
+ * „Nach Zelt“: ein Zelt im Blatt gewählt, darunter seine Messgrößen. Gruppen (Zelt, RDWC/DWC, Technik, Kameras) als
+ * gleich breite Leiste mit der Zahl der offenen Kernwerte. Das Trockenzelt führt nur Temperatur, Feuchte und VPD.
  *
  * <b>Speichern.</b> Jede Zeile speichert für sich (<c>PUT /api/settings/tents/{id}/sensors/{messgroesse}</c>). Die alte
  * Seite hielt einen Entwurf aller Zeilen und ersetzte beim Speichern ALLE Sensorzeilen — ein Entwurf, der vor einer anderen
- * Änderung geladen wurde, löschte sie wieder (Zelt 2, 31.10.2026). Eine Zeile kann das nicht: sie kennt nur sich selbst.
+ * Änderung geladen wurde, löschte sie wieder (Zelt 2, 31.10.2026). Eine Zeile kennt nur sich selbst.
  *
  * <b>VPD</b> ist optional: leer heißt „der Fork rechnet ihn aus Temperatur und Feuchte“, die Zeile zeigt dann den Wert.
  */
 type Gruppe = 'tent' | 'reservoir' | 'hardware' | 'kameras'
+type Ansicht = 'messgroesse' | 'zelt'
 const KAMERAS = 'kameras'
+/** Ab so vielen Zelten steht „Nur offene zeigen“ von Anfang an an. */
+const VIELE_ZELTE = 4
+const ueberschrift = (definition: EntityDefinition) => definition.titel ?? definition.label
 
 export function ZuordnungReiter({ entities }: { entities: HomeAssistantEntity[] }) {
   const [params] = useSearchParams()
@@ -41,6 +51,12 @@ export function ZuordnungReiter({ entities }: { entities: HomeAssistantEntity[] 
   const [raum, setRaum] = useState<RaumStand | null>(null)
   const [kameras, setKameras] = useState<Record<number, string[]>>({})
   const [gruppe, setGruppe] = useState<Gruppe>(ziel.definition?.group ?? 'tent')
+  const [ansicht, setAnsicht] = useState<Ansicht>('messgroesse')
+  const [zeltId, setZeltId] = useState<number | null>(ziel.tentId)
+  // null = nach Voreinstellung (an ab vier Zelten); ein Sprung aus „Mappen“ zeigt alle Zeilen, sonst fehlte die Zielzeile.
+  const [nurOffene, setNurOffene] = useState<boolean | null>(ziel.definition ? false : null)
+  // Von Hand auf- oder zugeklappt; sonst entscheidet die Zählung. Das Ziel eines Sprungs steht offen.
+  const [auf, setAuf] = useState<Record<string, boolean>>(() => (ziel.definition ? { [ziel.definition.metricType]: true } : {}))
   const [laedt, setLaedt] = useState(true)
   const [speichert, setSpeichert] = useState<string | null>(null)
   const [vorschau, setVorschau] = useState<Record<number, number>>({})
@@ -85,18 +101,21 @@ export function ZuordnungReiter({ entities }: { entities: HomeAssistantEntity[] 
     const kameraListe = entities.filter((entity) => entity.domain === 'camera' || entity.domain === 'image')
     return kameraListe.length > 0 ? kameraListe : entities
   }, [entities])
+  const kontext: ZuordnungKontext = useMemo(() => ({
+    raumZelte: new Set(raum?.aussenWerte && raum.fuehler ? tents.filter((zelt) => zelt.raumId).map((zelt) => zelt.id) : []),
+  }), [raum, tents])
 
   const entitaet = (id: string) => entities.find((eintrag) => eintrag.entityId === id.trim())
   const livewert = (id: string) => {
     const treffer = id.trim() ? entitaet(id) : undefined
     return treffer ? haWert(treffer.state, treffer.unitOfMeasurement) : null
   }
-  const zugeordnet = (zelt: TentDto, definition: EntityDefinition) => zelt.sensors.find((sensor) => sensor.metricType === definition.metricType)?.haEntityId ?? ''
+  const entitaetVon = (zelt: TentDto, definition: EntityDefinition) => zelt.sensors.find((sensor) => sensor.metricType === definition.metricType)?.haEntityId ?? ''
 
   /** VPD aus den Entitäten für Temperatur und Feuchte des Zelts — so rechnet auch der Fork, wenn nichts zugeordnet ist. */
   function gerechneterVpd(zelt: TentDto): string | null {
-    const temp = maschinenZahl(entitaet(zugeordnet(zelt, definitionVon('AirTemperature')))?.state)
-    const feuchte = maschinenZahl(entitaet(zugeordnet(zelt, definitionVon('Humidity')))?.state)
+    const temp = maschinenZahl(entitaet(entitaetVon(zelt, definitionVon('AirTemperature')))?.state)
+    const feuchte = maschinenZahl(entitaet(entitaetVon(zelt, definitionVon('Humidity')))?.state)
     if (temp == null || feuchte == null) return null
     const wert = vpdKpa(temp, feuchte)
     return wert == null ? null : `≈ ${haWert(String(wert), 'kPa')}`
@@ -139,73 +158,129 @@ export function ZuordnungReiter({ entities }: { entities: HomeAssistantEntity[] 
   if (laedt) return <V1Skeleton rows={4} label="Zuordnung wird geladen" />
   if (tents.length === 0) return <V1Empty title="Kein Zelt angelegt" action={<Link to="/zelte" className="ls-btn is-primary">Zelt anlegen</Link>} />
 
-  const sichtbar = (zelt: TentDto, definition: EntityDefinition) => zelt.tentType !== 'Drying' || TROCKNUNG_METRIKEN.includes(definition.metricType)
-  const raumWerte = (zelt: TentDto) => (zelt.raumId && raum?.aussenWerte && raum.fuehler ? raum : null)
-  const gruppenChips = [...groups, { key: KAMERAS as Gruppe, label: 'Kameras' }]
+  const nurOffeneAn = nurOffene ?? tents.length >= VIELE_ZELTE
+  const gewaehltesZelt = tents.find((zelt) => zelt.id === zeltId) ?? tents[0]
+  const gruppenLeiste: Array<{ key: Gruppe; label: string }> = [...groups, { key: KAMERAS, label: 'Kameras' }]
+
+  /** Eine Zeile: Name (Zelt oder Messgröße), Livewert rechts, darunter die Auswahl in voller Breite. */
+  function zeile(zelt: TentDto, definition: EntityDefinition, name: string) {
+    if (kommtVomRaum(zelt, definition, kontext) && raum?.fuehler) return <RaumZeile key={zelt.id} name={name} zelt={zelt} definition={definition} raum={raum} entitaet={entitaet} />
+    const id = entitaetVon(zelt, definition)
+    const live = livewert(id)
+    const gerechnet = definition.metricType === 'Vpd' && id.trim() === '' ? gerechneterVpd(zelt) : null
+    const auswahl = messgroessenOptionen(vorbereitet, definition)
+    return (
+      <div key={zelt.id} className="zu-zeile" data-audit="ha-entity-row" data-metric={definition.metricType} data-tent={zelt.id}>
+        <div className="zu-kopf">
+          <span className="zu-zelt">{name}</span>
+          {live != null
+            ? <span className="co-row-value is-good">{live}</span>
+            : gerechnet != null
+              ? <span className="co-row-value">{gerechnet}</span>
+              : id.trim() === '' ? <span className="co-row-value is-faint">nicht gemappt</span> : <span className="co-row-value">gemappt</span>}
+        </div>
+        <V1Select
+          label=""
+          ariaLabel={`${definition.label} · ${zelt.name}`}
+          titel={`${ueberschrift(definition)} · ${zelt.name}`}
+          unterzeile={definition.placeholder}
+          wert={id}
+          platzhalter={definition.placeholder}
+          disabled={speichert === `${zelt.id}-${definition.metricType}`}
+          onWahl={(wert) => void setzen(zelt, definition, wert)}
+          optionen={[{ wert: '', text: '— nicht zugeordnet —', betont: true }, ...auswahl.optionen]}
+          hinweisOben={auswahl.leerHinweis}
+        />
+      </div>
+    )
+  }
+
+  function messgroessenBlock(definition: EntityDefinition) {
+    const mitZeile = zeltenMitZeile(tents, definition)
+    if (mitZeile.length === 0) return null
+    const kurz = kurzauskunft(tents, definition, kontext)
+    const offen = new Set(offeneZelte(tents, definition, kontext).map((zelt) => zelt.id))
+    const istAuf = auf[definition.metricType] ?? standardOffen(tents, definition, kontext)
+    // „Nur offene“: nur die Zellen, die noch fehlen. VPD fehlt nie — er bleibt zu und zeigt alle Zelte.
+    const gezeigt = nurOffeneAn && definition.metricType !== 'Vpd' ? mitZeile.filter((zelt) => offen.has(zelt.id)) : mitZeile
+    return (
+      <div key={definition.metricType} className="zu-block" data-audit="ha-messgroesse">
+        <KlappKopf
+          zu={!istAuf}
+          onUmschalten={() => setAuf((aktuell) => ({ ...aktuell, [definition.metricType]: !istAuf }))}
+          titel={<>{ueberschrift(definition)}{definition.unit && <small> {definition.unit}</small>}</>}
+          titelNormal
+          kurz={kurz.text}
+          ton={kurz.ton}
+          className="zu-kopf-block"
+        />
+        <div hidden={!istAuf}>
+          {definition.hinweis && <p className="ha-metric-hinweis">{definition.hinweis}</p>}
+          <div className="zu-raster">
+            {gezeigt.map((zelt) => zeile(zelt, definition, zelt.name))}
+            {gezeigt.length === 0 && <p className="gc-facts zu-leer">Alles zugeordnet.</p>}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const definitionenDerGruppe = definitions.filter((definition) => definition.group === gruppe)
 
   return (
     <section className="ls-panel ha-zuordnung" data-audit="ha-mapping-panel">
       <div className="ls-panel-head">
         <span className="ls-label">Zuordnung</span>
-        <span className="ls-panel-meta">Messgröße → HA-Entität, je Zelt · speichert sofort</span>
+        <span className="ls-panel-meta">speichert sofort</span>
       </div>
 
       {fehler && <V1Alert message={fehler} tone="warn" />}
       {hinweis && <V1Alert message={hinweis} tone="ok" />}
 
-      <div className="ha-tent-row co-chips" role="tablist" aria-label="Messgruppe">
-        {gruppenChips.map((eintrag) => (
-          <button key={eintrag.key} type="button" role="tab" aria-selected={eintrag.key === gruppe} className={eintrag.key === gruppe ? 'co-chip active' : 'co-chip'} onClick={() => setGruppe(eintrag.key as Gruppe)}>
-            {eintrag.label}
-          </button>
-        ))}
+      <div className="vd-segment is-zwei zu-segmente" role="group" aria-label="Ansicht">
+        <button type="button" className="vd-seg" aria-pressed={ansicht === 'messgroesse'} onClick={() => setAnsicht('messgroesse')}>Nach Messgröße</button>
+        <button type="button" className="vd-seg" aria-pressed={ansicht === 'zelt'} onClick={() => setAnsicht('zelt')}>Nach Zelt</button>
+      </div>
+      <div className="vd-segment zu-segmente" role="group" aria-label="Messgruppe">
+        {gruppenLeiste.map((eintrag) => {
+          const offene = eintrag.key === KAMERAS ? 0 : offeneKernwerte(tents, definitions, eintrag.key, kontext)
+          return (
+            <button key={eintrag.key} type="button" className="vd-seg" aria-pressed={eintrag.key === gruppe} onClick={() => setGruppe(eintrag.key)}>
+              <span>{eintrag.label}</span>
+              {offene > 0 && <small className="zu-zahl">{offene} offen</small>}
+            </button>
+          )
+        })}
       </div>
 
-      {gruppe !== KAMERAS && definitions.filter((definition) => definition.group === gruppe).map((definition) => {
-        const zelte = tents.filter((zelt) => sichtbar(zelt, definition))
-        if (zelte.length === 0) return null
-        const auswahl = messgroessenOptionen(vorbereitet, definition)
-        return (
-          <div key={definition.metricType} data-audit="ha-messgroesse">
-            <div className="ha-messgroesse">
-              <span className="ls-label">{definition.label}</span>
-              {definition.unit && <small>{definition.unit}</small>}
-            </div>
-            {definition.hinweis && <p className="ha-metric-hinweis">{definition.hinweis}</p>}
-            {zelte.map((zelt) => {
-              const vomRaum = RAUMWERTE_METRIKEN.includes(definition.metricType) ? raumWerte(zelt) : null
-              if (vomRaum?.fuehler) return <RaumZeile key={zelt.id} zelt={zelt} definition={definition} raum={vomRaum} entitaet={entitaet} />
-              const id = zugeordnet(zelt, definition)
-              const live = livewert(id)
-              const gerechnet = definition.metricType === 'Vpd' && id.trim() === '' ? gerechneterVpd(zelt) : null
-              return (
-                <div key={zelt.id} className="co-row" data-audit="ha-entity-row" data-metric={definition.metricType} data-tent={zelt.id}>
-                  <span className="ha-metric">{zelt.name}</span>
-                  <V1Select
-                    label={zelt.name}
-                    ariaLabel={`${definition.label} · ${zelt.name}`}
-                    titel={`${definition.label} · ${zelt.name}`}
-                    unterzeile={definition.placeholder}
-                    wert={id}
-                    platzhalter={definition.placeholder}
-                    disabled={speichert === `${zelt.id}-${definition.metricType}`}
-                    onWahl={(wert) => void setzen(zelt, definition, wert)}
-                    optionen={[{ wert: '', text: '— nicht zugeordnet —', betont: true }, ...auswahl.optionen]}
-                    hinweisOben={auswahl.leerHinweis}
-                  />
-                  {live != null
-                    ? <span className="co-row-value is-good">{live}</span>
-                    : gerechnet != null
-                      ? <span className="co-row-value">{gerechnet}</span>
-                      : id.trim() === ''
-                        ? <span className="co-row-value is-faint">nicht gemappt</span>
-                        : <span className="co-row-value">gemappt</span>}
-                </div>
-              )
-            })}
+      {gruppe !== KAMERAS && ansicht === 'messgroesse' && (
+        <>
+          {tents.length >= 3 && (
+            <div className="zu-schalter"><V1Switch label="Nur offene zeigen" checked={nurOffeneAn} onChange={setNurOffene} /></div>
+          )}
+          {definitionenDerGruppe.map(messgroessenBlock)}
+        </>
+      )}
+
+      {gruppe !== KAMERAS && ansicht === 'zelt' && (
+        <>
+          <div className="zu-zeile" data-audit="ha-zelt-wahl">
+            <V1Select
+              label="Zelt"
+              titel="Zelt wählen"
+              wert={String(gewaehltesZelt.id)}
+              onWahl={(wert) => setZeltId(Number(wert))}
+              optionen={tents.map((zelt): V1Option => ({ wert: String(zelt.id), text: zelt.name }))}
+            />
           </div>
-        )
-      })}
+          {definitionenDerGruppe.filter((definition) => zeltenMitZeile([gewaehltesZelt], definition).length > 0).map((definition) => (
+            <div key={definition.metricType} className="zu-block zu-block-zelt" data-audit="ha-messgroesse">
+              {definition.hinweis && <p className="ha-metric-hinweis">{definition.hinweis}</p>}
+              {zeile(gewaehltesZelt, definition, `${ueberschrift(definition)}${definition.unit ? ` · ${definition.unit}` : ''}`)}
+            </div>
+          ))}
+        </>
+      )}
 
       {gruppe === KAMERAS && tents.map((zelt) => {
         const liste = kameras[zelt.id] ?? []
@@ -248,7 +323,7 @@ export function ZuordnungReiter({ entities }: { entities: HomeAssistantEntity[] 
 }
 
 /** Die Außenwerte kommen vom Raum (cc.263): die Zeile zeigt den Raumwert und führt zu Geräte › Räume. */
-function RaumZeile({ zelt, definition, raum, entitaet }: { zelt: TentDto; definition: EntityDefinition; raum: RaumStand; entitaet: (id: string) => HomeAssistantEntity | undefined }) {
+function RaumZeile({ name, zelt, definition, raum, entitaet }: { name: string; zelt: TentDto; definition: EntityDefinition; raum: RaumStand; entitaet: (id: string) => HomeAssistantEntity | undefined }) {
   const temp = entitaet(raum.fuehler?.tempEntityId ?? '')
   const feuchte = entitaet(raum.fuehler?.rhEntityId ?? '')
   let wert: string | null = null
@@ -261,15 +336,16 @@ function RaumZeile({ zelt, definition, raum, entitaet }: { zelt: TentDto; defini
     wert = vpd != null ? haWert(String(vpd), 'kPa') : null
   }
   return (
-    <div className="co-row" data-audit="ha-raumwerte-row" data-metric={definition.metricType} data-tent={zelt.id}>
-      <span className="ha-metric">{zelt.name}</span>
+    <div className="zu-zeile" data-audit="ha-raumwerte-row" data-metric={definition.metricType} data-tent={zelt.id}>
+      <div className="zu-kopf">
+        <span className="zu-zelt">{name}</span>
+        {wert != null ? <span className="co-row-value is-good">{wert}</span> : <span className="co-row-value is-faint">kein Wert</span>}
+      </div>
       <div className="v1-field v1-select">
-        <span>Raumwert</span>
         <button type="button" className="v1-select-feld" disabled aria-label={`${definition.label} kommt vom Raum ${raum.name}`}>
           <span>Vom Raum „{raum.name}“ · <Link to="/geraete?reiter=raeume">Geräte › Räume</Link></span>
         </button>
       </div>
-      {wert != null ? <span className="co-row-value is-good">{wert}</span> : <span className="co-row-value is-faint">kein Wert</span>}
     </div>
   )
 }
