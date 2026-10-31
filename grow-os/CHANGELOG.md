@@ -10,7 +10,7 @@
 **Geräte, Zuordnung, Inventar, Wartung und die Verbindung zu Home Assistant stehen an einer Stelle.**
 
 - **Was war:** Die Technik zum Einrichten lag an drei Orten im Menü: „Geräte & Entitäten“ unter Betrieb, „Home Assistant (Verbindung)“ und „Sensoren & Wartung (erfassen)“ unter Einrichtung. Der Reiter „Wartung“ zeigte nur eine Liste und verwies auf die dritte Seite.
-- **Was jetzt ist:** Unter Einrichtung › Geräte & Entitäten gibt es sechs Reiter: Geräte, Zuordnung, Rollen, Räume, Inventar & Wartung und Verbindung. Inventar & Wartung ist die frühere Seite „Sensoren & Wartung“ mit allem, was sie konnte (Geräte erfassen, Kalibrierung, Wartung); der alte lesende Reiter „Wartung“ ist darin aufgegangen. Verbindung ist die frühere Seite „Home Assistant“.
+- **Was jetzt ist:** Unter Einrichtung › Geräte & Entitäten gibt es sechs Reiter: Geräte, Zuordnung, Rollen, Räume, Inventar & Wartung und Verbindung. Inventar & Wartung ist die frühere Seite „Sensoren & Wartung“ mit allem, was sie konnte (Geräte erfassen, Kalibrierung, Wartung); die Fristen je Gerät aus dem früheren Reiter „Wartung“ stehen oben darüber. Verbindung ist die frühere Seite „Home Assistant“.
 - **Alte Adressen und Lesezeichen** führen weiter: `/sensoren` auf Inventar & Wartung, `/home-assistant` auf Verbindung, alte „Mappen“-Links mit Zelt und Messgröße auf die Zuordnung. Links in Meldungen, Aufgaben und der Handy-Ansicht zeigen direkt auf die neuen Reiter.
 - **Im Menü** entfallen damit zwei Einträge; „Geräte & Entitäten“ steht jetzt in der Gruppe Einrichtung.
 - **Messbar:** Alle bisherigen Prüfungen für die beiden Seiten laufen an den neuen Adressen weiter; die Querschnitte (Handy 360–768 px, Umbruch, Kontrast, Touch-Ziele, Wegweiser) sind grün.

@@ -231,13 +231,13 @@ test.describe('Geräte: ein Speicherfehler', () => {
 
 test.describe('Wartung: Fälligkeit aus den erledigten Einträgen', () => {
   test('eine frisch kalibrierte Sonde ohne Einbaudatum hat eine Frist', async ({ page }) => {
-    await page.goto('/geraete?reiter=wartung')
+    await page.goto('/geraete?reiter=inventar')
     const zeilen = page.locator('.gr-wartung')
     await expect(zeilen.first()).toBeVisible({ timeout: 15000 })
     // Im Demobestand: „Demo pH-Sonde" ohne Einbaudatum, vor drei Tagen
     // kalibriert — Folgetermin in elf Tagen. Vorher stand „ohne Frist".
     const demo = zeilen.filter({ hasText: 'Demo pH-Sonde' })
-    expect(await demo.count(), 'Demo pH-Sonde fehlt im Wartungs-Reiter').toBeGreaterThan(0)
+    expect(await demo.count(), 'Demo pH-Sonde fehlt in Inventar & Wartung').toBeGreaterThan(0)
     for (const zeile of await demo.all()) {
       await expect(zeile.locator('.gr-frist')).toHaveText(/^in \d+ T$/)
     }

@@ -111,7 +111,7 @@ public sealed class WartungDueService
 
     /// <summary>
     /// Wann ist an welchem Gerät was fällig? Die eine Rechnung dafür —
-    /// Assistenten fragen sie ab (<c>api/maintenance-due/fristen</c>),
+    /// der Reiter Inventar &amp; Wartung zeigt sie (<c>api/maintenance-due/fristen</c>),
     /// <see cref="Offen"/> erinnert daraus.
     /// </summary>
     /// <remarks>

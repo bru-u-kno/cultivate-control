@@ -41,7 +41,7 @@ test.describe('Zelt ruhend', () => {
     const api = await playwright.request.newContext({ baseURL })
     try {
       // Ruhend wieder aufheben, sonst steht der geteilte Bestand mit ausgeschaltetem Licht da.
-      const stand = await (await api.get('/api/steuerung/zelt-ruhe')).json()
+      const stand = await (await api.get('/api/steuerung/zelt-ruhe')).json().catch(() => null)
       if (stand?.ruhend) await api.post('/api/steuerung/zelt-ruhe/aktiv')
       await abraeumen(api, eigener)
     } finally {

@@ -14,6 +14,7 @@ import { RaumName } from '../features/geraete/RaumName'
 import { ordneEintraege } from '../features/geraete/eintraegeOrdnung'
 import { rollenPfad } from '../features/geraete/rollenPfad'
 import { EingebettetContext } from '../components/eingebettet'
+import { WartungReiter } from '../features/geraete/WartungReiter'
 import HardwarePage from './HardwarePage'
 import HomeAssistantPage from './HomeAssistantPage'
 import type { HomeAssistantEntity } from '../types'
@@ -296,6 +297,14 @@ export default function GeraetePage() {
     }
   }
 
+  const geraeteNamen = useMemo(() => {
+    const namen = new Map<number, string>()
+    for (const geraet of seite?.geraete ?? []) {
+      if (geraet.hardwareItemId != null) namen.set(geraet.hardwareItemId, geraet.name)
+    }
+    return namen
+  }, [seite])
+
   // Controller zuerst, ihre Ports direkt darunter — die Reihenfolge kommt aus
   // dem Dienst, hier wird nur die Verschachtelung sichtbar gemacht.
   const gruppen = useMemo(() => {
@@ -312,11 +321,11 @@ export default function GeraetePage() {
       .map((geraet) => ({ geraet, kinder: kinder.get(geraet.schluessel) ?? [] }))
   }, [seite])
 
-  if (laedt) return <V1Page eyebrow="Betrieb" title="Geräte & Entitäten"><V1Skeleton rows={6} label="Geräte werden geladen" /></V1Page>
+  if (laedt) return <V1Page eyebrow="Einrichtung" title="Geräte & Entitäten"><V1Skeleton rows={6} label="Geräte werden geladen" /></V1Page>
 
   if (ladeFehler && !seite) {
     return (
-      <V1Page eyebrow="Betrieb" title="Geräte & Entitäten">
+      <V1Page eyebrow="Einrichtung" title="Geräte & Entitäten">
         <V1Alert tone="critical" message={ladeFehler} />
       </V1Page>
     )
@@ -324,7 +333,7 @@ export default function GeraetePage() {
 
   if (!seite || seite.geraete.length === 0) {
     return (
-      <V1Page eyebrow="Betrieb" title="Geräte & Entitäten">
+      <V1Page eyebrow="Einrichtung" title="Geräte & Entitäten">
         <V1Empty
           title="Noch keine Geräte"
           text="Sobald eine Entität irgendwo im Fork benutzt wird — als Messgröße, in einer Steuerung oder für den Strom — steht ihr Gerät hier."
@@ -447,7 +456,7 @@ export default function GeraetePage() {
       {reiter === 'rollen' ? <RollenReiter modulVorwahl={modulParam} onModul={setModul} />
         : reiter === 'raeume' ? <><RaumName /><RollenReiter nurModule={['raum']} schlank /></>
         : reiter === 'zuordnung' ? <ZuordnungReiter entities={entities} />
-        : reiter === 'inventar' ? <EingebettetContext.Provider value><HardwarePage /></EingebettetContext.Provider>
+        : reiter === 'inventar' ? <><WartungReiter geraeteNamen={geraeteNamen} /><EingebettetContext.Provider value><HardwarePage /></EingebettetContext.Provider></>
         : reiter === 'verbindung' ? <EingebettetContext.Provider value><HomeAssistantPage /></EingebettetContext.Provider> : <>
 
       {letzte && (

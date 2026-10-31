@@ -65,12 +65,6 @@ public sealed class JedeRouteHatEinenAufruferTests
         ["POST /api/grows/{growId:int}/plan/startstand"] =
             "Startstand an eine korrigierte Vorlage angleichen — selten, per API, bewusst ohne Knopf.",
 
-        // cc.286: Der lesende Reiter „Wartung“ (nach Gerät sortiert) ist in „Inventar & Wartung“ aufgegangen und rief diesen
-        // Endpunkt; die Rechnung bleibt, weil die Wartungs-Erinnerung dieselbe nutzt und Assistenten die Fristen abfragen.
-        ["GET /api/maintenance-due/fristen"] =
-            "Fristen je Gerät (dieselbe Rechnung wie die Wartungs-Erinnerung) zum Abfragen durch Assistenten und Auswertungen — "
-            + "die Oberfläche zeigt sie seit cc.286 in Inventar & Wartung aus den Gerätedaten.",
-
         ["GET /api/system/api-manifest"] =
             "Das Verzeichnis, ueber das man die uebrigen Betriebs-Endpunkte findet. Wer es "
             + "aufruft, sucht sie gerade — ein Knopf in der Oberflaeche waere hier sinnlos.",
