@@ -243,11 +243,11 @@ app.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 // Fork AI (forkai.217): In welchem Namensraum heißen die Objekte des Forks in Home Assistant? Einmal entscheiden,
 // bevor ein Dienst eine Kennung benutzt.
 KennungsRaumWahl.BeimStart(app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
-// Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" (bis cc.293 setzte der Abschluss den Status nicht). Idempotent: beim zweiten Start 0.
+// Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" und ihre Abweichungs-Risiken sind geschlossen (bis cc.294 setzte der Abschluss beides nicht). Idempotent: beim zweiten Start 0.
 try
 {
-    var nachgezogen = GrowAbschluss.BestandNachziehen(app.Services.GetRequiredService<SetupRepository>(), app.Services.GetRequiredService<GrowRepository>());
-    if (nachgezogen > 0) app.Logger.LogInformation("Pflanzen abgeschlossener Grows auf „geerntet“ gestellt: {Anzahl}.", nachgezogen);
+    var nachgezogen = GrowAbschluss.BestandNachziehen(app.Services.GetRequiredService<SetupRepository>(), app.Services.GetRequiredService<GrowRepository>(), app.Services.GetRequiredService<HardwareRepository>());
+    if (nachgezogen > 0) app.Logger.LogInformation("Bestand abgeschlossener Grows nachgezogen (Pflanzen „geerntet“, Abweichungen geschlossen): {Anzahl}.", nachgezogen);
 }
 catch (Exception ex)
 {

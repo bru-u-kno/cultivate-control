@@ -22,6 +22,7 @@ public sealed class GrowsApiController : ApiControllerBase
     private readonly AuditRepository _auditRepository;
     private readonly SystemAuditRepository _systemAudit;
     private readonly SetupRepository _setups;
+    private readonly HardwareRepository? _hardware;
     private readonly HydroSetupRepository _hydro;
     private readonly DeviationAnalyzerService _deviationAnalyzer;
     private readonly TreatmentRecommender _treatmentRecommender;
@@ -37,8 +38,10 @@ public sealed class GrowsApiController : ApiControllerBase
         HydroSetupRepository hydro,
         SystemAuditRepository systemAudit,
         Services.GrowPlan.GrowPlanService? plaene = null,
-        HarvestRepository? ernten = null)
+        HarvestRepository? ernten = null,
+        HardwareRepository? hardware = null)
     {
+        _hardware = hardware;
         _plaene = plaene;
         _ernten = ernten;
         _repository = repository;
@@ -366,6 +369,7 @@ public sealed class GrowsApiController : ApiControllerBase
         if (grow.Status == GrowStatus.Completed && existing.Status != GrowStatus.Completed)
         {
             GrowAbschluss.PflanzenAlsGeerntet(_setups, id, grow.EndDate ?? DateTime.Today);
+            if (_hardware is not null) GrowAbschluss.AbweichungenSchliessen(_hardware, id, DateTime.UtcNow);
         }
 
         // Fork AI (Grow-Plan): wird einem Grow erstmals ein Programm gegeben, bekommt er seinen Plan;
@@ -502,6 +506,7 @@ public sealed class GrowsApiController : ApiControllerBase
             existing.EndDate ??= EndeAusErnte(id);
             _repository.UpdateGrow(existing);
             GrowAbschluss.PflanzenAlsGeerntet(_setups, id, existing.EndDate ?? DateTime.Today); // Fork AI: Pflanzen „geerntet"
+            if (_hardware is not null) GrowAbschluss.AbweichungenSchliessen(_hardware, id, DateTime.UtcNow);
             _plaene?.Abgleichen(existing); // Fork AI (Grow-Plan): Plan einfrieren
             _auditRepository.Add(new AuditEntry
             {
