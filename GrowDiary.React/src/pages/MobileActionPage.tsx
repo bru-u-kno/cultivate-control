@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { apiFetch } from '../api'
+import { Link, useNavigate } from 'react-router-dom'
+import { apiFetch, formatApiError } from '../api'
 import { wegZurRoutine } from '../features/changeouts/routine-weg'
 import type { CuringJar } from '../features/curing/curing-typen'
 import { faelligText } from '../features/curing/curing-typen'
@@ -12,13 +12,14 @@ import { KlappBereich } from '../components/Klapp'
 import { istOffen, istWiederOkay } from '../features/risks/risiko-zeit'
 import { TASKS_CHANGED_EVENT } from '../useNavCounts'
 import { INVENTAR_PFAD } from '../features/geraete/technik-pfade'
+import { reinigungsWeg, starteReinigung, type ReinigungNachGrow } from '../features/reinigung/reinigung-api'
 
 type FaelligeRoutine = { sopId: string; name: string; severity: string; tageSeit: number; intervallTage: number; meldung: string }
 type PumpBefund = { schluessel: string; name: string; stufe: string; meldung: string; herkunft: string }
 type PumpZeltLage = { tentId: number; tentName: string; befunde: PumpBefund[] }
 type WartungsPunkt = { bereich: string; titel: string; stufe: string; meldung: string; herkunft: string }
-type ActionState = { grows: GrowSummary[]; risks: RiskEventDto[]; tasks: GrowTaskDto[]; maintenance: MaintenanceEventDto[]; calibration: CalibrationEventDto[]; sops: SopInstanceDto[]; hardware: HardwareItemDto[]; dueByGrow: Array<{ grow: GrowSummary; items: FaelligeRoutine[] }>; pumpen: PumpZeltLage[]; wartung: WartungsPunkt[]; glaeser: CuringJar[]; issues: string[]; geladenUm: number }
-const initial: ActionState = { grows: [], risks: [], tasks: [], maintenance: [], calibration: [], sops: [], hardware: [], dueByGrow: [], pumpen: [], wartung: [], glaeser: [], issues: [], geladenUm: 0 }
+type ActionState = { grows: GrowSummary[]; risks: RiskEventDto[]; tasks: GrowTaskDto[]; maintenance: MaintenanceEventDto[]; calibration: CalibrationEventDto[]; sops: SopInstanceDto[]; hardware: HardwareItemDto[]; dueByGrow: Array<{ grow: GrowSummary; items: FaelligeRoutine[] }>; pumpen: PumpZeltLage[]; wartung: WartungsPunkt[]; glaeser: CuringJar[]; reinigungen: ReinigungNachGrow[]; issues: string[]; geladenUm: number }
+const initial: ActionState = { grows: [], risks: [], tasks: [], maintenance: [], calibration: [], sops: [], hardware: [], dueByGrow: [], pumpen: [], wartung: [], glaeser: [], reinigungen: [], issues: [], geladenUm: 0 }
 const riskRank: Record<string, number> = { Critical: 0, Warning: 1, Info: 2 }
 
 function MobileActionPage() {
@@ -27,6 +28,19 @@ function MobileActionPage() {
   const [refresh, setRefresh] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
   const [erledigt, setErledigt] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const [reinigungFehler, setReinigungFehler] = useState<string | null>(null)
+
+  // „Starten“ legt die Reinigung an und führt auf die Seite des Grows, wo seine Routinen stehen.
+  const reinigungStarten = async (r: ReinigungNachGrow) => {
+    setReinigungFehler(null)
+    try {
+      await starteReinigung(r)
+      navigate(reinigungsWeg(r))
+    } catch (caught) {
+      setReinigungFehler(formatApiError(caught, 'Die Reinigung ließ sich nicht starten.'))
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -54,6 +68,8 @@ function MobileActionPage() {
       // der Ernte gilt ein Grow als beendet, das Aushaerten faengt aber genau
       // dann erst an. Wer hier nach laufenden Grows filtert, sieht nie ein Glas.
       const glaeser = await safe<CuringJar[]>('Aushaerten', '/api/curing/jars', [])
+      // Nach dem Abschluss eines Grows: die empfohlene Reinigung des leeren Systems.
+      const reinigungen = await safe<ReinigungNachGrow[]>('Reinigung', '/api/reinigung-nach-grow', [])
       const activeGrows = grows.filter((grow) => grow.status === 'Running' || grow.status === 'Planning')
       const taskLists = await Promise.all(activeGrows.map((grow) => safe<GrowTaskDto[]>(`Tasks ${grow.id}`, `/api/grows/${grow.id}/tasks`, [])))
       const sopLists = await Promise.all(activeGrows.map((grow) => safe<SopInstanceDto[]>(`SOP ${grow.id}`, `/api/sop-instances?growId=${grow.id}`, [])))
@@ -64,7 +80,7 @@ function MobileActionPage() {
         .map((grow, index) => ({ grow, items: dueLists[index] ?? [] }))
         .filter((entry) => entry.items.length > 0)
       if (controller.signal.aborted) return
-      setState({ grows, risks, maintenance: maintenance.filter((item) => item.status === 'Planned'), calibration: calibration.filter((item) => item.status === 'Planned'), tasks: taskLists.flat().filter((task) => task.status === 'Open'), sops: sopLists.flat().filter((sop) => sop.status === 'Active'), hardware, dueByGrow, pumpen, wartung, glaeser, issues, geladenUm: Date.now() })
+      setState({ grows, risks, maintenance: maintenance.filter((item) => item.status === 'Planned'), calibration: calibration.filter((item) => item.status === 'Planned'), tasks: taskLists.flat().filter((task) => task.status === 'Open'), sops: sopLists.flat().filter((sop) => sop.status === 'Active'), hardware, dueByGrow, pumpen, wartung, glaeser, reinigungen, issues, geladenUm: Date.now() })
       setLoading(false)
     }
     void load()
@@ -186,7 +202,7 @@ function MobileActionPage() {
               Risiken: wer den Wasserwechsel nachholt, verhindert das Risiko,
               statt es spaeter zu bestaetigen. Im Expertenmodus kommt die Liste
               leer zurueck und das Panel verschwindet von selbst. */}
-          {state.dueByGrow.length > 0 && (
+          {(state.dueByGrow.length > 0 || state.reinigungen.length > 0) && (
             <section className="ls-panel af-col" data-audit="due-sops-section">
               <div className="ls-panel-head">
                 <span className="ls-label">Fällige Routinen</span>
@@ -196,6 +212,21 @@ function MobileActionPage() {
                   Text und Trennlinien standen 14 px weiter innen als bei den
                   drei Nachbarkarten. */}
               <div className="af-due-list">
+                {/* Fork AI: Nach dem Abschluss eines Grows — Reinigung des leeren Systems, ganz oben. */}
+                {state.reinigungen.map((r) => (
+                  <div key={`reinigung-${r.growId}`} className="af-due-grow" data-audit="reinigung-nach-grow">
+                    <div className="co-row-title">{r.zeltName ? `${r.zeltName} · ` : ''}Grow {r.growName} abgeschlossen</div>
+                    <div className="co-row">
+                      <span className="co-row-text is-due">{r.meldung}</span>
+                      <div className="co-row-end">
+                        {r.aktiveInstanzId != null
+                          ? <Link className="ls-btn is-small" to={reinigungsWeg(r)}>Öffnen</Link>
+                          : <button type="button" className="ls-btn is-small" onClick={() => void reinigungStarten(r)}>Starten</button>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {reinigungFehler && <V1Alert tone="critical" message={reinigungFehler} />}
                 {state.dueByGrow.map(({ grow, items }) => (
                   <div key={grow.id} className="af-due-grow">
                     <div className="co-row-title">{grow.name}</div>

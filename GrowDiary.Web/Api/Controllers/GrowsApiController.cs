@@ -361,6 +361,13 @@ public sealed class GrowsApiController : ApiControllerBase
 
         _repository.UpdateGrow(grow);
 
+        // Fork AI: Wird der Grow über das Formular abgeschlossen (Status „Abgeschlossen"), sind seine Pflanzen geerntet —
+        // derselbe Endstand wie über „Ernte speichern & abschließen".
+        if (grow.Status == GrowStatus.Completed && existing.Status != GrowStatus.Completed)
+        {
+            GrowAbschluss.PflanzenAlsGeerntet(_setups, id, grow.EndDate ?? DateTime.Today);
+        }
+
         // Fork AI (Grow-Plan): wird einem Grow erstmals ein Programm gegeben, bekommt er seinen Plan;
         // wird er abgeschlossen oder wieder geöffnet, folgt der Endstand.
         if (_plaene is not null && _repository.GetGrow(id) is { } gespeichert)
@@ -494,6 +501,7 @@ public sealed class GrowsApiController : ApiControllerBase
             existing.Status = GrowStatus.Completed;
             existing.EndDate ??= EndeAusErnte(id);
             _repository.UpdateGrow(existing);
+            GrowAbschluss.PflanzenAlsGeerntet(_setups, id, existing.EndDate ?? DateTime.Today); // Fork AI: Pflanzen „geerntet"
             _plaene?.Abgleichen(existing); // Fork AI (Grow-Plan): Plan einfrieren
             _auditRepository.Add(new AuditEntry
             {

@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "1.0",
+  "id": "system-cleaning-empty",
+  "name": "Reinigung des leeren Systems",
+  "type": "Linear",
+  "estimatedDurationMinutes": 180,
+  "applicableSetups": [
+    "RDWC",
+    "DWC"
+  ],
+  "triggers": [
+    {
+      "type": "UserInitiated"
+    }
+  ],
+  "requiredMaterials": [
+    "Schwamm + Bürste (sauber)",
+    "HOCl konzentriert (für ORP 500–600 mV)",
+    "H2O2 (12% oder 35%, Lebensmittelqualität)",
+    "RO-Wasser (ausreichend für mehrere Spülungen)",
+    "pH/ORP-Messgeräte"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "order": 1,
+      "title": "Vorreinigung",
+      "stepType": "Action",
+      "description": "Grobe Verunreinigungen, Wurzelreste und Ablagerungen manuell entfernen.",
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s2",
+      "order": 2,
+      "title": "Reservoir entleeren",
+      "stepType": "Action",
+      "description": "Gesamte Lösung vollständig ablassen.",
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s3",
+      "order": 3,
+      "title": "HOCl-Spüllösung ansetzen",
+      "stepType": "Measurement",
+      "description": "RO-Wasser + HOCl bis ORP 500–600 mV. Lösung ins Reservoir füllen.",
+      "expectedInputs": [
+        "orp"
+      ],
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s4",
+      "order": 4,
+      "title": "HOCl-Zirkulation",
+      "stepType": "Wait",
+      "description": "Pumpen und Luftpumpen aktiv lassen. Parallel Reservoir-Innenwände und Deckel mit Schwamm reinigen.",
+      "waitMinutes": 30,
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s5",
+      "order": 5,
+      "title": "HOCl ablassen",
+      "stepType": "Action",
+      "description": "HOCl-Lösung vollständig ablassen und entsorgen.",
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s6",
+      "order": 6,
+      "title": "H2O2-Reinigung ansetzen",
+      "stepType": "Action",
+      "description": "H2O2 je nach Konzentration: 3% → 25 ml/L (90 Min Einwirkzeit), 12% → 10 ml/L (60 Min), 35% → 3 ml/L (60 Min). Ins Reservoir füllen.",
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s7",
+      "order": 7,
+      "title": "H2O2-Zirkulation",
+      "stepType": "Wait",
+      "description": "H2O2-Lösung bei laufenden Pumpen zirkulieren lassen. 60 Min (bei 12% oder 35%) bzw. 90 Min (bei 3%).",
+      "waitMinutes": 60,
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s8",
+      "order": 8,
+      "title": "RO-Spülung",
+      "stepType": "Action",
+      "description": "System 30–60 Min mit reinem RO-Wasser durchspülen. H2O2-Rückstände vollständig entfernen.",
+      "waitMinutes": 45,
+      "photoRequired": false,
+      "photoRecommended": false
+    },
+    {
+      "id": "s9",
+      "order": 9,
+      "title": "System leer und sauber",
+      "stepType": "Action",
+      "description": "RO-Spülwasser vollständig ablassen. Das System bleibt leer und sauber bis zum nächsten Grow; frische Nährstofflösung wird erst dann angesetzt.",
+      "photoRequired": false,
+      "photoRecommended": false
+    }
+  ],
+  "sources": [
+    {
+      "type": "UserDocument",
+      "title": "SOP-RDWC-CAN-S1: Behandlung von Wurzelfäule",
+      "reference": "Abschnitt 6: Systemreinigung ohne Abbau",
+      "credibility": "High"
+    }
+  ]
+}

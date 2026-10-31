@@ -10,6 +10,7 @@ import { zahlOderNull, feldText } from '../zahlenfeld'
 import '../features/harvest/harvest.css'
 import { ZeltRuheBlatt } from '../features/zeltruhe/ZeltRuheBlatt'
 import { laufendeAuswahl, ladeZeltRuhe, type ZeltRuheGeraet } from '../features/zeltruhe/zeltruhe-api'
+import { ladeReinigungen, reinigungsWeg, type ReinigungNachGrow } from '../features/reinigung/reinigung-api'
 
 interface HarvestFormState {
   harvestedAtLocal: string
@@ -37,6 +38,7 @@ function HarvestPage() {
   const [error, setError] = useState<string | null>(null)
   // Fork AI (cc.277): Nach dem Abschluss fragt das Blatt, ob die Geräte im leeren Zelt ausgeschaltet werden sollen.
   const [ruheFrage, setRuheFrage] = useState<ZeltRuheGeraet[] | null>(null)
+  const [reinigung, setReinigung] = useState<ReinigungNachGrow | null>(null)
   // Fork AI (Grow-Plan): den eingefrorenen Endstand gleich als Programm ablegen.
   const [alsProgramm, setAlsProgramm] = useState(false)
   const [programmName, setProgrammName] = useState('')
@@ -137,7 +139,12 @@ function HarvestPage() {
       if (complete) {
         // Die Frage ist ein Vorschlag: Fehlt der Zugang oder läuft nichts davon, geht es wie bisher ins Archiv.
         const laufend = await ladeZeltRuhe().then(laufendeAuswahl).catch(() => [])
-        if (laufend.length > 0) setRuheFrage(laufend)
+        if (laufend.length > 0) {
+          // Fork AI: die empfohlene Reinigung dieses Grows steht als Angebot im Blatt (fehlt sie, bleibt das Blatt wie es war).
+          const empfohlen = await ladeReinigungen().then((liste) => liste.find((r) => String(r.growId) === String(growId)) ?? null).catch(() => null)
+          setReinigung(empfohlen)
+          setRuheFrage(laufend)
+        }
         else navigate('/archiv')
       } else {
         navigate(`/grows/${growId}`)
@@ -323,7 +330,7 @@ function HarvestPage() {
           </div>
         </form>
       )}
-      {ruheFrage && <ZeltRuheBlatt geraete={ruheFrage} onFertig={() => navigate('/archiv')} />}
+      {ruheFrage && <ZeltRuheBlatt geraete={ruheFrage} reinigung={reinigung} onFertig={() => navigate('/archiv')} onReinigung={(r) => navigate(reinigungsWeg(r))} />}
     </V1Page>
   )
 }

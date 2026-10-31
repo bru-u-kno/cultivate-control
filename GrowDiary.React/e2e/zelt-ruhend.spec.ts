@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { darfUeberspringen } from './pflicht'
 import { abraeumen, eigenenGrowAnlegen, type EigenerGrow } from './eigener-grow'
+import { gibSchloss, nimmSchloss } from './schloss'
 
 /**
  * „Zelt ruhend" (cc.277): ruhend schalten, wieder aktiv, und die Frage nach der Ernte.
@@ -28,6 +29,10 @@ async function blockOeffnen(page: Page) {
 }
 
 test.describe('Zelt ruhend', () => {
+  // Der Fall schreibt in den geteilten Bestand: das Schloss hält andere Dateien fern, solange er läuft.
+  test.beforeEach(async () => { await nimmSchloss() })
+  test.afterEach(() => { gibSchloss() })
+
   test.beforeAll(async ({ playwright, baseURL }) => {
     const api = await playwright.request.newContext({ baseURL })
     try {

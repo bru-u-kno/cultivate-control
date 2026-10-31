@@ -13,3 +13,7 @@
 .zr-blatt-knopf { width: 100%; }
 /* Im Blatt steht der Hinweis über dem Knopf — ohne Abstand klebt er daran. */
 .forkai-sheet .zr-liste { margin-bottom: var(--s-3); }
+/* Fork AI: Das Angebot „Danach: Reinigung“ unter den Geräten im Blatt nach der Ernte. */
+.zr-reinigung { display: grid; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--hair); border-radius: 10px; }
+.zr-reinigung small { color: var(--muted); }
+.zr-reinigung .v1-button { justify-self: start; }

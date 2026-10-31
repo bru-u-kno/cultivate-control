@@ -20,6 +20,7 @@ public sealed class AlertEvaluationService
     private readonly TargetValueService? _targetValues;
     private readonly Services.Knowledge.KnowledgeBaseLoader? _knowledge;
     private readonly HydroSetupRepository? _hydroSetups;
+    private readonly SteuerungRepository? _steuerung;
     private readonly ILogger<AlertEvaluationService> _logger;
 
     public AlertEvaluationService(
@@ -31,7 +32,8 @@ public sealed class AlertEvaluationService
         HarvestRepository? harvests = null,
         TargetValueService? targetValues = null,
         Services.Knowledge.KnowledgeBaseLoader? knowledge = null,
-        HydroSetupRepository? hydroSetups = null)
+        HydroSetupRepository? hydroSetups = null,
+        SteuerungRepository? steuerung = null)
     {
         _rules = rules;
         _notifications = notifications;
@@ -41,6 +43,7 @@ public sealed class AlertEvaluationService
         _targetValues = targetValues;
         _knowledge = knowledge;
         _hydroSetups = hydroSetups;
+        _steuerung = steuerung;
         _logger = logger;
     }
 
@@ -89,6 +92,14 @@ public sealed class AlertEvaluationService
     {
         var rules = _rules.GetEnabledForTent(tent.Id);
         if (rules.Count == 0)
+        {
+            return;
+        }
+
+        // Ein Zelt ohne Pflanzen hat nichts zu melden: nach der Ernte feuerte der Feuchte-Alarm weiter aufs Handy (77 % im
+        // leeren Zelt, Abluft aus, Zuluft an). Das Zelt schweigt, wenn es von Hand auf „ruhend" steht oder leer ist (siehe
+        // SchweigtZelt). Das gilt für das ganze Zelt; der Hinweis zum Reservoir weiter unten betrifft nur das Trocknungsfenster.
+        if (ZeltSchweigt(tent))
         {
             return;
         }
@@ -228,6 +239,36 @@ public sealed class AlertEvaluationService
             .OfType<TentAlertRule>()
             .ToList();
     }
+
+    /// <summary>Soll dieses Zelt keine Alarme melden? Siehe <see cref="SchweigtZelt"/>.</summary>
+    private bool ZeltSchweigt(Tent tent)
+    {
+        if (_grows is null) return false;
+
+        var ruhend = _steuerung is not null && ZeltRuheService.IstRuhend(_steuerung, _grows, tent.Id);
+        var aktiveGrows = _grows.GetActiveGrowsForTent(tent.Id).Count;
+        var trocknung = DryingWindow.DayFor(_grows, _harvests, tent.Id, DateTime.Today) is not null;
+        var aktivePflanzen = _grows.GetSetupsForTent(tent.Id)
+            .Any(setup => _grows.GetPlantsBySetup(setup.Id).Any(p => p.PlantStatus == PlantStatus.Active));
+        return SchweigtZelt(ruhend, tent.TentType, aktiveGrows, trocknung, aktivePflanzen);
+    }
+
+    /// <summary>
+    /// Die Regel, wann ein Zelt keine Alarme meldet — rein, damit sie sich ohne Datenbank prüfen lässt.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Von Hand ruhend:</b> Wer „Zelt ruhend" drückt, hat das Zelt leer gemeldet — aber nur, solange kein Grow darin
+    /// läuft oder geplant ist. Steht danach ein neuer Grow im Zelt, meldet es sofort wieder, auch wenn das Zelt noch „ruhend"
+    /// heißt (etwa weil das Wecken teilweise scheiterte): ein wachsender Grow darf nie am Alarm vorbei laufen.</para>
+    /// <para><b>Von selbst:</b> nur ein Produktions- oder Mehrzweckzelt ohne laufenden Grow, ohne aktive Pflanze und
+    /// außerhalb des Trocknungsfensters. Nicht Trockenzelt (dort hängt die Ernte), nicht Mutter, Anzucht, Quarantäne (dort
+    /// stehen Pflanzen ohne Grow), und nicht im Trocknungsfenster: trocknet die Ernte im eigenen Zelt, sind Feuchte und
+    /// Temperatur dort genau das, worauf es ankommt.</para>
+    /// </remarks>
+    public static bool SchweigtZelt(bool ruhend, TentType zweck, int aktiveGrows, bool imTrocknungsfenster, bool aktivePflanzen)
+        => (ruhend && aktiveGrows == 0)
+           || (zweck is TentType.Production or TentType.MultiPurpose
+               && aktiveGrows == 0 && !imTrocknungsfenster && !aktivePflanzen);
 
     private Planband PlanbandFuer(Tent tent)
     {

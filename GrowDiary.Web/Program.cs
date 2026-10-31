@@ -157,6 +157,7 @@ builder.Services.AddScoped<EntfeuchterSteuerungService>();
 builder.Services.AddScoped<EntfeuchterZusatzSteuerungService>(); // Fork AI (A-009)
 builder.Services.AddScoped<ZeltRuheService>(); // Fork AI (cc.277): Zelt ruhend
 builder.Services.AddScoped<IZeltRuheWerkzeug, ZeltRuheWerkzeug>();
+builder.Services.AddScoped<ReinigungNachGrowService>(); // Fork AI: Reinigung des leeren Systems nach dem Grow
 // Fork AI (forkai.45): stellt fest, welche Helfer und Automationen einer
 // Steuerung in Home Assistant fehlen.
 builder.Services.AddScoped<SteuerungBestandService>();
@@ -240,6 +241,16 @@ app.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 // Fork AI (forkai.217): In welchem Namensraum heißen die Objekte des Forks in Home Assistant? Einmal entscheiden,
 // bevor ein Dienst eine Kennung benutzt.
 KennungsRaumWahl.BeimStart(app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
+// Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" (bis cc.293 setzte der Abschluss den Status nicht). Idempotent: beim zweiten Start 0.
+try
+{
+    var nachgezogen = GrowAbschluss.BestandNachziehen(app.Services.GetRequiredService<SetupRepository>(), app.Services.GetRequiredService<GrowRepository>());
+    if (nachgezogen > 0) app.Logger.LogInformation("Pflanzen abgeschlossener Grows auf „geerntet“ gestellt: {Anzahl}.", nachgezogen);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Pflanzen abgeschlossener Grows: Korrektur beim Start fehlgeschlagen.");
+}
 AussenBeschriftung.Quelle = app.Services.GetRequiredService<RaumService>().AussenBeschriftungsName; // cc.263: „Keller Temp." statt „Außen Temp."
 
 // Gespeicherte Nullbilder der Wassersonde (pH 0 und EC 0 im selben Augenblick)

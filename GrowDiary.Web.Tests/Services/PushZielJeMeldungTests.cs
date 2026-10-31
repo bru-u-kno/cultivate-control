@@ -127,6 +127,86 @@ public sealed class PushZielJeMeldungTests : IDisposable
         Assert.DoesNotContain(handler.Requests, r => r.Uri.AbsolutePath.Contains("/api/services/notify/", StringComparison.Ordinal));
     }
 
+    // ---- Zelt ruhend / leeres Zelt: die Verdrahtung der Alarm-Regel (SchweigtZelt) gegen echte Daten ----
+
+    private static readonly Dictionary<string, HomeAssistantState> PhZuNiedrig = new()
+    {
+        ["reservoir-ph"] = new HomeAssistantState { State = "5", NumericValue = 5.0 },
+    };
+
+    private AlertEvaluationService AlarmeMitGrows(RecordingHttpHandler handler)
+        => new(_rules, Benachrichtigung(handler), NullLogger<AlertEvaluationService>.Instance,
+               grows: _growRepository, steuerung: new SteuerungRepository(_paths));
+
+    private static bool PushGesendet(RecordingHttpHandler handler)
+        => handler.Requests.Any(r => r.Uri.AbsolutePath.Contains("/api/services/notify/", StringComparison.Ordinal));
+
+    private int NeuerGrow(GrowStatus status)
+        => _growRepository.CreateGrow(new GrowRun { TentId = _tent.Id, Name = "Lauf", StartDate = new DateTime(2026, 5, 1), Status = status });
+
+    [Fact]
+    public async Task Mit_laufendem_Grow_im_Zelt_meldet_es_wie_bisher()
+    {
+        var handler = Handler();
+        _tent.TentType = TentType.Production;
+        NeuerGrow(GrowStatus.Running);
+
+        await AlarmeMitGrows(handler).EvaluateAsync(_tent, PhZuNiedrig);
+
+        Assert.True(PushGesendet(handler), "Ein Zelt mit laufendem Grow muss bei einer Verletzung melden.");
+    }
+
+    [Theory]
+    [InlineData(TentType.Production)]
+    [InlineData(TentType.MultiPurpose)]
+    public async Task Nach_dem_Abschluss_ist_das_Zelt_leer_und_schweigt(TentType zweck)
+    {
+        // Der Anlass (30.10.2026): nach der Ernte klingelte der Feuchte-Alarm weiter aufs Handy.
+        var handler = Handler();
+        _tent.TentType = zweck;
+        NeuerGrow(GrowStatus.Completed);
+
+        await AlarmeMitGrows(handler).EvaluateAsync(_tent, PhZuNiedrig);
+
+        Assert.False(PushGesendet(handler), "Ein leeres Zelt ohne laufenden Grow hat nichts zu melden.");
+    }
+
+    [Theory]
+    [InlineData(TentType.Mother)]
+    [InlineData(TentType.Propagation)]
+    [InlineData(TentType.Quarantine)]
+    public async Task Mutter_Anzucht_und_Quarantaene_melden_auch_ohne_Grow(TentType zweck)
+    {
+        var handler = Handler();
+        _tent.TentType = zweck;
+
+        await AlarmeMitGrows(handler).EvaluateAsync(_tent, PhZuNiedrig);
+
+        Assert.True(PushGesendet(handler), "Dort stehen Pflanzen ohne Grow — der Alarm gilt.");
+    }
+
+    [Fact]
+    public async Task Von_Hand_ruhend_schweigt_auch_ein_Mutterzelt_aber_nicht_mit_laufendem_Grow()
+    {
+        var steuerung = new SteuerungRepository(_paths);
+        steuerung.SetEinstellungen(ZeltRuheService.Modul, new ZeltRuheEinstellungen { Ruhend = true });
+        _tent.TentType = TentType.Mother;
+        var growId = NeuerGrow(GrowStatus.Completed);
+
+        // Ruhend und kein Grow darin → still.
+        var still = Handler();
+        await AlarmeMitGrows(still).EvaluateAsync(_tent, PhZuNiedrig);
+        Assert.False(PushGesendet(still), "Von Hand ruhend: das Zelt meldet nichts.");
+
+        // Ein neuer Grow im Zelt: es meldet sofort wieder, auch wenn der Zustand noch „ruhend“ heißt.
+        var grow = _growRepository.GetGrow(growId)!;
+        grow.Status = GrowStatus.Running;
+        _growRepository.UpdateGrow(grow);
+        var laut = Handler();
+        await AlarmeMitGrows(laut).EvaluateAsync(_tent, PhZuNiedrig);
+        Assert.True(PushGesendet(laut), "Ein laufender Grow darf nie am Alarm vorbei laufen.");
+    }
+
     private static string Push(RecordingHttpHandler handler)
         => Assert.Single(handler.Requests, r => r.Uri.AbsolutePath.Contains("/api/services/notify/", StringComparison.Ordinal)).Body!;
 

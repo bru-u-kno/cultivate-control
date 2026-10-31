@@ -3,6 +3,7 @@ import { formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Switch } from '../../components/v1'
 import { V1Sheet } from '../../components/V1Sheet'
 import { schalteRuhend, type ZeltRuheGeraet } from './zeltruhe-api'
+import { starteReinigung, type ReinigungNachGrow } from '../reinigung/reinigung-api'
 import './zeltruhe.css'
 
 /**
@@ -12,11 +13,33 @@ import './zeltruhe.css'
  * UND gerade läuft; läuft nichts davon, erscheint es gar nicht (siehe `laufendeAuswahl`). Die Frage ist ein Vorschlag:
  * „Alles laufen lassen" ändert nichts.
  */
-export function ZeltRuheBlatt({ geraete, onFertig }: { geraete: ZeltRuheGeraet[]; onFertig: () => void }) {
+export function ZeltRuheBlatt({ geraete, reinigung, onFertig, onReinigung }: {
+  geraete: ZeltRuheGeraet[]
+  /** Fork AI: die empfohlene Reinigung des leeren Systems — als Angebot unter den Geräten. */
+  reinigung?: ReinigungNachGrow | null
+  onFertig: () => void
+  /** Die Reinigung wurde gestartet: wohin es weitergeht (statt in das Archiv). */
+  onReinigung?: (r: ReinigungNachGrow) => void
+}) {
   const [wahl, setWahl] = useState<Record<string, boolean>>(() => Object.fromEntries(geraete.map((g) => [g.kennung, true])))
   const [arbeitet, setArbeitet] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const gewaehlt = geraete.filter((g) => wahl[g.kennung]).map((g) => g.kennung)
+  const [reinigungLaeuft, setReinigungLaeuft] = useState(false)
+
+  const reinigungStarten = async () => {
+    if (!reinigung) return
+    setReinigungLaeuft(true)
+    setFehler(null)
+    try {
+      await starteReinigung(reinigung)
+      onReinigung?.(reinigung)
+    } catch (caught) {
+      setFehler(formatApiError(caught, 'Die Reinigung ließ sich nicht starten.'))
+    } finally {
+      setReinigungLaeuft(false)
+    }
+  }
 
   const ruhend = async () => {
     setArbeitet(true)
@@ -58,6 +81,15 @@ export function ZeltRuheBlatt({ geraete, onFertig }: { geraete: ZeltRuheGeraet[]
             hint={`jetzt: ${g.jetzt}`}
           />
         ))}
+        {reinigung && (
+          <div className="zr-reinigung" data-audit="reinigung-im-blatt">
+            <strong>Danach: Reinigung</strong>
+            <small>{reinigung.meldung} Sie steht danach unter Aufgaben.</small>
+            <V1Button variant="secondary" disabled={reinigungLaeuft} onClick={() => void reinigungStarten()} audit="reinigung-jetzt-starten">
+              {reinigungLaeuft ? 'Startet…' : reinigung.aktiveInstanzId != null ? 'Reinigung öffnen' : 'Reinigung jetzt starten'}
+            </V1Button>
+          </div>
+        )}
         <p className="zr-hinweis">Alles andere läuft weiter. Die Auswahl lässt sich unter Zelte &amp; Räume ändern; dort steht auch „Zelt wieder aktiv“.</p>
       </div>
       {fehler && <V1Alert tone="critical" message={fehler} />}

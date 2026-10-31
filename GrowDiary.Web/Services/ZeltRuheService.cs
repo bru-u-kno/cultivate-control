@@ -122,12 +122,21 @@ public sealed class ZeltRuheService
     // ------------------------------------------------------------------ Stand
 
     /// <summary>Das Zelt, zu dem die Steuerung gehört: das Zelt des laufenden, sonst des zuletzt angelegten Grows.</summary>
-    public int? SteuerungsZeltId()
+    public int? SteuerungsZeltId() => SteuerungsZeltId(_grows);
+
+    public static int? SteuerungsZeltId(GrowRepository grows)
     {
-        var alle = _grows.GetAllGrows().Where(g => g.TentId is not null).ToList();
+        var alle = grows.GetAllGrows().Where(g => g.TentId is not null).ToList();
         var laufend = alle.Where(g => !g.IsArchived).OrderByDescending(g => g.Id).FirstOrDefault();
         return (laufend ?? alle.OrderByDescending(g => g.Id).FirstOrDefault())?.TentId;
     }
+
+    /// <summary>
+    /// Ist dieses Zelt von Hand auf „ruhend" gestellt? Dann melden seine Alarme nichts: Wer das Zelt ruhen lässt, hat es
+    /// leer gemeldet. Gilt nur für das Zelt der Steuerung (die Geräte-Zuordnung kennt nur eins).
+    /// </summary>
+    public static bool IstRuhend(SteuerungRepository repo, GrowRepository grows, int tentId)
+        => repo.GetEinstellungen<ZeltRuheEinstellungen>(Modul) is { Ruhend: true } && SteuerungsZeltId(grows) == tentId;
 
     public async Task<ZeltRuheStand> StandAsync(CancellationToken ct)
     {
