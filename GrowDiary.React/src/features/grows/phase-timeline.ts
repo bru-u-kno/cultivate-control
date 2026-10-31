@@ -129,9 +129,15 @@ function parse(value: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-/** Der wievielte Tag eines Abschnitts heute ist — der Beginntag ist Tag 1. */
+/** Beginn des Kalendertags in Ortszeit, als UTC-Zahl — so zählt die Zeitumstellung nicht als Tag mehr oder weniger. */
+function kalendertag(zeit: number): number {
+  const datum = new Date(zeit)
+  return Date.UTC(datum.getFullYear(), datum.getMonth(), datum.getDate())
+}
+
+/** Der wievielte Tag eines Abschnitts heute ist — der Beginntag ist Tag 1. Nach Kalendertagen, nicht nach 24-Stunden-Blöcken. */
 function tagImAbschnitt(beginn: number, jetzt: number): number {
-  return Math.max(1, Math.floor((jetzt - beginn) / TAG) + 1)
+  return Math.max(1, Math.round((kalendertag(jetzt) - kalendertag(beginn)) / TAG) + 1)
 }
 
 /** Ganze Tage zwischen zwei Zeitpunkten, mindestens 1 — eine Phase dauert nie 0 Tage. */
@@ -147,6 +153,10 @@ export function buildPhaseTimeline(grow: PhaseTimelineInput | null, jetzt = Date
   const anzuchtAb = parse(anker?.anzuchtAb) ?? start
   const vegAb = parse(anker?.vegAb)
   const blueteAb = parse(anker?.blueteAb)
+
+  // Wirklich geerntet: ab da ist die Blüte vorbei, auch wenn der Blütebeginn lange zurückliegt.
+  const geerntet = parse(grow.endDate)
+  const bereitsGeerntet = geerntet !== null && geerntet.getTime() <= jetzt
 
   const inBluete = blueteAb != null && jetzt >= blueteAb.getTime()
   const imWachstum = !inBluete && vegAb != null && jetzt >= vegAb.getTime()
@@ -228,7 +238,11 @@ export function buildPhaseTimeline(grow: PhaseTimelineInput | null, jetzt = Date
   }
 
   // ---------- Blüte ----------
-  if (inBluete && blueteAb) {
+  if (inBluete && blueteAb && bereitsGeerntet && geerntet) {
+    // Geerntet: die Blüte ist erledigt und steht mit ihrer echten Dauer da, nicht mit dem Plan.
+    const dauer = tage(blueteAb.getTime(), geerntet.getTime())
+    phases.push({ name: 'Blüte', label: `Blüte ${dauer} T`, short: `Blüte ${dauer} T`, days: dauer, state: 'done' })
+  } else if (inBluete && blueteAb) {
     const tagInBluete = tagImAbschnitt(blueteAb.getTime(), jetzt)
     phases.push({
       name: 'Blüte',
@@ -249,7 +263,6 @@ export function buildPhaseTimeline(grow: PhaseTimelineInput | null, jetzt = Date
   // Ab hier endete der Strahl. „Geerntet" ist aber nicht „fertig": erst nach
   // Trocknen und Aushaerten ist der Lauf wirklich durch, und genau danach
   // fragt man, wenn man vor dem Zelt steht.
-  const geerntet = parse(grow.endDate)
   const trockenStart = geerntet ?? harvest
   const trockenEnde = trockenStart ? new Date(trockenStart.getTime() + TROCKNEN_TAGE * TAG) : null
   const fertig = trockenEnde ? new Date(trockenEnde.getTime() + AUSHAERTEN_TAGE * TAG) : null
@@ -260,7 +273,7 @@ export function buildPhaseTimeline(grow: PhaseTimelineInput | null, jetzt = Date
   const imAushaerten = geerntet !== null && trockenEnde !== null && jetzt >= trockenEnde.getTime()
 
   if (imTrocknen && geerntet) {
-    const tagImTrocknen = Math.floor((jetzt - geerntet.getTime()) / TAG) + 1
+    const tagImTrocknen = tagImAbschnitt(geerntet.getTime(), jetzt)
     phases.push({
       name: 'Trocknen',
       label: `Trocknen · Tag ${tagImTrocknen} von ${TROCKNEN_TAGE}`,
@@ -281,7 +294,7 @@ export function buildPhaseTimeline(grow: PhaseTimelineInput | null, jetzt = Date
   }
 
   if (imAushaerten && trockenEnde) {
-    const tagImCure = Math.floor((jetzt - trockenEnde.getTime()) / TAG) + 1
+    const tagImCure = tagImAbschnitt(trockenEnde.getTime(), jetzt)
     phases.push({
       name: 'Aushärten',
       label: `Aushärten · Tag ${tagImCure} von ${AUSHAERTEN_TAGE}`,

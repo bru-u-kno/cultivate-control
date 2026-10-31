@@ -1,0 +1,12 @@
+/* Karte „Trocknungs-Ziel“ (A-029, Etappe 3, Teil A): Plan gegen Gerät. Grundbausteine (.fe-*) stehen in fertig.css. */
+.zj-geraete { margin-top: 8px; }
+.zj-zeile { padding: 10px 0; border-top: 1px solid var(--hair); }
+.zj-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.zj-sub { margin: 2px 0 6px; font-size: .8rem; color: var(--faint); }
+.zj-wert { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 0; font-size: .85rem; }
+.zj-wert span { color: var(--muted); }
+.zj-wert strong { font-weight: 600; text-align: right; }
+.zj-chip { display: inline-block; padding: 2px 9px; border: 1px solid var(--hair); border-radius: 999px; font: 600 .7rem var(--mono); color: var(--muted); white-space: nowrap; }
+.zj-chip.is-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.zj-chip.is-ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.zj-etappe { font-size: .85rem; }

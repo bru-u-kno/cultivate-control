@@ -18,10 +18,14 @@ public sealed class TrocknungApiController : ApiControllerBase
     private readonly HarvestRepository _harvests;
     private readonly KnowledgeBaseLoader _wissen;
     private readonly TrocknungWaegungRepository _waegungen;
+    private readonly TrocknungPortRepository _ports;
+    private readonly TrocknungZielService _ziel;
 
-    public TrocknungApiController(GrowRepository grows, HarvestRepository harvests, KnowledgeBaseLoader wissen, TrocknungWaegungRepository waegungen)
+    public TrocknungApiController(GrowRepository grows, HarvestRepository harvests, KnowledgeBaseLoader wissen, TrocknungWaegungRepository waegungen, TrocknungPortRepository ports, TrocknungZielService ziel)
     {
         _waegungen = waegungen;
+        _ports = ports;
+        _ziel = ziel;
         _grows = grows;
         _harvests = harvests;
         _wissen = wissen;
@@ -36,15 +40,22 @@ public sealed class TrocknungApiController : ApiControllerBase
         if (_grows.GetTent(tentId) is null) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
         if (DryingWindow.StandFor(_grows, _harvests, tentId, DateTime.Today) is not { } stand) return Ok(TrocknungStandDto.Leer);
 
+        var (geplant, etappe, band) = PlanFuer(stand);
+        return Ok(new TrocknungStandDto(
+            true, stand.Grow.Id, stand.Grow.Name, stand.Tag, geplant, etappe?.Etappe.Name,
+            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax));
+    }
+
+    /// <summary>Etappe und Band, die für diesen Stand gelten — EINE Stelle für Kachel, Karte „Trocknungs-Ziel“ und alles Spätere.</summary>
+    private (int Geplant, TrocknungsPlan.Stand? Etappe, TrocknungsPlan.Band? Band) PlanFuer(DryingWindow.Stand stand)
+    {
         var programm = _wissen.NutrientPrograms.FirstOrDefault(p =>
             string.Equals(p.Id, stand.Grow.FeedProgramId, StringComparison.OrdinalIgnoreCase));
         var etappen = TrocknungsPlan.Fuer(programm);
         var geplant = etappen.Sum(e => Math.Max(1, e.DauerTage));
         var etappe = TrocknungsPlan.EtappeAm(etappen, stand.Tag);
         var band = etappe is null ? (TrocknungsPlan.Band?)null : TrocknungsPlan.BandFuer(etappe.Etappe);
-        return Ok(new TrocknungStandDto(
-            true, stand.Grow.Id, stand.Grow.Name, stand.Tag, geplant, etappe?.Etappe.Name,
-            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax));
+        return (geplant, etappe, band);
     }
 
     /// <summary>Die Fertig-Erkennung: Wägungen, Kurve in Prozent, „sinkt / hält sich / Ziel“ und die nächste Wägung.</summary>
@@ -117,6 +128,99 @@ public sealed class TrocknungApiController : ApiControllerBase
         return Ok(FertigStand(tentId));
     }
 
+    /// <summary>
+    /// Das Trocknungs-Ziel des Zelts (A-029, Etappe 3, Teil A): Was der Plan von Entfeuchter und Kühlung verlangt — und was an
+    /// den Ports des Controllers eingestellt ist. Nur lesend; es wird nichts geschrieben.
+    /// </summary>
+    [HttpGet("{tentId:int}/trocknung/ziel")]
+    [ProducesResponseType(typeof(ZielDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ZielDto>> Ziel(int tentId, CancellationToken ct)
+    {
+        if (_grows.GetTent(tentId) is null) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
+        if (DryingWindow.StandFor(_grows, _harvests, tentId, DateTime.Today) is not { } stand) return Ok(ZielDto.Leer);
+
+        var (_, etappe, band) = PlanFuer(stand);
+        var (erreichbar, vergleiche) = await _ziel.VergleicheAsync(_ports.Get(tentId), band?.FeuchteMax, band?.TempMax, ct);
+        return Ok(new ZielDto(
+            true, stand.Tag, etappe?.Etappe.Name,
+            etappe?.Etappe.LufttemperaturC, etappe?.Etappe.LuftfeuchteZiel, band?.TempMax, band?.FeuchteMax,
+            erreichbar,
+            vergleiche.Select(v => new ZielGeraetDto(
+                v.Rolle, UrteilName(v.Urteil), v.PortName, v.Modus, v.WertAmGeraet, v.Einheit, v.PlanWert)).ToList()));
+    }
+
+    /// <summary>Die zugeordneten Ports dieses Zelts und die Ports mit eigener Automatik, die zur Wahl stehen.</summary>
+    [HttpGet("{tentId:int}/trocknung/ports")]
+    [ProducesResponseType(typeof(PortsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PortsDto>> PortsLesen(int tentId, CancellationToken ct)
+    {
+        if (_grows.GetTent(tentId) is null) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
+        return Ok(await PortsDtoAsync(tentId, frisch: true, ct));
+    }
+
+    /// <summary>
+    /// Ports zuordnen: welcher Port des Controllers ist am Trockenzelt der Entfeuchter, welcher die Kühlung. Leer löst die
+    /// Zuordnung. Es werden nur Ports angenommen, die Home Assistant gerade als Ports mit eigener Automatik kennt.
+    /// <b>Das PUT ersetzt beide Rollen:</b> Eine weggelassene Rolle wird gelöst, nicht beibehalten.
+    /// </summary>
+    [HttpPut("{tentId:int}/trocknung/ports")]
+    [KiStufe(KiStufe.Verwaltung)]
+    [ProducesResponseType(typeof(PortsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PortsDto>> PortsSetzen(int tentId, [FromBody] PortsRequest request, CancellationToken ct)
+    {
+        if (_grows.GetTent(tentId) is not { } zelt) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
+        if (zelt.TentType != TentType.Drying)
+            return BadRequestError("kein_trockenzelt", "Ports lassen sich nur einem Zelt mit dem Zweck „Trocknung“ zuordnen.");
+
+        var entfeuchter = string.IsNullOrWhiteSpace(request.Entfeuchter) ? null : request.Entfeuchter.Trim();
+        var kuehlung = string.IsNullOrWhiteSpace(request.Kuehlung) ? null : request.Kuehlung.Trim();
+        if (entfeuchter is not null && entfeuchter == kuehlung)
+            return BadRequestError("port_doppelt", "Entfeuchter und Kühlung können nicht derselbe Port sein.");
+
+        if (entfeuchter is not null || kuehlung is not null)
+        {
+            var ports = await _ziel.PortsAsync(frisch: true, ct);
+            if (ports is null)
+                return BadRequestError("ha_nicht_erreichbar", "Home Assistant ist gerade nicht erreichbar — die Ports lassen sich nicht prüfen.");
+            foreach (var deviceId in new[] { entfeuchter, kuehlung }.Where(d => d is not null))
+            {
+                if (ports.All(p => p.DeviceId != deviceId))
+                    return BadRequestError("port_unbekannt", "Dieser Port ist Home Assistant nicht als Port mit eigener Automatik bekannt.");
+            }
+        }
+
+        _ports.Set(tentId, TrocknungZiel.RolleEntfeuchter, entfeuchter);
+        _ports.Set(tentId, TrocknungZiel.RolleKuehlung, kuehlung);
+        _ziel.Vergessen();
+        return Ok(await PortsDtoAsync(tentId, frisch: true, ct));
+    }
+
+    private async Task<PortsDto> PortsDtoAsync(int tentId, bool frisch, CancellationToken ct)
+    {
+        var zuordnung = _ports.Get(tentId);
+        var ports = await _ziel.PortsAsync(frisch, ct);
+        return new PortsDto(
+            ports is not null,
+            zuordnung.GetValueOrDefault(TrocknungZiel.RolleEntfeuchter),
+            zuordnung.GetValueOrDefault(TrocknungZiel.RolleKuehlung),
+            (ports ?? []).Select(p => new PortAuswahlDto(p.DeviceId, p.Name)).ToList());
+    }
+
+    private static string UrteilName(TrocknungZiel.Urteil urteil) => urteil switch
+    {
+        TrocknungZiel.Urteil.NichtZugeordnet => "nichtZugeordnet",
+        TrocknungZiel.Urteil.GeraetAus => "geraetAus",
+        TrocknungZiel.Urteil.OhneAutomatik => "ohneAutomatik",
+        TrocknungZiel.Urteil.AusloeserAus => "ausloeserAus",
+        TrocknungZiel.Urteil.Passt => "passt",
+        TrocknungZiel.Urteil.WeichtAb => "weichtAb",
+        _ => "unbekannt",
+    };
+
     private FertigStandDto FertigStand(int tentId)
     {
         if (DryingWindow.StandFor(_grows, _harvests, tentId, DateTime.Today) is not { } stand) return FertigStandDto.Leer;
@@ -175,6 +279,35 @@ public sealed record FertigStandDto(
     IReadOnlyList<FertigPunktDto> Punkte)
 {
     public static FertigStandDto Leer { get; } = new(false, null, null, null, false, null, null, false, null, null, false, []);
+}
+
+public sealed class PortsRequest
+{
+    /// <summary>Geräte-Id des Ports, der den Entfeuchter steuert (leer = lösen).</summary>
+    public string? Entfeuchter { get; set; }
+
+    /// <summary>Geräte-Id des Ports der Kühlung (leer = lösen).</summary>
+    public string? Kuehlung { get; set; }
+}
+
+public sealed record PortAuswahlDto(string DeviceId, string Name);
+
+public sealed record PortsDto(bool Erreichbar, string? Entfeuchter, string? Kuehlung, IReadOnlyList<PortAuswahlDto> Verfuegbar);
+
+public sealed record ZielGeraetDto(string Rolle, string Urteil, string? PortName, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert);
+
+public sealed record ZielDto(
+    bool Trocknet,
+    int? Tag,
+    string? Etappe,
+    double? TempZiel,
+    double? FeuchteZiel,
+    double? TempOben,
+    double? FeuchteOben,
+    bool PortsErreichbar,
+    IReadOnlyList<ZielGeraetDto> Geraete)
+{
+    public static ZielDto Leer { get; } = new(false, null, null, null, null, null, null, false, []);
 }
 
 public sealed record TrocknungStandDto(

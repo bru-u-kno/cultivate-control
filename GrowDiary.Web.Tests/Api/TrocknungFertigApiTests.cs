@@ -1,6 +1,7 @@
 using GrowDiary.Web.Api.Controllers;
 using GrowDiary.Web.Infrastructure;
 using GrowDiary.Web.Models;
+using GrowDiary.Web.Services;
 using GrowDiary.Web.Services.Knowledge;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,7 +35,7 @@ public sealed class TrocknungFertigApiTests : IDisposable
         _trockenZelt = _grows.CreateTent(new Tent { Name = "Trockenzelt", TentType = TentType.Drying });
         _growId = _grows.CreateGrow(new GrowRun { Name = "Charge A", TentId = bluete.Id, StartDate = DateTime.Today.AddDays(-90), Status = GrowStatus.Running });
         // Die Wissensbasis braucht dieser Weg nicht (nur „Stand“ liest Programme) — nicht geladen.
-        _controller = new TrocknungApiController(_grows, _ernten, new KnowledgeBaseLoader(paths, NullLogger<KnowledgeBaseLoader>.Instance), _waegungen);
+        _controller = new TrocknungApiController(_grows, _ernten, new KnowledgeBaseLoader(paths, NullLogger<KnowledgeBaseLoader>.Instance), _waegungen, new TrocknungPortRepository(paths), new TrocknungZielService(_ => Task.FromResult<IReadOnlyList<TrocknungZiel.Port>?>(null), (_, _) => Task.FromResult<HomeAssistantState?>(null)));
     }
 
     public void Dispose()
