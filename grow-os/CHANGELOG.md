@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.295
+## 2.0.0-cc.296
 
 **Nach einem Neuladen der Seite macht die App dort weiter, wo man war, statt auf „Live“ zu springen.**
 
