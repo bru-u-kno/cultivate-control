@@ -13,12 +13,21 @@
 - **Jetzt:** Die App merkt sich am Gerät die zuletzt geöffnete Seite samt ihrer Einstellung in der Adresse (zum Beispiel das gewählte Zelt) und öffnet sie nach dem Neuladen wieder. Das gilt nur, wenn die letzte Bedienung (Tippen, Tasten, Scrollen oder ein Seitenwechsel) höchstens 30 Minuten zurückliegt; wer das Panel nach Stunden öffnet, beginnt wie gewohnt auf „Live“. Wer bewusst auf „Live“ gewechselt hat, bleibt dort. Wer die App innerhalb dieser 30 Minuten über die Seitenleiste von Home Assistant neu öffnet, sieht ebenfalls die zuletzt offene Seite — Neuladen und bewusstes Öffnen lassen sich nicht unterscheiden; ein Tipp auf „Live“ führt sofort dorthin.
 - **Was bleibt:** Ein Link mit eigenem Ziel (Tipp auf eine Push-Meldung, Sprung aus Home Assistant) hat Vorrang und wird nicht überschrieben. Angefangene Eingaben in einem Formular werden damit noch nicht gerettet — die App öffnet die Seite wieder, die Felder sind leer.
 
+## 2.0.0-cc.295
+
+**Aufgeräumt nach dem Grow-Abschluss: Abweichungen schließen sich mit dem Grow, und die Release Notes nennen kein Kürzel mehr.**
+
+- **Anlass:** Nach dem Abschluss eines Grows stand unter Aufgaben › Risiken weiter „VPD: Abweichung prüfen“ — mit dem Vermerk „nicht mehr geprüft“, 19-mal seit Wochen —, für ein Zelt, in dem nichts mehr wächst. Das Risiko gehörte zu einem Lauf gegen seinen Plan, und diesen Lauf gibt es nicht mehr.
+- **Abweichungen schließen sich:** Wird ein Grow abgeschlossen (Ernte-Seite, „Archivieren“ oder Status „Abgeschlossen“), schließen seine offenen Abweichungs-Risiken ohne Gerät mit dem Vermerk „Grow abgeschlossen — die Abweichung gehörte zu diesem Lauf“. Geschlossen wird, nicht gelöscht: der Befund bleibt mit Datum im Verlauf. Pumpen-, Strom-, Verbindungs- und selbst eingetragene Risiken bleiben offen, ebenso Risiken anderer Grows und Risiken an einem Gerät: Sie betreffen die Anlage, und ein Grow-Ende macht eine stehende Pumpe nicht heil.
+- **Bestand:** Beim Start schließt Cultivate Control auch die Abweichungen schon abgeschlossener Grows, einmalig; beim zweiten Start ist nichts mehr zu tun.
+- **Release Notes:** Der Eintrag zu 2.0.0-cc.294 und einer der älteren nannten die App mit einem Kürzel, das außerhalb der Entwicklung niemand kennt. Beides steht jetzt in Klartext. Eine neue Prüfung hält künftig jeden neuesten Eintrag davon frei.
+
 ## 2.0.0-cc.294
 
-**Grow-Abschluss: Pflanzen stehen danach auf „geerntet“, ein leeres Zelt meldet keine Alarme mehr, und der CC empfiehlt die Reinigung des leeren Systems.**
+**Grow-Abschluss: Pflanzen stehen danach auf „geerntet“, ein leeres Zelt meldet keine Alarme mehr, und Cultivate Control empfiehlt die Reinigung des leeren Systems.**
 
 - **Anlass:** Am 30.10. war ein Grow geerntet und abgeschlossen. Seine Pflanzen standen auf der Zeltseite trotzdem weiter auf „aktiv“, das Zelt schickte weiter Feuchte-Alarme aufs Handy (77 % im leeren Zelt), und nirgends stand, wie es danach weitergeht. Der Status „geerntet“ war vorhanden, gesetzt hat ihn aber nichts.
-- **Pflanzen „geerntet“:** Wird ein Grow abgeschlossen — mit „Speichern & Grow abschließen“, mit „Archivieren“ oder mit dem Status „Abgeschlossen“ im Formular —, stehen seine aktiven Produktionspflanzen danach auf „geerntet“, mit dem Enddatum des Grows. Mutterpflanzen, aussortierte und geplante Pflanzen bleiben, wie sie sind. Beim Start zieht der CC den Bestand nach: Pflanzen schon abgeschlossener Grows, die noch „aktiv“ standen, werden einmalig umgestellt (abgebrochene Grows bleiben unberührt).
+- **Pflanzen „geerntet“:** Wird ein Grow abgeschlossen — mit „Speichern & Grow abschließen“, mit „Archivieren“ oder mit dem Status „Abgeschlossen“ im Formular —, stehen seine aktiven Produktionspflanzen danach auf „geerntet“, mit dem Enddatum des Grows. Mutterpflanzen, aussortierte und geplante Pflanzen bleiben, wie sie sind. Beim Start zieht Cultivate Control den Bestand nach: Pflanzen schon abgeschlossener Grows, die noch „aktiv“ standen, werden einmalig umgestellt (abgebrochene Grows bleiben unberührt).
 - **Keine Alarme im leeren Zelt:** Ein Zelt meldet nichts, wenn es von Hand auf „ruhend“ steht und kein Grow darin läuft oder geplant ist, oder wenn es leer ist. Leer heißt: Produktions- oder Mehrzweckzelt ohne laufenden Grow, ohne aktive Pflanze und außerhalb des Trocknungsfensters. Trockenzelte sowie Zelte mit Mutter-, Anzucht- und Quarantänepflanzen melden weiter, ebenso ein Zelt, in dem die Ernte im eigenen Zelt trocknet. Läuft in einem ruhenden Zelt ein neuer Grow, melden die Alarme sofort wieder. Beim nächsten Grow sind sie von selbst wieder an.
 - **Reinigung des leeren Systems:** Neue Routine mit den Schritten der Tiefenreinigung (HOCl-Spülung, H₂O₂, RO-Spülung), aber ohne „Pflanzen umsetzen“ und „Pflanzen zurück“, die es im leeren System nicht gibt. Der Inhalt stammt aus derselben Quelle wie die Tiefenreinigung. Sie wird nur empfohlen, nicht erzwungen.
 - **Wo die Empfehlung steht:** Unter Aufgaben › Fällige Routinen steht für den neuesten abgeschlossenen Grow eines Systems „Reinigung des leeren Systems: nach dem Grow empfohlen“, solange das System frei ist (kein laufender oder geplanter Grow darauf), der Abschluss höchstens 60 Tage zurückliegt und noch keine Reinigung danach beendet wurde. „Starten“ legt die Routine an und öffnet den Reiter „SOPs“ des Grows; läuft sie schon, heißt der Knopf „Öffnen“. Das Blatt nach der Ernte nennt die Reinigung als Angebot unter den Geräten, mit „Reinigung jetzt starten“. Wer die Begleitung auf „Experte“ gestellt hat, bekommt sie nicht.
@@ -134,7 +143,7 @@
 
 **Korrektur: Der Hinweis unter „Zelt wieder aktiv“ nennt die App beim Namen.**
 
-- **Was war:** Unter „Zelt wieder aktiv“ stand der Hinweis „Beim Wecken stellt der CC genau das wieder an, was er ausgeschaltet hat.“ Dieses Kürzel kennt außerhalb der Entwicklung niemand.
+- **Was war:** Unter „Zelt wieder aktiv“ stand ein Hinweis, der die App nur mit einem Kürzel nannte, das außerhalb der Entwicklung niemand kennt.
 - **Was jetzt ist:** Der Hinweis nennt die App beim Namen: „Beim Wecken stellt Cultivate Control genau das wieder an, was es ausgeschaltet hat.“ Dieselbe Korrektur steht im Eintrag zu cc.278 dieser Release Notes.
 
 ## 2.0.0-cc.282

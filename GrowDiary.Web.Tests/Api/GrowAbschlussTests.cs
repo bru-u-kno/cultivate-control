@@ -22,6 +22,7 @@ public sealed class GrowAbschlussTests : IDisposable
     private readonly string _temp;
     private readonly GrowRepository _repository;
     private readonly SetupRepository _setups;
+    private readonly HardwareRepository _hardware;
     private readonly GrowsApiController _controller;
     private readonly Tent _tent;
 
@@ -33,6 +34,7 @@ public sealed class GrowAbschlussTests : IDisposable
         _tent = TestDatabase.InitializeWithDefaultTent(paths);
         _repository = new GrowRepository(paths);
         _setups = new SetupRepository(paths);
+        _hardware = new HardwareRepository(paths);
 
         var loader = new KnowledgeBaseLoader(paths, NullLogger<KnowledgeBaseLoader>.Instance);
         loader.Initialize();
@@ -43,7 +45,8 @@ public sealed class GrowAbschlussTests : IDisposable
             new TreatmentRecommender(loader),
             _setups,
             new HydroSetupRepository(paths, new TentRepository(paths)),
-            new SystemAuditRepository(paths));
+            new SystemAuditRepository(paths),
+            hardware: _hardware);
     }
 
     public void Dispose()
@@ -188,5 +191,81 @@ public sealed class GrowAbschlussTests : IDisposable
         Assert.Equal(PlantStatus.Active, Stati(abgebrochen)["Pflanze 1"]);   // abgebrochen: bleibt, wie es ist
         // Idempotent: der zweite Start fasst nichts mehr an.
         Assert.Equal(0, GrowAbschluss.BestandNachziehen(_setups, _repository));
+    }
+
+    // ---- Abweichungs-Risiken schließen sich mit dem Grow ----
+
+    private RiskEvent Risiko(int growId, RiskEventSource quelle, int? hardwareId = null, string titel = "VPD: Abweichung prüfen")
+        => _hardware.CreateRiskEvent(new RiskEvent
+        {
+            Title = titel, GrowId = growId, TentId = _tent.Id, Source = quelle, HardwareItemId = hardwareId,
+            Severity = RiskEventSeverity.Warning, Status = RiskEventStatus.Open,
+        });
+
+    private RiskEventStatus StatusVon(int risikoId) => _hardware.GetRiskEvent(risikoId)!.Status;
+
+    [Fact]
+    public void Der_Abschluss_schliesst_die_Abweichungen_des_Grows_und_nur_diese()
+    {
+        // Der Fall vom 30.10.: „VPD: Abweichung prüfen“ (Quelle Abweichung, Grow, kein Gerät) stand nach der Ernte weiter unter Aufgaben.
+        var id = GrowMitPflanzen();
+        var anderer = GrowMitPflanzen();
+        var abweichung = Risiko(id, RiskEventSource.Deviation);
+        var andereAbweichung = Risiko(anderer, RiskEventSource.Deviation);          // anderer Grow: bleibt
+        var pumpe = Risiko(id, RiskEventSource.HomeAssistant, titel: "Pumpe steht");   // Quelle Home Assistant: bleibt
+        var handgemacht = Risiko(id, RiskEventSource.Manual, titel: "Notiz");            // von Hand: bleibt
+
+        _controller.Archive(id);
+
+        Assert.Equal(RiskEventStatus.Resolved, StatusVon(abweichung.Id));
+        Assert.NotNull(_hardware.GetRiskEvent(abweichung.Id)!.ResolvedAtUtc);
+        Assert.Contains("Grow abgeschlossen", _hardware.GetRiskEvent(abweichung.Id)!.Notes);
+        Assert.Equal(RiskEventStatus.Open, StatusVon(andereAbweichung.Id));
+        Assert.Equal(RiskEventStatus.Open, StatusVon(pumpe.Id));
+        Assert.Equal(RiskEventStatus.Open, StatusVon(handgemacht.Id));
+    }
+
+    [Fact]
+    public void Eine_Abweichung_an_einem_Geraet_bleibt_auch_nach_dem_Abschluss_offen()
+    {
+        // Gehört das Risiko zu einem Gerät, betrifft es die Anlage — ein Grow-Ende macht es nicht heil.
+        var id = GrowMitPflanzen();
+        var geraet = _hardware.CreateHardwareItem(new HardwareItem { Name = "Sonde", Category = "Sensor", TentId = _tent.Id });
+        var amGeraet = Risiko(id, RiskEventSource.Deviation, hardwareId: geraet.Id);
+
+        _controller.Archive(id);
+
+        Assert.Equal(RiskEventStatus.Open, StatusVon(amGeraet.Id));
+    }
+
+    [Fact]
+    public void Der_Status_im_Formular_schliesst_die_Abweichungen_ebenfalls_und_laufende_Grows_bleiben_unberuehrt()
+    {
+        var abgeschlossen = GrowMitPflanzen();
+        var laeuft = GrowMitPflanzen();
+        var a = Risiko(abgeschlossen, RiskEventSource.Deviation);
+        var b = Risiko(laeuft, RiskEventSource.Deviation);
+
+        _controller.Update(abgeschlossen, Anfrage(GrowStatus.Completed));
+
+        Assert.Equal(RiskEventStatus.Resolved, StatusVon(a.Id));
+        Assert.Equal(RiskEventStatus.Open, StatusVon(b.Id));
+    }
+
+    [Fact]
+    public void Die_Korrektur_beim_Start_schliesst_auch_alte_Abweichungen_abgeschlossener_Grows_und_ist_idempotent()
+    {
+        var fertig = GrowMitPflanzen();
+        var grow = _repository.GetGrow(fertig)!;
+        grow.Status = GrowStatus.Completed;
+        grow.EndDate = new DateTime(2026, 10, 30);
+        _repository.UpdateGrow(grow);
+        var altes = Risiko(fertig, RiskEventSource.Deviation);
+
+        var erstes = GrowAbschluss.BestandNachziehen(_setups, _repository, _hardware);
+
+        Assert.Equal(RiskEventStatus.Resolved, StatusVon(altes.Id));
+        Assert.Equal(3, erstes);   // zwei Pflanzen + ein Risiko
+        Assert.Equal(0, GrowAbschluss.BestandNachziehen(_setups, _repository, _hardware));
     }
 }
