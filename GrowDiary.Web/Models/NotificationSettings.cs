@@ -23,6 +23,9 @@ public sealed class NotificationSettings
     /// <summary>Warn when monitoring itself stops (no data, HA unreachable, worker stalled).</summary>
     public bool SystemWatch { get; set; } = true;
 
+    /// <summary>Meldet einen Neustart von Cultivate Control (mit Versionsnummer nach einem Update) und die Rückkehr von Home Assistant.</summary>
+    public bool StartMessages { get; set; } = true;
+
     /// <summary>A once-a-day summary push ("system is up, here are the values"). Opt-in.</summary>
     public bool DailyDigest { get; set; }
     public int DigestHour { get; set; } = 6;
@@ -40,6 +43,7 @@ public sealed class NotificationSettings
         NotificationCategory.SensorOffline => SensorOffline,
         NotificationCategory.Risk => Risks,
         NotificationCategory.System => SystemWatch,
+        NotificationCategory.Start => StartMessages,
         _ => false,
     };
 
@@ -65,4 +69,5 @@ public enum NotificationCategory
     SensorOffline,
     Risk,
     System,
+    Start,
 }

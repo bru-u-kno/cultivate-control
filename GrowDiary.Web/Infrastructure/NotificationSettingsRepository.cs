@@ -19,6 +19,7 @@ public sealed class NotificationSettingsRepository : RepositoryBase
     private const string SensorOfflineKey = "notify:sensorOffline";
     private const string RisksKey = "notify:risks";
     private const string SystemWatchKey = "notify:systemWatch";
+    private const string StartMessagesKey = "notify:startMessages";
     private const string DailyDigestKey = "notify:dailyDigest";
     private const string DigestHourKey = "notify:digestHour";
     private const string DigestMinuteKey = "notify:digestMinute";
@@ -47,6 +48,7 @@ public sealed class NotificationSettingsRepository : RepositoryBase
                 case SensorOfflineKey: settings.SensorOffline = ParseBool(value, true); break;
                 case RisksKey: settings.Risks = ParseBool(value, true); break;
                 case SystemWatchKey: settings.SystemWatch = ParseBool(value, true); break;
+                case StartMessagesKey: settings.StartMessages = ParseBool(value, true); break;
                 case DailyDigestKey: settings.DailyDigest = ParseBool(value, false); break;
                 case DigestHourKey: settings.DigestHour = ParseHour(value) ?? 6; break;
                 case DigestMinuteKey: settings.DigestMinute = ParseMinute(value) ?? 0; break;
@@ -69,6 +71,7 @@ public sealed class NotificationSettingsRepository : RepositoryBase
         Upsert(connection, SensorOfflineKey, settings.SensorOffline ? "1" : "0");
         Upsert(connection, RisksKey, settings.Risks ? "1" : "0");
         Upsert(connection, SystemWatchKey, settings.SystemWatch ? "1" : "0");
+        Upsert(connection, StartMessagesKey, settings.StartMessages ? "1" : "0");
         Upsert(connection, DailyDigestKey, settings.DailyDigest ? "1" : "0");
         Upsert(connection, DigestHourKey, settings.DigestHour.ToString(CultureInfo.InvariantCulture));
         Upsert(connection, DigestMinuteKey, settings.DigestMinute.ToString(CultureInfo.InvariantCulture));

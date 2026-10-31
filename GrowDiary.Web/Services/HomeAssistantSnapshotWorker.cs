@@ -16,8 +16,13 @@ public sealed class HomeAssistantSnapshotWorker : BackgroundService
 
     // Sensor-Ausfall (In-Memory, Edge-getriggert) + Kalibrier-Erinnerung (einmal täglich)
     private readonly SensorOfflineTracker _offlineTracker = new();
+    // Beide Merker stehen auch in der Datenbank: im Speicher allein kamen Kalibrier-Erinnerung und
+    // Tagesbericht nach jedem Neustart von Add-on oder Home Assistant ein zweites Mal.
+    private const string KalibrierMerkerSchluessel = "worker:letzteKalibrierErinnerung";
+    private const string DigestMerkerSchluessel = "worker:letzterTagesbericht";
     private DateOnly? _lastCalibrationCheckDateLocal;
     private DateOnly? _lastDigestDateLocal;
+    private bool _merkerGeladen;
 
     public HomeAssistantSnapshotWorker(
         IServiceProvider serviceProvider,
@@ -99,6 +104,8 @@ public sealed class HomeAssistantSnapshotWorker : BackgroundService
             if (ok) _lastAggregationDateLocal = today;
         }
 
+        MerkerLaden();
+
         // Kalibrier-/Wartungs-Erinnerung: einmal täglich am Vormittag (nicht mitten in der Nacht).
         // Auch nach einem Fehler erledigt — sonst kämen Erinnerungen, die schon
         // raus sind, alle fünf Minuten erneut.
@@ -106,12 +113,48 @@ public sealed class HomeAssistantSnapshotWorker : BackgroundService
         {
             await SicherAsync("Kalibrier-Erinnerung", () => RunCalibrationReminderAsync(stoppingToken), stoppingToken);
             _lastCalibrationCheckDateLocal = today;
+            MerkerSchreiben(KalibrierMerkerSchluessel, today);
         }
 
         // Täglicher Digest zur eingestellten Uhrzeit.
         if (_lastDigestDateLocal != today)
         {
             await SicherAsync("Tagesbericht", () => RunDigestIfDueAsync(now, today, stoppingToken), stoppingToken);
+        }
+    }
+
+    private void MerkerLaden()
+    {
+        if (_merkerGeladen) return;
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var einstellungen = scope.ServiceProvider.GetRequiredService<AppSettingsRepository>();
+            _lastCalibrationCheckDateLocal = MerkerLesen(einstellungen.GetValue(KalibrierMerkerSchluessel));
+            _lastDigestDateLocal = MerkerLesen(einstellungen.GetValue(DigestMerkerSchluessel));
+            _merkerGeladen = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Beim nächsten Takt noch einmal; bis dahin gilt „heute noch nicht erinnert“.
+            _logger.LogWarning(ex, "Tages-Merker konnten nicht gelesen werden.");
+        }
+    }
+
+    public static DateOnly? MerkerLesen(string? wert)
+        => DateOnly.TryParseExact(wert, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var tag) ? tag : null;
+
+    private void MerkerSchreiben(string schluessel, DateOnly tag)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            scope.ServiceProvider.GetRequiredService<AppSettingsRepository>()
+                .SetValue(schluessel, tag.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Tages-Merker {Schluessel} konnte nicht gespeichert werden.", schluessel);
         }
     }
 
@@ -356,6 +399,7 @@ public sealed class HomeAssistantSnapshotWorker : BackgroundService
         }
 
         _lastDigestDateLocal = today; // mark done even on failure — no retry-storm the same day
+        MerkerSchreiben(DigestMerkerSchluessel, today);
         try
         {
             await scope.ServiceProvider.GetRequiredService<DigestService>().BuildAndSendAsync(cancellationToken);

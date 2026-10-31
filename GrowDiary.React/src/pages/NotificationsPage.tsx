@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS: NotificationSettingsDto = {
   sensorOffline: true,
   risks: true,
   systemWatch: true,
+  startMessages: true,
   dailyDigest: false,
   digestHour: 6,
   digestMinute: 0,
@@ -324,6 +325,9 @@ function NotificationsPage() {
                 {testingWatchdog ? 'Testet…' : 'Systemtest senden'}
               </V1Button>
             </div>
+          </V1Card>
+          <V1Card>
+            <V1Switch label="Start-Meldungen" hint="Meldet, wenn Cultivate Control neu gestartet wurde — nach einem Update mit der neuen Versionsnummer — und wenn Home Assistant nach einem Neustart wieder erreichbar ist." checked={settings.startMessages} onChange={(checked) => patch({ startMessages: checked })} />
           </V1Card>
           <V1Card>
             <V1Switch label="Sensor ausgefallen" hint="Wenn ein gemappter Sensor keine Werte mehr liefert." checked={settings.sensorOffline} onChange={(checked) => patch({ sensorOffline: checked })} />

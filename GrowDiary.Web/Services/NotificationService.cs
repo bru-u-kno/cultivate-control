@@ -58,6 +58,7 @@ public sealed class NotificationService
         NotificationCategory.Risk => "live",
         // Aufgaben: Pumpen-Lage, offene Risiken, Termine.
         NotificationCategory.System => "aufgaben",
+        NotificationCategory.Start => "live",
         _ => "live",
     };
 
