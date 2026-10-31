@@ -7,14 +7,15 @@
 
 | Was | Wo |
 |---|---|
-| Verbindung, Entität je Messgröße, Kameras | Einrichtung → Home Assistant · `/home-assistant` |
+| Verbindung | Einrichtung → Technik → Verbindung · `/geraete?reiter=verbindung` (alte Adresse `/home-assistant` leitet weiter) |
+| Entität je Messgröße, Kameras | Einrichtung → Technik → Zuordnung · `/geraete?reiter=zuordnung` |
 | Grenzwerte | Betrieb → Regeln & Automatik · `/regeln?tab=grenzwerte` (alt: `/alarme`) |
 | Auto-Messungen | `/regeln?tab=automatik` (alt: `/automatik`) |
 | Benachrichtigungen, Ruhezeit, Tagesüberblick | `/regeln?tab=push` (alt: `/benachrichtigungen`) |
 | Kühler-Regler einstellen | Betrieb → Crop Steering · `/cropsteering` |
 | Karte „Kühler · Crop Steering" (was der Regler gerade tut) | Live · `/` |
 | Pumpen-, Kühler- und USV-Befunde als Risiko | Jetzt → Aufgaben · `/aufgaben` |
-| Ziel der meisten Push-Nachrichten | `/aufgaben`, bei Kalibrierung/Wartung/Sensorausfall `/sensoren` |
+| Ziel der meisten Push-Nachrichten | `/aufgaben`, bei Kalibrierung/Wartung/Sensorausfall `/geraete?reiter=inventar` |
 
 ## Was es tut
 

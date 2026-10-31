@@ -92,6 +92,8 @@ const DETAILSEITEN = [
   // Reiter der Geräteseite. Sie tragen Suchfelder mit Vorschlägen und rechts
   // Livewerte — also Zahlen, schmale Zeilen und Kollisionsgefahr auf dem Handy.
   '/geraete?reiter=rollen',
+  '/einrichtung',
+  '/einrichtung?bereich=anlage',
   '/geraete?reiter=zuordnung',
   '/geraete?reiter=inventar',
   '/geraete?reiter=verbindung',

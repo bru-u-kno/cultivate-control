@@ -14,6 +14,7 @@ import { RaumName } from '../features/geraete/RaumName'
 import { ordneEintraege } from '../features/geraete/eintraegeOrdnung'
 import { rollenPfad } from '../features/geraete/rollenPfad'
 import { EingebettetContext } from '../components/eingebettet'
+import { EinrichtungReiter } from '../features/einrichtung/EinrichtungReiter'
 import { WartungReiter } from '../features/geraete/WartungReiter'
 import HardwarePage from './HardwarePage'
 import HomeAssistantPage from './HomeAssistantPage'
@@ -426,6 +427,7 @@ export default function GeraetePage() {
       title="Geräte & Entitäten"
       subtitle="Alles, was der Fork an Home Assistant benutzt — an einer Stelle: Geräte, Zuordnung, Rollen, Räume, Inventar, Wartung und die Verbindung."
     >
+      <EinrichtungReiter aktiv="technik" />
       <V1Tabs
         label="Bereich"
             insBild

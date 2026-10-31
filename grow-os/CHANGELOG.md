@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.287
+
+**Einrichtung an einer Stelle: Schritte mit Stand, Anlage und Technik — und im Menü nur noch ein Eintrag.**
+
+- **Was war:** Wer Cultivate Control neu einrichtete, musste die Seiten im Menü selbst finden: Zelte & Räume, Hydro-Systeme, Wasser, Geräte & Entitäten, Handy — ohne zu sehen, was schon erledigt ist. Die Seite „Erste Schritte“ war ein statischer Text.
+- **Was jetzt ist:** Unter Einrichtung gibt es oben drei Reiter: **Schritte**, **Anlage** und **Technik**. Schritte zeigt die Einrichtung von oben nach unten (Verbindung, Zelte & Räume, Geräte & Zuordnung, Steuerungen, Hydro-System, Wasser, Handy, optional KI-Assistent), jeweils mit Stand („erledigt“, „offen“, „optional“), dazu „x von y erledigt“ und den nächsten offenen Schritt. Ein Tipp auf eine Zeile führt zur Seite, an der man den Schritt erledigt. Anlage führt zu Zelte & Räume, Hydro-Systemen und Wasser. Technik ist Geräte & Entitäten mit seinen sechs Reitern.
+- **Der Stand wird gezählt, nicht gegen bestimmte Geräte geprüft:** Wer andere Geräte hat, sieht dieselbe Liste. Lässt sich etwas nicht lesen, steht dort „nicht lesbar“ statt „erledigt“.
+- **Im Menü** steht unter Einrichtung nur noch „Einrichtung“ (plus Handy und KI-Assistent); der Eintrag leuchtet auch auf den Seiten Zelte, Hydro, Wasser und Geräte & Entitäten. Diese Seiten und die Suche funktionieren wie bisher.
+- **Die alte Seite „Erste Schritte“** (`/start`) leitet auf die Schritte weiter.
+- **Messbar:** Die Querschnittsprüfungen (Handy 360–768 px, Umbruch, Kontrast, Touch-Ziele, Wegweiser, Zahlen) laufen grün; die Schritte sind als Zählungen mit eigenem Test abgedeckt.
+
 ## 2.0.0-cc.286
 
 **Geräte, Zuordnung, Inventar, Wartung und die Verbindung zu Home Assistant stehen an einer Stelle.**

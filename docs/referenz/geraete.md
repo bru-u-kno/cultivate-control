@@ -5,7 +5,7 @@
 
 ## Wo in der App
 
-`/geraete` — Menü **Betrieb → Geräte & Entitäten**, direkt vor
+`/geraete` — Menü **Einrichtung → Technik → Geräte**, direkt vor
 „Sensoren & Wartung". Eine Zeile je Gerät; Controller tragen ihre Ports
 eingerückt darunter.
 

@@ -1,0 +1,6 @@
+/* Einrichtung (cc.287): Schritteliste und Anlage — Zeilen im Muster der übrigen Listen (co-row). */
+@layer features {
+  .ei-schritt { color: inherit; text-decoration: none; }
+  .ei-schritt:hover { background: var(--accent-wash); }
+  .ei-schritt .co-row-value { flex: 0 0 auto; text-align: right; }
+}

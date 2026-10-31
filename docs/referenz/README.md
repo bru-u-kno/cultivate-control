@@ -37,7 +37,9 @@ Stand 2026-08-20 · Cultivate Control 2.0.0-beta.52 · Cultivate Control MCP 0.1
 | Wie ich eine Steuerung 10–30 Minuten abschalte, um ihre Wirkung zu messen (Fork AI) | [probelauf.md](probelauf.md) |
 | Wie ich beide Entfeuchter einstelle (Stufe Ruhig/Normal/Schnell, Ziel, Höchsttemperatur), was das Band bedeutet und woher das Ziel kommt (Fork AI) | [entfeuchtung.md](entfeuchtung.md) |
 | Wo die Sollwerte der CO₂-Begasung stehen und wer eigentlich regelt (Fork AI) | [steuerung.md](steuerung.md) |
-| Welche Entität benutzt der Fork wofür und zu welchem Gerät gehört sie (Fork AI) | [geraete.md](geraete.md) |
+| Wo ein neuer Nutzer anfängt und was noch offen ist | [einrichtung.md](einrichtung.md) |
+| Welche Entität benutzt der Fork wofür und zu welchem Gerät gehört sie (Fork AI) | [einrichtung.md](einrichtung.md) | Einrichtung: die Schritteliste mit Live-Stand, die Anlage und der Weg zur Technik (cc.287) |
+| [geraete.md](geraete.md) |
 | Warum ein Controller und seine Ports getrennte Geräte sind (Fork AI) | [geraete.md](geraete.md) |
 | Warum das CO₂-Planziel mit der Phase wechselt und nicht mit der Woche | [steuerung.md](steuerung.md) |
 | Wo ich die CO₂-Begasung einstelle und warum das Ziel nur je Phase wechselt (Fork AI) | [steuerung.md](steuerung.md) |

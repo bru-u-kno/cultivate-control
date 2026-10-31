@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import AddbackPage from './pages/AddbackPage'
 import { GrowScopedSectionPage } from './pages/GrowScopedSectionPage'
-import GettingStartedPage from './pages/GettingStartedPage'
 import DosingPage from './pages/DosingPage'
 import { AcTestPage } from './pages/AcTestPage'
 import DosingPumpSetupPage from './pages/DosingPumpSetupPage'
@@ -11,6 +10,7 @@ import GrowSetupPage from './pages/GrowSetupPage'
 import WasserwechselPage from './pages/WasserwechselPage'
 import HarvestPage from './pages/HarvestPage'
 import HomeAssistantWeiter from './pages/HomeAssistantWeiter'
+import EinrichtungPage from './pages/EinrichtungPage'
 import { INVENTAR_PFAD } from './features/geraete/technik-pfade'
 import HydroDetailPage from './pages/HydroDetailPage'
 import HydroPage from './pages/HydroPage'
@@ -171,7 +171,7 @@ function App() {
           <Route path="/aushaerten" element={<CuringPage />} />
           <Route path="/release" element={<ReleasePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/start" element={<GettingStartedPage />} />
+          <Route path="/einrichtung" element={<EinrichtungPage />} />
           <Route path="/einstellungen" element={<Navigate to="/settings" replace />} />
         
           <Route path="/sensoren" element={<LegacyRedirect to={INVENTAR_PFAD} />} />

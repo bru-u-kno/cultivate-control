@@ -188,14 +188,13 @@ export const navGroups: NavGroup[] = [
     id: 'plant',
     label: 'Einrichtung',
     items: [
-      { to: '/geraete', label: 'Geräte & Entitäten', end: true, icon: '⧉', short: 'Geräte', keywords: 'entität entity home assistant zuordnung controller port sensor steckdose gerät hardware ha mapping verbindung token url inventar wartung kalibrierung wechseln lebensdauer erfassen sensoren' },
-      { to: '/zelte', label: 'Zelte & Räume', end: false, icon: '▣', short: 'Zelte', keywords: 'tent kamera lichtzyklus klima abluft' },
-      { to: '/hydro', label: 'Hydro-Systeme', end: false, keywords: 'rdwc dwc reservoir tank pumpe sites layout' },
-      // Was aus dem Hahn kommt, gehört zur Anlage wie das Reservoir selbst.
-      // „Leitungswasser" war zu eng: hier steht auch das Wasser NACH der
-      // eigenen Aufbereitung (Osmose/VE). Wer unter Anlage nach „Wasser"
-      // sucht, soll es finden — genau das war die Rueckmeldung.
-      { to: '/wasser', label: 'Wasser', end: true, keywords: 'wasser wasserprofil trinkwasser leitungswasser osmose ro umkehrosmose ve entsalzt stadtwerk bericht härte calcium magnesium leitfähigkeit ec kalk weich hart' },
+      // cc.287: EIN Eintrag für die Einrichtung (Schritte, Anlage, Technik). Die Seiten dahinter bleiben erreichbar und
+      // suchbar, stehen aber nicht mehr einzeln im Menü; der Eintrag leuchtet auf allen vieren.
+      { to: '/einrichtung', label: 'Einrichtung', end: true, icon: '▣', short: 'Einrichtung', auch: ['/geraete', '/zelte', '/hydro', '/wasser'], keywords: 'einrichtung erste schritte start anfang installation neu technik verbindung home assistant zuordnung geräte entitäten inventar wartung zelte räume hydro wasser anlage' },
+      { to: '/geraete', label: 'Geräte & Entitäten', end: true, versteckt: true, icon: '⧉', short: 'Geräte', keywords: 'entität entity home assistant zuordnung controller port sensor steckdose gerät hardware ha mapping verbindung token url inventar wartung kalibrierung wechseln lebensdauer erfassen sensoren' },
+      { to: '/zelte', label: 'Zelte & Räume', end: false, versteckt: true, icon: '▣', short: 'Zelte', keywords: 'tent kamera lichtzyklus klima abluft' },
+      { to: '/hydro', label: 'Hydro-Systeme', end: false, versteckt: true, keywords: 'rdwc dwc reservoir tank pumpe sites layout' },
+      { to: '/wasser', label: 'Wasser', end: true, versteckt: true, keywords: 'wasser wasserprofil trinkwasser leitungswasser osmose ro umkehrosmose ve entsalzt stadtwerk bericht härte calcium magnesium leitfähigkeit ec kalk weich hart' },
       { to: '/handy', label: 'Handy', end: true, icon: '▯', short: 'Handy', keywords: 'handy push benachrichtigung benachrichtigungen meldung meldungen ruhezeit tagesbericht wächter smartphone mobil qr code startbildschirm lesezeichen app icon telefon aufs handy holen' },
       // Fork AI (04.10.2026): alles zur eigenen KI an einer Stelle — Verbinden,
       // Zugriff & Schlüssel (vorher unten in den Einstellungen) und die Mappe
@@ -289,6 +288,8 @@ export const legacyRedirects: Record<string, string> = {
   '/berater': '/ki?tab=mappe',
   '/phenohunt': '/sorten',
   '/hardware': '/geraete?reiter=inventar',
+  // cc.287: die statische Seite „Erste Schritte“ ist die Schritteliste der Einrichtung geworden.
+  '/start': '/einrichtung',
   '/analyse': '/archiv',
   '/action': '/aufgaben',
 }
