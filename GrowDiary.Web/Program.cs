@@ -59,6 +59,7 @@ builder.Services.AddSingleton<JournalRepository>();
 builder.Services.AddSingleton<AuditRepository>();
 builder.Services.AddSingleton<SystemAuditRepository>();
 builder.Services.AddSingleton<HarvestRepository>();
+builder.Services.AddSingleton<TrocknungWaegungRepository>();
 builder.Services.AddSingleton<CuringRepository>();
 builder.Services.AddSingleton<PhenoRepository>();
 builder.Services.AddSingleton<DashboardLayoutRepository>();

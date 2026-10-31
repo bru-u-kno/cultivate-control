@@ -15,6 +15,7 @@ import { decimalsForMetric } from './metric-tile-model'
 import { PhasenUebersicht } from './PhasenUebersicht'
 import { CameraPanel } from './CameraPanel'
 import { TrendWatchPanel } from './TrendWatchPanel'
+import { FertigErkennung } from '../trocknung/FertigErkennung'
 import { DashboardBands } from './DashboardBands'
 import { BandTitel, KachelKlappe, KlappTitel } from './Einklappen'
 import { bereichsBilanz, useEingeklappt, type Einklappen } from './eingeklappt'
@@ -367,6 +368,8 @@ export function LiveScreen({
           nichts. */}
       <section className="ls-lower">
         <div className="ls-lower-right">
+          {/* A-029 Etappe 4: nur, solange das Zelt trocknet — sonst zeichnet die Karte nichts. */}
+          <FertigErkennung key={tent?.id ?? 'kein-zelt'} tentId={tent?.id ?? null} zu={zu('panel:fertig')} onKlappe={klappe('panel:fertig')} />
           {topRisk ? (
             <article className={classNames('ls-panel', 'ls-risk', `is-${topRisk.severity.toLowerCase()}`, zu('panel:risiko') && 'is-zu')} data-audit="live-risk">
               <div className="ls-panel-head">

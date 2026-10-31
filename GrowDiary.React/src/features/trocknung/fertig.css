@@ -1,0 +1,32 @@
+/* Fertig-Erkennung der Trocknung (A-029, Etappe 4): Karte an der Live-Seite und Blatt „Probe wiegen“. */
+.fe-body p { margin: 6px 0 0; color: var(--muted); }
+.fe-kurve { display: block; width: 100%; margin: 8px 0 4px; font-family: var(--mono); }
+.fe-gitter { stroke: var(--hair); }
+.fe-achse { fill: var(--faint); font-size: 9px; }
+.fe-linie { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.fe-punkt { fill: var(--bg); stroke: var(--accent); stroke-width: 1.6; }
+.fe-ruhe { fill: var(--accent); opacity: .12; }
+.fe-ziel { stroke: var(--accent); stroke-dasharray: 4 3; }
+.fe-ziel-text { fill: var(--accent); font-size: 9px; }
+.fe-fakten > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hair);
+  font-size: .85rem;
+}
+.fe-fakten span { color: var(--muted); white-space: nowrap; }
+.fe-fakten strong { font-weight: 600; text-align: right; }
+.fe-faellig { color: var(--warn); font-style: normal; }
+.fe-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.fe-knoepfe .ls-btn { flex: 1 1 auto; min-height: 44px; justify-content: center; }
+.fe-body .fe-hinweis, .fe-blatt .fe-hinweis { margin: 8px 0 0; font-size: .82rem; line-height: 1.45; color: var(--faint); }
+.fe-link { margin-top: 6px; padding: 10px 0; min-height: 44px; background: none; border: 0; color: var(--faint); font: inherit; font-size: .82rem; text-decoration: underline; cursor: pointer; }
+.fe-blatt { display: grid; gap: 10px; }
+.fe-blatt p { margin: 0; color: var(--muted); }
+.fe-feld { display: grid; gap: 4px; }
+.fe-feld > span { font-size: .8rem; color: var(--faint); }
+.fe-feld input, .fe-feld select { width: 100%; box-sizing: border-box; min-height: 48px; padding: 0 14px; font: inherit; font-size: 1.1rem; background: var(--bg); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; }
+.fe-fehler { color: var(--warn); }

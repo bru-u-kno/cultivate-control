@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.291
+
+**Fertig-Erkennung der Trocknung: Probe wiegen, Kurve ansehen, „Fühlt sich fertig an“ — auch ohne Frischgewicht.**
+
+- **Was war:** Ob die Trocknung fertig ist, musste man schätzen. Das Zelt kannte nur Tage und Etappen, aber nichts, was zeigt, ob das Gewicht noch sinkt. Wer das Frischgewicht der Ernte nicht kannte, hätte ohnehin keine Vergleichszahl gehabt.
+- **Was jetzt ist:** An der Live-Seite eines trocknenden Zelts steht die Karte „Fertig-Erkennung“ (nur, solange das Zelt trocknet). Du wiegst eine Probe, am besten alle 2 Tage, und trägst das Gewicht im Blatt „Probe wiegen“ ein. Die Karte zeichnet die Kurve in Prozent und sagt „Gewicht sinkt noch“, „Gewicht hält sich“ oder „Ziel erreicht“. Dazu steht dort, wann die nächste Wägung dran ist (mit „fällig“, wenn sie es ist). „Fühlt sich fertig an“ führt zur Erntenseite, wo du das Trockengewicht einträgst — dann ist das Zelt wieder frei. Die letzte Wägung lässt sich bei einem Tippfehler löschen. Wer gestern gewogen hat und erst heute einträgt, stellt im Blatt „Gewogen am“ um (nicht in der Zukunft und nicht vor der Ernte). Steigt das Gewicht statt zu sinken (andere Waage, andere Probe), steht dort „Gewicht ist gestiegen“ statt eines falschen „weniger“.
+- **Ohne Frischgewicht:** Die erste Wägung ist dein Startwert (100 %). Wiegst du die ganze Charge und kennt die Ernte ihr Frischgewicht, rechnet die Kurve gegen dieses und zeigt die Zielmarke „~22 %“. Eine Probe wird nie am Frischgewicht der ganzen Ernte gemessen — das wäre falsch.
+- **Faustregeln, ausdrücklich keine Garantie:** „Hält sich“ heißt: Das Gewicht hat sich an zwei aufeinanderfolgenden Wägetagen um weniger als 1 % geändert (mehrere Wägungen am selben Tag zählen als eine). Das Ziel von etwa 22 % des Frischgewichts ist ebenfalls eine Faustregel. Entscheiden tust du, am Knack-Test des Stiels.
+- **Erntenseite:** Das Frischgewicht ist jetzt ausdrücklich freiwillig (mit Hinweis, dass die Fertig-Erkennung auch ohne geht).
+- **Schnittstelle:** `GET /api/tents/{id}/trocknung/fertig`, `POST /api/tents/{id}/trocknung/waegungen` und `DELETE …/waegungen/{id}` (Stufe „Dokumentieren“, das Löschen mit Sicherung davor).
+- **Noch nicht dabei:** Beim Export eines Grows werden die Wägungen noch nicht mitgenommen. Ein Doppelklick auf „Speichern“ legt keine zweite Wägung an (dieselbe Zahl binnen einer halben Minute zählt einmal).
+- **Messbar:** Zehn Tests für die Berechnung (verfälscht man die Regel für „hält sich“, werden drei rot; wer zwei Wägungen am selben Tag schon als Verlauf liest, einen), Tests für die Schnittstelle und ein Rundweg-Test der Oberfläche (eintragen, nach dem Neuladen wiederfinden, falsche Eingabe, löschen, Weg zum Trockengewicht).
+
 ## 2.0.0-cc.290
 
 **Ernte erfassen verständlicher: „Ernte speichern“ lässt den Grow wirklich offen — und ein Trockenzelt trocknet ab dem Erntedatum.**

@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiFetch, ApiRequestError } from '../api'
 import type { GrowDetail, HarvestDto, TentDto } from '../types'
 import { V1Alert, V1Badge, V1Button, V1Field, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Switch } from '../components/v1'
@@ -28,6 +28,8 @@ interface HarvestFormState {
 function HarvestPage() {
   const { growId } = useParams()
   const navigate = useNavigate()
+  // Von „Fühlt sich fertig an“ an der Fertig-Erkennung: Das Trockengewicht ist der nächste Schritt.
+  const kommtVonFertig = useSearchParams()[0].get('fertig') === '1'
   const [harvest, setHarvest] = useState<HarvestDto | null>(null)
   const [form, setForm] = useState<HarvestFormState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -169,6 +171,7 @@ function HarvestPage() {
       action={<V1LinkButton to={backTo}>Zurück zum Grow</V1LinkButton>}
     >
       {error && <V1Alert title="Fehler" message={error} tone="warn" />}
+      {kommtVonFertig && <V1Alert title="Trocknung fertig?" message="Wiege die Ernte und trag das Trockengewicht ein, dann ist das Trockenzelt wieder frei." tone="accent" />}
 
       {loading || !form ? (
         <V1Skeleton tiles={4} rows={3} label="Lade Ernte" />
@@ -190,7 +193,7 @@ function HarvestPage() {
                   </select>
                 </V1Field>
               )}
-              <V1Field label="Frischgewicht" hint="Gramm">
+              <V1Field label="Frischgewicht (optional)" hint="Gramm. Unbekannt? Die Fertig-Erkennung am Zelt funktioniert auch ohne — du kannst es später nachtragen.">
                 <input inputMode="decimal" value={form.wetWeightG} onChange={(event) => setForm((current) => current ? { ...current, wetWeightG: event.target.value } : current)} />
               </V1Field>
               <V1Field label="Trockengewicht" hint="Gramm">
