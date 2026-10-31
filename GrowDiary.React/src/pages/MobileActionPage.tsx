@@ -11,6 +11,7 @@ import { RiskActionCard } from '../features/risks/RiskActionCard'
 import { KlappBereich } from '../components/Klapp'
 import { istOffen, istWiederOkay } from '../features/risks/risiko-zeit'
 import { TASKS_CHANGED_EVENT } from '../useNavCounts'
+import { INVENTAR_PFAD } from '../features/geraete/technik-pfade'
 
 type FaelligeRoutine = { sopId: string; name: string; severity: string; tageSeit: number; intervallTage: number; meldung: string }
 type PumpBefund = { schluessel: string; name: string; stufe: string; meldung: string; herkunft: string }
@@ -449,17 +450,17 @@ function buildWartung(state: ActionState): AfItem[] {
       when: punkt.stufe === 'kritisch' ? 'jetzt' : 'bald',
       due: punkt.stufe === 'kritisch',
       title: punkt.meldung,
-      to: punkt.bereich === 'Sicherung' ? '/einstellungen' : '/sensoren',
+      to: punkt.bereich === 'Sicherung' ? '/einstellungen' : INVENTAR_PFAD,
       action: 'Öffnen',
       note: punkt.herkunft,
     })),
     ...state.maintenance.map((event) => {
       const when = dueInDays(event.dueAtUtc)
-      return { id: `maintenance-${event.id}`, when: when.label, due: when.due, title: event.title, to: '/sensoren', action: 'Öffnen' }
+      return { id: `maintenance-${event.id}`, when: when.label, due: when.due, title: event.title, to: INVENTAR_PFAD, action: 'Öffnen' }
     }),
     ...state.calibration.map((event) => {
       const when = dueInDays(event.dueAtUtc)
-      return { id: `calibration-${event.id}`, when: when.label, due: when.due, title: event.title, to: '/sensoren', action: 'Öffnen' }
+      return { id: `calibration-${event.id}`, when: when.label, due: when.due, title: event.title, to: INVENTAR_PFAD, action: 'Öffnen' }
     }),
     ...state.hardware
       .filter((item) => item.status === 'Offline' || item.status === 'MaintenanceDue' || (isMappingExpected(item) && !item.haEntityId))
@@ -468,7 +469,7 @@ function buildWartung(state: ActionState): AfItem[] {
         when: 'jetzt',
         due: item.status === 'Offline' || item.criticality === 'Critical',
         title: `${item.name} · ${item.status === 'Offline' ? 'offline' : isMappingExpected(item) && !item.haEntityId ? 'kein Mapping' : 'Wartung fällig'}`,
-        to: '/sensoren',
+        to: INVENTAR_PFAD,
         action: 'Öffnen',
       })),
   ]

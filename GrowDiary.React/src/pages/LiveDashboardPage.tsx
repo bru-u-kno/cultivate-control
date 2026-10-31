@@ -13,6 +13,7 @@ import { urteilFuerMetrik } from '../features/live/metric-tile-model'
 import { messZeitpunkt } from '../features/live/mess-zeitpunkt'
 import '../features/live/live-screen.css'
 import { V1Skeleton } from '../components/v1'
+import { VERBINDUNG_PFAD } from '../features/geraete/technik-pfade'
 import {
   buildScore,
   chooseInitialTent,
@@ -433,7 +434,7 @@ function LiveDashboardPage() {
             <p>Lieber ausführlich? Die Ersten Schritte erklären Einrichtung und Home-Assistant-Anbindung.</p>
             <div className="ls-panel-actions">
               <Link className="ls-btn" to="/start">Erste Schritte</Link>
-              <Link className="ls-btn" to="/home-assistant">Home Assistant verbinden</Link>
+              <Link className="ls-btn" to={VERBINDUNG_PFAD}>Home Assistant verbinden</Link>
             </div>
           </div>
         </article>

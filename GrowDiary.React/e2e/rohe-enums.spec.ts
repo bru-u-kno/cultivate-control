@@ -156,7 +156,7 @@ for (const pfad of TEXTSEITEN) {
  * hat.
  */
 const HINTER_EINEM_KLICK: Array<{ pfad: string, knopf: string, was: string }> = [
-  { pfad: '/sensoren', knopf: 'Bearbeiten', was: 'das Geräte-Formular' },
+  { pfad: '/geraete?reiter=inventar', knopf: 'Bearbeiten', was: 'das Geräte-Formular' },
   { pfad: '/journal', knopf: '+ Eintrag', was: 'das Journal-Formular' },
   { pfad: '/sorten', knopf: '+ Sorte', was: 'das Sorten-Formular' },
   { pfad: '/zelte', knopf: 'Bearbeiten', was: 'das Zelt-Formular' },

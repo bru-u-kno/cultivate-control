@@ -30,7 +30,7 @@ test.describe('Sichtbare Wirkung', () => {
     darfUeberspringen(!(await page.request.get('/api/grows')).ok(),
       'Kein Backend — ohne Geräte gibt es keinen Bearbeiten-Knopf.')
 
-    await page.goto('/sensoren', { waitUntil: 'networkidle' })
+    await page.goto('/geraete?reiter=inventar', { waitUntil: 'networkidle' })
 
     const knoepfe = page.getByRole('button', { name: 'Bearbeiten' })
     darfUeberspringen(await knoepfe.count() === 0,
@@ -71,7 +71,7 @@ test.describe('Sichtbare Wirkung', () => {
     //
     // Eine Prüfung, die nur einmal klickt, findet das nie. Genau so ist es
     // passiert.
-    await page.goto('/sensoren', { waitUntil: 'networkidle' })
+    await page.goto('/geraete?reiter=inventar', { waitUntil: 'networkidle' })
 
     const knoepfe = page.getByRole('button', { name: 'Bearbeiten' })
     darfUeberspringen(await knoepfe.count() < 2,
@@ -117,7 +117,7 @@ test.describe('Sichtbare Wirkung', () => {
     // Die beiden Pruefungen oben KONNTEN das nicht sehen: sie messen gegen die
     // Fensterkante, und hinter einer festen Leiste ist man im Fenster.
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/sensoren', { waitUntil: 'networkidle' })
+    await page.goto('/geraete?reiter=inventar', { waitUntil: 'networkidle' })
 
     const knoepfe = page.getByRole('button', { name: 'Bearbeiten' })
     darfUeberspringen(await knoepfe.count() === 0,
@@ -180,7 +180,7 @@ test.describe('Sichtbare Wirkung', () => {
   const GESCHWISTER = [
     {
       name: 'Kalibrierung eintragen auf /sensoren',
-      pfad: '/sensoren',
+      pfad: '/geraete?reiter=inventar',
       oeffnen: async (page: Page) => {
         const zeile = page.getByRole('button', { name: /Kalibriert/ })
         if (await zeile.count() === 0) return false
@@ -227,7 +227,7 @@ test.describe('Sichtbare Wirkung', () => {
   test('„+ Gerät anlegen" ebenso', async ({ page }) => {
     darfUeberspringen(!(await page.request.get('/api/grows')).ok(), 'Kein Backend — siehe oben.')
 
-    await page.goto('/sensoren', { waitUntil: 'networkidle' })
+    await page.goto('/geraete?reiter=inventar', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: /Gerät anlegen/ }).first().click()
 
     const formular = page.locator('[data-audit="hardware-edit-form"]')

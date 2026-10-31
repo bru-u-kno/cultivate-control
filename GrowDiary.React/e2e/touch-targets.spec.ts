@@ -11,7 +11,7 @@ import { einblendungenAbwarten, zuKleineZiele } from './oberflaeche-messung'
  * Gemessen wird die *Trefferfläche*, nicht die Kastengröße — wie, steht in
  * `oberflaeche-messung.ts` (`zuKleineZiele`).
  */
-const ROUTES = ['/', '/zelte', '/hydro', '/grows/1', '/sensoren', '/regeln', '/aufgaben', '/messung', '/messungen', '/wissen', '/home-assistant']
+const ROUTES = ['/', '/zelte', '/hydro', '/grows/1', '/geraete?reiter=inventar', '/regeln', '/aufgaben', '/messung', '/messungen', '/wissen', '/geraete?reiter=verbindung']
 const MIN = 44
 
 // Mit Touch, nicht nur schmal: die Vergrößerung hängt an `@media (pointer: coarse)`,

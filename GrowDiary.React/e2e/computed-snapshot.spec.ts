@@ -11,7 +11,7 @@ import { writeFileSync, mkdirSync } from 'node:fs'
  *
  * Aufruf: SNAPSHOT=vorher npx playwright test e2e/computed-snapshot.spec.ts
  */
-const ROUTES = ['/', '/zelte', '/zelte/1', '/hydro', '/grows/1', '/messungen', '/sensoren', '/regeln', '/home-assistant', '/addback']
+const ROUTES = ['/', '/zelte', '/zelte/1', '/hydro', '/grows/1', '/messungen', '/geraete?reiter=inventar', '/regeln', '/geraete?reiter=verbindung', '/addback']
 
 const PROPS = [
   'display', 'gridTemplateColumns', 'flexDirection', 'flexWrap', 'gap',

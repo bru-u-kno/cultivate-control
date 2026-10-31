@@ -21,7 +21,7 @@ const ROUTES: { path: string; name: string }[] = [
   { path: '/plan', name: 'Plan' },
   { path: '/grenzwerte', name: 'Grenzwerte' },
   { path: '/handy?tab=push', name: 'Handy · Push' },
-  { path: '/sensoren', name: 'Sensoren & Wartung' },
+  { path: '/geraete?reiter=inventar', name: 'Geräte & Entitäten' },
   { path: '/automatik', name: 'Automatik' },
   { path: '/messungen', name: 'Messungen-Verlauf' },
   { path: '/diagnose', name: 'Diagnose' },
@@ -34,7 +34,7 @@ const ROUTES: { path: string; name: string }[] = [
   { path: '/hydro', name: 'Hydro' },
   { path: '/hydro/1', name: 'Hydro-Detail' },
   { path: '/hardware', name: 'Sensoren' },
-  { path: '/home-assistant', name: 'Home Assistant' },
+  { path: '/geraete?reiter=verbindung', name: 'Geräte & Entitäten' },
   { path: '/handy?tab=app', name: 'Handy · App einrichten' },
   { path: '/wissen', name: 'Wissen' },
   { path: '/start', name: 'Erste Schritte' },
@@ -98,7 +98,9 @@ const REDIRECTS: [from: string, to: string][] = [
   ['/assistent', '/regeln'],
   ['/phenohunt', '/sorten'],
   ['/analyse', '/archiv'],
-  ['/hardware', '/sensoren'],
+  ['/hardware', '/geraete?reiter=inventar'],
+  ['/sensoren', '/geraete?reiter=inventar'],
+  ['/home-assistant', '/geraete?reiter=verbindung'],
   ['/action', '/aufgaben'],
 ]
 

@@ -13,7 +13,9 @@ import { RollenReiter } from '../features/geraete/RollenReiter'
 import { RaumName } from '../features/geraete/RaumName'
 import { ordneEintraege } from '../features/geraete/eintraegeOrdnung'
 import { rollenPfad } from '../features/geraete/rollenPfad'
-import { WartungReiter } from '../features/geraete/WartungReiter'
+import { EingebettetContext } from '../components/eingebettet'
+import HardwarePage from './HardwarePage'
+import HomeAssistantPage from './HomeAssistantPage'
 import type { HomeAssistantEntity } from '../types'
 import { KlappKopf, KlappPfeil } from '../components/Klapp'
 import { useKlappGemerkt } from '../components/klapp-zustand'
@@ -76,7 +78,7 @@ function zielOptionen(alle: Geraet[]): V1Option[] {
 const QUELLEN_ZIEL: Record<string, string> = {
   messgroesse: '/geraete?reiter=zuordnung',
   zelt: '/zelte',
-  inventar: '/sensoren',
+  inventar: '/geraete?reiter=inventar',
   dosierung: '/dosierung',
   steuerung: '/geraete?reiter=rollen',
   strom: '/kosten',
@@ -102,8 +104,8 @@ function steuerungsModul(verwendung: Verwendung): string | null {
   return treffer ? treffer[1].toLowerCase() : null
 }
 
-type Reiter = 'geraete' | 'rollen' | 'raeume' | 'zuordnung' | 'wartung'
-const REITER: Reiter[] = ['geraete', 'rollen', 'raeume', 'zuordnung', 'wartung']
+type Reiter = 'geraete' | 'zuordnung' | 'rollen' | 'raeume' | 'inventar' | 'verbindung'
+const REITER: Reiter[] = ['geraete', 'zuordnung', 'rollen', 'raeume', 'inventar', 'verbindung']
 
 type SpeichernRequest = {
   name: string
@@ -137,8 +139,8 @@ export default function GeraetePage() {
   // Fork AI (forkai.134): Der Reiter steht in der Adresse — so führen Links aus
   // der Steuerung direkt in „Rollen" und dort zur passenden Regelung.
   const [params, setParams] = useSearchParams()
-  // cc.285: „Messgrößen“ heißt jetzt „Zuordnung“ — alte Lesezeichen mit reiter=messgroessen führen weiter hierher.
-  const reiterParam = params.get('reiter') === 'messgroessen' ? 'zuordnung' : params.get('reiter')
+  // Alte Lesezeichen führen weiter: „Messgrößen“ heißt seit cc.285 „Zuordnung“, „Wartung“ ist seit cc.286 in „Inventar & Wartung“ aufgegangen.
+  const reiterParam = ({ messgroessen: 'zuordnung', wartung: 'inventar' } as Record<string, string>)[params.get('reiter') ?? ''] ?? params.get('reiter')
   const reiter: Reiter = REITER.includes(reiterParam as Reiter) ? (reiterParam as Reiter) : 'geraete'
   const modulParam = params.get('modul')
   const setReiter = (neu: Reiter) => setParams(neu === 'geraete' ? {} : { reiter: neu }, { replace: true })
@@ -294,14 +296,6 @@ export default function GeraetePage() {
     }
   }
 
-  const geraeteNamen = useMemo(() => {
-    const namen = new Map<number, string>()
-    for (const geraet of seite?.geraete ?? []) {
-      if (geraet.hardwareItemId != null) namen.set(geraet.hardwareItemId, geraet.name)
-    }
-    return namen
-  }, [seite])
-
   // Controller zuerst, ihre Ports direkt darunter — die Reihenfolge kommt aus
   // dem Dienst, hier wird nur die Verschachtelung sichtbar gemacht.
   const gruppen = useMemo(() => {
@@ -419,9 +413,9 @@ export default function GeraetePage() {
 
   return (
     <V1Page
-      eyebrow="Betrieb"
+      eyebrow="Einrichtung"
       title="Geräte & Entitäten"
-      subtitle="Alles, was der Fork an Home Assistant benutzt — an einer Stelle."
+      subtitle="Alles, was der Fork an Home Assistant benutzt — an einer Stelle: Geräte, Zuordnung, Rollen, Räume, Inventar, Wartung und die Verbindung."
     >
       <V1Tabs
         label="Bereich"
@@ -430,10 +424,11 @@ export default function GeraetePage() {
         onChange={setReiter}
         items={[
           { value: 'geraete', label: 'Geräte' },
+          { value: 'zuordnung', label: 'Zuordnung' },
           { value: 'rollen', label: 'Rollen' },
           { value: 'raeume', label: 'Räume' },
-          { value: 'zuordnung', label: 'Zuordnung' },
-          { value: 'wartung', label: 'Wartung' },
+          { value: 'inventar', label: 'Inventar & Wartung' },
+          { value: 'verbindung', label: 'Verbindung' },
         ]}
       />
 
@@ -452,7 +447,8 @@ export default function GeraetePage() {
       {reiter === 'rollen' ? <RollenReiter modulVorwahl={modulParam} onModul={setModul} />
         : reiter === 'raeume' ? <><RaumName /><RollenReiter nurModule={['raum']} schlank /></>
         : reiter === 'zuordnung' ? <ZuordnungReiter entities={entities} />
-        : reiter === 'wartung' ? <WartungReiter geraeteNamen={geraeteNamen} /> : <>
+        : reiter === 'inventar' ? <EingebettetContext.Provider value><HardwarePage /></EingebettetContext.Provider>
+        : reiter === 'verbindung' ? <EingebettetContext.Provider value><HomeAssistantPage /></EingebettetContext.Provider> : <>
 
       {letzte && (
         <div className="gr-meldung">

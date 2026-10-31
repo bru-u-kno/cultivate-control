@@ -15,6 +15,7 @@ import {
 import { unlesbarMeldung } from '../zahlenfeld'
 import { mappingLink } from '../features/home-assistant/mapping-link'
 import '../features/hardware/hardware.css'
+import { VERBINDUNG_PFAD } from '../features/geraete/technik-pfade'
 
 const FILTERS: Array<{ value: HardwareFilter; label: string }> = [
   { value: 'alle', label: 'Alle' },
@@ -692,7 +693,7 @@ function HardwarePage() {
 
             <p className="hw-note">
               Feste Sensoren legt Cultivate Control selbst an, sobald du unter{' '}
-              <V1LinkButton to="/home-assistant" variant="ghost">Home Assistant</V1LinkButton>{' '}
+              <V1LinkButton to={VERBINDUNG_PFAD} variant="ghost">Home Assistant</V1LinkButton>{' '}
               eine Entity zuordnest — samt Kalibrier-Intervall, das du hier je Sensor ändern kannst.
             </p>
           </V1Section>

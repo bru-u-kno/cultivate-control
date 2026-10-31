@@ -12,7 +12,7 @@ import { writeFileSync } from 'node:fs'
 const ROUTES = [
   '/', '/messung', '/addback', '/aufgaben', '/grows', '/grows/1', '/sorten', '/archiv',
   '/regeln', '/messungen', '/diagnose', '/journal', '/sops', '/zelte', '/zelte/1',
-  '/hydro', '/hydro/1', '/hydro/new', '/sensoren', '/home-assistant', '/wissen', '/start', '/settings',
+  '/hydro', '/hydro/1', '/hydro/new', '/geraete?reiter=inventar', '/geraete?reiter=verbindung', '/wissen', '/start', '/settings',
 ]
 
 // Die Liste muss etwas hergeben. Ohne diese Zeile laeuft die Schleife

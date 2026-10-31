@@ -1,5 +1,6 @@
 import { mappingLink } from '../features/home-assistant/mapping-link'
 import { V1Card, V1LinkButton, V1Page, V1Section } from '../components/v1'
+import { VERBINDUNG_PFAD } from '../features/geraete/technik-pfade'
 
 function GettingStartedPage() {
   return (
@@ -14,7 +15,7 @@ function GettingStartedPage() {
             <span className="v1-card-kicker">Schritt 1</span>
             <h2>Sensoren verbinden</h2>
             <p>Cultivate Control ist als Add-on schon mit Home Assistant verbunden. Ordne beim Zelt deine HA-Sensoren aus dem Dropdown zu — pH, EC, Klima, Kamera und mehr. Kein Token, kein Abtippen.</p>
-            <V1LinkButton to="/home-assistant" variant="primary">Home Assistant öffnen</V1LinkButton>
+            <V1LinkButton to={VERBINDUNG_PFAD} variant="primary">Home Assistant öffnen</V1LinkButton>
           </V1Card>
           <V1Card>
             <span className="v1-card-kicker">Schritt 2</span>

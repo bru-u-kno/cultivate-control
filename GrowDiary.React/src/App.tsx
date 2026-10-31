@@ -9,9 +9,9 @@ import GrowDetailPage from './pages/GrowDetailPage'
 import GrowsPage from './pages/GrowsPage'
 import GrowSetupPage from './pages/GrowSetupPage'
 import WasserwechselPage from './pages/WasserwechselPage'
-import HardwarePage from './pages/HardwarePage'
 import HarvestPage from './pages/HarvestPage'
-import HomeAssistantPage from './pages/HomeAssistantPage'
+import HomeAssistantWeiter from './pages/HomeAssistantWeiter'
+import { INVENTAR_PFAD } from './features/geraete/technik-pfade'
 import HydroDetailPage from './pages/HydroDetailPage'
 import HydroPage from './pages/HydroPage'
 import HydroEditorPage from './features/hydro/HydroEditorPage'
@@ -159,7 +159,7 @@ function App() {
           <Route path="/hydro/new" element={<HydroEditorPage />} />
           <Route path="/hydro/:id/edit" element={<HydroEditorPage />} />
           <Route path="/hydro/:setupId" element={<HydroDetailPage />} />
-          <Route path="/home-assistant" element={<HomeAssistantPage />} />
+          <Route path="/home-assistant" element={<HomeAssistantWeiter />} />
           <Route path="/handy" element={<HandySeite />} />
           <Route path="/tagebuch" element={<TagebuchPage />} />
           <Route path="/messungen" element={<GrowScopedSectionPage title="Messungen" section="measurements" />} />
@@ -174,7 +174,7 @@ function App() {
           <Route path="/start" element={<GettingStartedPage />} />
           <Route path="/einstellungen" element={<Navigate to="/settings" replace />} />
         
-          <Route path="/sensoren" element={<HardwarePage />} />
+          <Route path="/sensoren" element={<LegacyRedirect to={INVENTAR_PFAD} />} />
 
           
           <Route path="/plan" element={<PlanSeite />} />

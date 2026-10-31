@@ -92,6 +92,9 @@ const DETAILSEITEN = [
   // Reiter der Geräteseite. Sie tragen Suchfelder mit Vorschlägen und rechts
   // Livewerte — also Zahlen, schmale Zeilen und Kollisionsgefahr auf dem Handy.
   '/geraete?reiter=rollen',
+  '/geraete?reiter=zuordnung',
+  '/geraete?reiter=inventar',
+  '/geraete?reiter=verbindung',
 
   // A-006: der Wasserwechsel-Ablauf hat vier Schritte; aus dem Menü sieht jede
   // Prüfung nur den ersten. Die übrigen drei tragen die Mischplan-Tabelle, den

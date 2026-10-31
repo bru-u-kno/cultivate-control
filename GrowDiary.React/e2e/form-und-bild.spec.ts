@@ -204,7 +204,7 @@ for (const breite of [360, 768, 1280]) {
     await page.setViewportSize({ width: breite, height: 900 })
 
     const funde: string[] = []
-    for (const pfad of ['/handy', '/grows/1', '/zelte/1', '/sensoren', '/sops', '/diagnose']) {
+    for (const pfad of ['/handy', '/grows/1', '/zelte/1', '/geraete?reiter=inventar', '/sops', '/diagnose']) {
       const antwort = await page.goto(pfad, { waitUntil: 'networkidle' })
       if (antwort == null || antwort.status() >= 400) continue
       await page.waitForTimeout(250)

@@ -23,7 +23,7 @@ const ROUTEN = [
   // Das Formular fragt bei jedem Grow nach dem Plan: einmal mit (1), einmal
   // ohne (2) — „kein Plan" darf keinen 404 in die Konsole schreiben (02.10.2026).
   '/grows/1/setup', '/grows/2/setup', '/diagnose', '/journal', '/sorten', '/archiv',
-  '/zelte', '/zelte/1', '/hydro', '/sensoren', '/regeln', '/home-assistant',
+  '/zelte', '/zelte/1', '/hydro', '/geraete?reiter=inventar', '/regeln', '/geraete?reiter=verbindung',
   '/wissen', '/settings', '/start', '/release',
   '/regeln?tab=automatik', '/regeln?tab=ki',
   '/plan', '/grenzwerte', '/handy?tab=push', '/handy?tab=app',

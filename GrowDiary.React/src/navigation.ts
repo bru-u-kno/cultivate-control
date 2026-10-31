@@ -4,7 +4,7 @@
    Jetzt        täglich          Live, Messen, Addback, Aufgaben
    Pflanzen     mehrmals/Woche   Grows, Diagnose, Journal, Sorten, Archiv
    Betrieb      alle paar Wochen Dosierung, Sensoren, Regeln, Sollwerte
-   Einrichtung  einmal           Zelte, Hydro, Wasser, Home Assistant, Handy
+   Einrichtung  einmal           Geräte & Entitäten (mit Verbindung, Zuordnung, Inventar), Zelte, Hydro, Wasser, Handy
    Wissen       zum Nachschlagen SOPs, Einkaufsliste, Mappe
 
    Vorher lagen acht Ziele unter „Anlage" — fünf davon öffnet man nach der
@@ -149,7 +149,6 @@ export const navGroups: NavGroup[] = [
     label: 'Betrieb',
     items: [
       { to: '/dosierung', label: 'Dosierung', end: false, icon: '⚗', short: 'Dosierung', keywords: 'pumpe peristaltik ph minus plus säure nährstoff dosieren kalibrieren' },
-      { to: '/geraete', label: 'Geräte & Entitäten', end: true, icon: '⧉', short: 'Geräte', keywords: 'entität entity home assistant zuordnung controller port sensor steckdose gerät hardware ha mapping' },
       { to: '/regeln', label: 'Auto-Messungen', end: true, icon: '≡', short: 'Auto', keywords: 'automatik automation auto messung messungen zeitplan intervall snapshot regeln' },
       // Fork AI (forkai.125): Der eigene Menüpunkt „Wochenplan“ ist in
       // „Ziele & Meldungen“ aufgegangen — die Woche steht dort als Zeile über
@@ -189,6 +188,7 @@ export const navGroups: NavGroup[] = [
     id: 'plant',
     label: 'Einrichtung',
     items: [
+      { to: '/geraete', label: 'Geräte & Entitäten', end: true, icon: '⧉', short: 'Geräte', keywords: 'entität entity home assistant zuordnung controller port sensor steckdose gerät hardware ha mapping verbindung token url inventar wartung kalibrierung wechseln lebensdauer erfassen sensoren' },
       { to: '/zelte', label: 'Zelte & Räume', end: false, icon: '▣', short: 'Zelte', keywords: 'tent kamera lichtzyklus klima abluft' },
       { to: '/hydro', label: 'Hydro-Systeme', end: false, keywords: 'rdwc dwc reservoir tank pumpe sites layout' },
       // Was aus dem Hahn kommt, gehört zur Anlage wie das Reservoir selbst.
@@ -196,12 +196,6 @@ export const navGroups: NavGroup[] = [
       // eigenen Aufbereitung (Osmose/VE). Wer unter Anlage nach „Wasser"
       // sucht, soll es finden — genau das war die Rueckmeldung.
       { to: '/wasser', label: 'Wasser', end: true, keywords: 'wasser wasserprofil trinkwasser leitungswasser osmose ro umkehrosmose ve entsalzt stadtwerk bericht härte calcium magnesium leitfähigkeit ec kalk weich hart' },
-      // Fork AI (forkai.42): Gepflegt wird unter Betrieb → Geräte & Entitäten;
-      // diese beiden Seiten bleiben unverändert bestehen und zeigen dieselben
-      // Daten. Sie stehen hier unten, weil man sie nur noch selten braucht —
-      // etwa für die HA-Verbindung selbst oder zum Erfassen einer Wartung.
-      { to: '/home-assistant', label: 'Home Assistant (Verbindung)', end: true, keywords: 'ha entitäten verbindung integration mapping kamera token url' },
-      { to: '/sensoren', label: 'Sensoren & Wartung (erfassen)', end: true, keywords: 'hardware geräte kalibrierung inventar wechseln lebensdauer wartung erfassen' },
       { to: '/handy', label: 'Handy', end: true, icon: '▯', short: 'Handy', keywords: 'handy push benachrichtigung benachrichtigungen meldung meldungen ruhezeit tagesbericht wächter smartphone mobil qr code startbildschirm lesezeichen app icon telefon aufs handy holen' },
       // Fork AI (04.10.2026): alles zur eigenen KI an einer Stelle — Verbinden,
       // Zugriff & Schlüssel (vorher unten in den Einstellungen) und die Mappe
@@ -294,7 +288,7 @@ export const legacyRedirects: Record<string, string> = {
   // Fork AI (04.10.2026): die Mappe ist ein Reiter der Seite KI-Assistent.
   '/berater': '/ki?tab=mappe',
   '/phenohunt': '/sorten',
-  '/hardware': '/sensoren',
+  '/hardware': '/geraete?reiter=inventar',
   '/analyse': '/archiv',
   '/action': '/aufgaben',
 }

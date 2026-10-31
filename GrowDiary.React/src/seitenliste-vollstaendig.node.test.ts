@@ -22,6 +22,8 @@ import { ALLE_SEITEN } from '../e2e/seiten'
 
 /** Routen, die keine eigene Seite zum Ansehen sind — je mit Grund. */
 const OHNE_EIGENE_SEITE: Record<string, string> = {
+  '/home-assistant': 'Alte Adresse (bis cc.285) — leitet auf Geräte & Entitäten › Verbindung bzw. › Zuordnung um; beide stehen in ALLE_SEITEN.',
+  '/sensoren': 'Alte Adresse (bis cc.285) — leitet auf Geräte & Entitäten › Inventar & Wartung um; steht in ALLE_SEITEN.',
   '/': 'Leitet auf /live um — dieselbe Seite unter anderem Namen.',
   '/settings': 'Alter Pfad, leitet auf /einstellungen um.',
   '/action': 'Nimmt einen Klick aus einer Push-Nachricht entgegen und leitet weiter.',

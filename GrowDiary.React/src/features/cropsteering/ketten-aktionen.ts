@@ -16,6 +16,8 @@
  */
 
 /** Sprungziele auf der Crop-Steering-Seite selbst. */
+import { VERBINDUNG_PFAD } from '../geraete/technik-pfade'
+
 export type KettenAnker = 'night-ramp' | 'untergrenze' | 'kuehler'
 
 export type KettenAktion =
@@ -31,7 +33,7 @@ export const KETTEN_AKTIONEN: Record<string, KettenAktion> = {
   'zielgeraet': { art: 'anker', ziel: 'night-ramp', label: 'Zum Zielgerät' },
   'kuehler-steuerung': { art: 'anker', ziel: 'kuehler', label: 'Zum Kühler-Schalter' },
   'steckdose': { art: 'anker', ziel: 'kuehler', label: 'Zur Steckdose' },
-  'verbindung': { art: 'weg', ziel: '/home-assistant', label: 'Zur Einrichtung' },
+  'verbindung': { art: 'weg', ziel: VERBINDUNG_PFAD, label: 'Zur Einrichtung' },
 
   'plan-untergrenze-zu-hoch': { art: 'anker', ziel: 'untergrenze', label: 'Zur Untergrenze' },
   // Fork AI (forkai.67): die Profile sind der Reiter „Profile" der Zielwerte.

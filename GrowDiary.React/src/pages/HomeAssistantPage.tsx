@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { apiFetch, formatApiError } from '../api'
 import type { HomeAssistantEntity, HomeAssistantSettingsDto, SettingsOverviewDto } from '../types'
 import { V1Alert, V1Button, V1Field, V1Page, V1Skeleton, V1Switch } from '../components/v1'
 import { toNullableString } from '../components/v1-utils'
-import { lesenMappingZiel, mappingLink } from '../features/home-assistant/mapping-link'
+import { mappingLink } from '../features/home-assistant/mapping-link'
 import '../features/home-assistant/home-assistant.css'
 
 /**
  * Home Assistant: die Verbindung (Adresse, Zugangsschlüssel, Schalter) und der Stand der Anbindung.
  *
  * cc.285: Die Zuordnung der Messgrößen und Kameras steht nicht mehr hier, sondern an der einen Stelle
- * „Geräte & Entitäten › Zuordnung“ (`features/geraete/ZuordnungReiter.tsx`). Alte Adressen mit `?zelt=` oder
- * `?messwert=` führen dorthin weiter.
+ * „Geräte & Entitäten › Zuordnung“ (`features/geraete/ZuordnungReiter.tsx`).
+ * cc.286: Diese Seite ist der Reiter „Verbindung“ unter Geräte & Entitäten; die Adresse `/home-assistant` leitet dorthin
+ * (`HomeAssistantWeiter`, alte Zuordnungs-Links auf die Zuordnung).
  */
 function HomeAssistantPage() {
-  const [searchParams] = useSearchParams()
   const [ha, setHa] = useState<HomeAssistantSettingsDto>({ baseUrl: '', accessToken: '', enabled: false })
   const [entitaeten, setEntitaeten] = useState<number | null>(null)
   const [geladenUm, setGeladenUm] = useState<Date | null>(null)
@@ -48,12 +48,6 @@ function HomeAssistantPage() {
     void load()
     return () => controller.abort()
   }, [])
-
-  // Alte Direktlinks („Mappen“ vor cc.285) führen auf die Zuordnung weiter.
-  const altesZiel = lesenMappingZiel(searchParams)
-  if (searchParams.has('zelt') || searchParams.has('messwert')) {
-    return <Navigate to={mappingLink(altesZiel.tentId, altesZiel.definition?.metricType)} replace />
-  }
 
   const connected = ha.isManagedByAddon || ha.enabled
 

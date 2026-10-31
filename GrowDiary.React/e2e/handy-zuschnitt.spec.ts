@@ -41,7 +41,7 @@ const SEITEN = [
   { pfad: '/hydro', name: 'hydro' },
   { pfad: '/zelte', name: 'zelte' },
   { pfad: '/wasser', name: 'wasser' },
-  { pfad: '/sensoren', name: 'sensoren' },
+  { pfad: '/geraete?reiter=inventar', name: 'sensoren' },
   { pfad: '/dosierung', name: 'dosierung' },
   { pfad: '/regeln', name: 'regeln' },
   // Neu in beta.52 und beim Bauen in KEINER Sichtpruefung — genau der

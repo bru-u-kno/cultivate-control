@@ -10,6 +10,7 @@ import { maschinenZahl } from '../zahlenfeld'
 import { ZeltRuheBlock } from '../features/zeltruhe/ZeltRuheBlock'
 import { zeltZweckName } from '../deutsche-woerter'
 import { mappingLink } from '../features/home-assistant/mapping-link'
+import { INVENTAR_PFAD } from '../features/geraete/technik-pfade'
 
 const tentTypes: TentType[] = ['Production', 'Mother', 'Propagation', 'Quarantine', 'Drying', 'MultiPurpose']
 
@@ -526,7 +527,7 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
                     <span>{sensor.status ?? 'verknüpft'}</span>
                   </div>
                   <div className="dependency-row-actions">
-                    <V1LinkButton to="/sensoren" variant="primary">Sensoren öffnen</V1LinkButton>
+                    <V1LinkButton to={INVENTAR_PFAD} variant="primary">Sensoren öffnen</V1LinkButton>
                   </div>
                 </div>
               ))}
