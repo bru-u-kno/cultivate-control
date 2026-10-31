@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.293
+
+**Geerntete Grows: Die Blüte endet mit der Ernte — kein „Tag 71 von 70“ und kein „überfällig“ mehr.**
+
+- **Was war:** Bei einem bereits geernteten Grow zählte die Phasen-Übersicht die Blüte vom Blütebeginn bis heute weiter. Der Grow 2026-01 stand deshalb als „Blüte · Woche 11 · über Plan“ mit „Tag 71/70“ und „Ernte ~30.10. · überfällig“ da, obwohl er am 30.10. geerntet und abgeschlossen war. Gleichzeitig lief das Trocknen richtig ab dem Erntetag; es waren also zwei Phasen zugleich „laufend“, und die Kopfzeile nahm die Blüte.
+- **Was jetzt ist:** Mit dem Erntedatum ist die Blüte erledigt und steht mit ihrer echten Dauer da (bei 2026-01: 68 Tage statt der geplanten 70). Die laufende Phase ist das Trocknen, die Kopfzeile nennt es, und „über Plan“ sowie „überfällig“ verschwinden. Ohne Erntedatum und bei einem erst künftigen Erntetermin zählt die Blüte weiter wie bisher.
+- **Tageszählung bei Zeitumstellung:** Die Tage einer Phase werden jetzt nach Kalendertagen gezählt und nicht nach 24-Stunden-Blöcken. Nach der Umstellung auf Winterzeit stand sonst ein Tag zu viel da (die „71“ statt „70“).
+- **Messbar:** Ein Test mit den Daten von 2026-01 (Blüte erledigt mit 68 Tagen, nur das Trocknen läuft, Kartenkopf „Trocknen Tag 2“) und einer für die Fälle ohne Ernte; ohne die Korrektur wird der erste rot.
+
 ## 2.0.0-cc.292
 
 **Trocknungs-Ziel am Trockenzelt: Was der Plan von Entfeuchter und Kühlung verlangt — und was am Gerät steht. Nur zum Ansehen, es wird nichts geschrieben.**

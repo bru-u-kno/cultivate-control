@@ -195,6 +195,33 @@ describe('flipLabel', () => {
       expect(strahl.readyNote).toContain('keine Termine')
     })
 
+    it('beendet die Blüte mit der Ernte — keine zweite laufende Phase, kein „über Plan"', () => {
+      // Wie Grow 2026-01: Blüte ab Tag 69 vor heute, geerntet vor 1 Tag, geplant 70 Tage.
+      // Vorher zählte die Blüte bis heute weiter (Tag 70/70 und mehr) und blieb „laufend".
+      const strahl = buildPhaseTimeline({
+        startDate: vorTagen(130),
+        phasenanker: anker({ anzucht: 130, veg: 116, bluete: 69 }),
+        breederFlowerWeeksMax: 10,
+        endDate: vorTagen(1),
+      }, JETZT)
+
+      const bluete = strahl.phases.find((phase) => phase.name === 'Blüte')!
+      expect(bluete.state).toBe('done')
+      expect(bluete.days).toBe(68)
+      expect(bluete.dayInPhase).toBeUndefined()
+      expect(strahl.phases.filter((phase) => phase.state === 'current').map((phase) => phase.name)).toEqual(['Trocknen'])
+      expect(currentPhaseLabel(strahl)).toBe('Trocknen Tag 2')
+    })
+
+    it('zählt eine Blüte ohne Erntedatum und einen künftigen Erntetermin weiter wie bisher', () => {
+      const ohne = buildPhaseTimeline({ startDate: vorTagen(130), phasenanker: anker({ anzucht: 130, veg: 116, bluete: 69 }) }, JETZT)
+      expect(ohne.phases.find((phase) => phase.name === 'Blüte')!.state).toBe('current')
+
+      const kuenftig = buildPhaseTimeline(
+        { startDate: vorTagen(130), phasenanker: anker({ anzucht: 130, veg: 116, bluete: 69 }), endDate: inTagen(2) }, JETZT)
+      expect(kuenftig.phases.find((phase) => phase.name === 'Blüte')!.state).toBe('current')
+    })
+
     it('schaltet nach dem Trocknen auf Aushaerten um', () => {
       const strahl = buildPhaseTimeline(
         { startDate: vorTagen(150), phasenanker: anker({ anzucht: 150, veg: 130, bluete: 100 }), endDate: vorTagen(25) }, JETZT)
