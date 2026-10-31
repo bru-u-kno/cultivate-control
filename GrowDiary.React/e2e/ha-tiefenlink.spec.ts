@@ -85,8 +85,8 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
     expect(await appPfad(frame)).toBe('/grows')
 
     // Zweiter Tipp, Cultivate Control ist schon offen.
-    await tippe(page, `/app/${SLUG}/sensoren`)
-    await expect.poll(() => appPfad(frame)).toBe('/sensoren')
+    await tippe(page, `/app/${SLUG}/dosierung`)
+    await expect.poll(() => appPfad(frame)).toBe('/dosierung')
 
     // Dritter Tipp — dieselbe Seite wie der erste, von woanders aus.
     await blaettere(frame, '/grows')
@@ -185,7 +185,7 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
       }
       ;(fremd as unknown as { __ziel: Window }).__ziel = ziel
       fremd.eval(
-        "window.__ziel.postMessage({ type: 'home-assistant/properties', route: { prefix: '/app/x', path: '/sensoren' } }, '*')",
+        "window.__ziel.postMessage({ type: 'home-assistant/properties', route: { prefix: '/app/x', path: '/dosierung' } }, '*')",
       )
     })
     await page.waitForTimeout(500)
@@ -225,11 +225,11 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
 
     // Dritter Tipp auf dieselbe Art Meldung, von woanders aus.
     await blaettere(frame, '/grows')
-    await tippeIngress('sensoren')
-    await expect.poll(() => appPfad(frame)).toBe('/sensoren')
+    await tippeIngress('dosierung')
+    await expect.poll(() => appPfad(frame)).toBe('/dosierung')
     await blaettere(frame, '/grows')
-    await tippeIngress('sensoren')
-    await expect.poll(() => appPfad(frame)).toBe('/sensoren')
+    await tippeIngress('dosierung')
+    await expect.poll(() => appPfad(frame)).toBe('/dosierung')
 
     // Ein Seitenwechsel in HA ohne ?index= lässt die App, wo sie ist.
     await blaettere(frame, '/grows')
@@ -239,12 +239,12 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
 
     // Wechsel zu einem anderen Panel mit ?index=: gehört nicht uns — App bleibt, index bleibt.
     await page.evaluate(() => {
-      history.pushState(null, '', '/anderes?index=sensoren')
+      history.pushState(null, '', '/anderes?index=dosierung')
       window.dispatchEvent(new CustomEvent('location-changed', { detail: {} }))
     })
     await page.waitForTimeout(300)
     expect(await appPfad(frame)).toBe('/grows')
-    expect(await haAdresse()).toBe('/anderes?index=sensoren')
+    expect(await haAdresse()).toBe('/anderes?index=dosierung')
     await page.evaluate(() => history.replaceState(null, '', '/growos'))
 
     // Kein fremder Pfad über ?index=.
