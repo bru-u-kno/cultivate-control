@@ -5,13 +5,15 @@ import type { EntityDefinition } from './messgroessen'
 /** Messgrößen, die ein Trockenzelt überhaupt hat — alles andere (Licht, CO₂, Reservoir, Technik) gehört dort nicht hin. */
 export const TROCKNUNG_METRIKEN: SensorMetricType[] = ['AirTemperature', 'Humidity', 'Vpd']
 
-/** Link auf die Zuordnungsseite, direkt auf das Zelt und die Messgröße (Seite scrollt hin und hebt die Zeile hervor). */
+/** Der Reiter „Zuordnung“ unter Geräte & Entitäten — die eine Stelle, an der Messgrößen Entitäten zugeordnet werden (cc.285). */
+export const ZUORDNUNG_PFAD = '/geraete'
+
+/** Link auf die Zuordnung, direkt auf das Zelt und die Messgröße (Seite scrollt hin und hebt die Zeile hervor). */
 export function mappingLink(zeltId?: number | null, messwert?: SensorMetricType | null): string {
-  const query = new URLSearchParams()
+  const query = new URLSearchParams({ reiter: 'zuordnung' })
   if (zeltId != null) query.set('zelt', String(zeltId))
   if (messwert) query.set('messwert', messwert)
-  const text = query.toString()
-  return text ? `/home-assistant?${text}` : '/home-assistant'
+  return `${ZUORDNUNG_PFAD}?${query.toString()}`
 }
 
 export type MappingZiel = { tentId: number | null; definition: EntityDefinition | null }

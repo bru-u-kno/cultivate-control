@@ -3,7 +3,7 @@ import { backendAntwortet, darfUeberspringen } from './pflicht'
 
 /**
  * A-019 / Lücke 5: Dieselbe Vorsortierung (features/geraete/entitaets-passung.ts) steht an allen Stellen, an denen man
- * eine Entität wählt — Rollen der Steuerungen (Geräte-Reiter), Messgrößen (Seite Home Assistant und Reiter Messgrößen).
+ * eine Entität wählt — Rollen der Steuerungen (Geräte-Reiter), Zuordnung (Geräte › Zuordnung, seit cc.285 die einzige Stelle).
  * Der Assistent ist in `einrichtung-assistent.spec.ts` geprüft. Hier nur lesen, nichts speichern: kein Schloss nötig.
  */
 test.beforeEach(async ({ request }) => {
@@ -32,10 +32,10 @@ test('Geräte · Rollen: die Auswahl ist vorsortiert (gleiche Komponente wie im 
   await page.keyboard.press('Escape')
 })
 
-test('Home Assistant · Messgrößen: Luftfeuchte und CO₂ stehen oben, nichts ist ausgeblendet', async ({ page, request }) => {
+test('Geräte · Zuordnung: Luftfeuchte und CO₂ stehen oben, nichts ist ausgeblendet', async ({ page, request }) => {
   const alle = await (await request.get('/api/home-assistant/entities')).json() as unknown[]
-  await page.goto('/home-assistant')
-  await page.getByRole('button', { name: 'Luftfeuchte', exact: true }).first().click()
+  await page.goto('/geraete?reiter=zuordnung')
+  await page.locator('[data-audit="ha-entity-row"][data-metric="Humidity"] button.v1-select-feld').first().click()
   let liste = await namen(page)
   // Erster Eintrag ist "— nicht zugeordnet —", dann die Entitäten.
   expect(liste[0]).toMatch(/nicht zugeordnet/)
@@ -43,7 +43,7 @@ test('Home Assistant · Messgrößen: Luftfeuchte und CO₂ stehen oben, nichts 
   expect(liste.length).toBe(alle.length + 1)
   await page.keyboard.press('Escape')
 
-  await page.getByRole('button', { name: 'CO₂', exact: true }).first().click()
+  await page.locator('[data-audit="ha-entity-row"][data-metric="Co2"] button.v1-select-feld').first().click()
   liste = await namen(page)
   expect(liste[1]).toBe('Demo CO₂')
   await page.keyboard.press('Escape')

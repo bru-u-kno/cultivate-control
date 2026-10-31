@@ -13,7 +13,8 @@
   }
 
   /* Zeile, zu der „Mappen" gesprungen ist — nur kurz sichtbar. */
-  .ha-layout .co-row.ha-treffer { background: var(--accent-wash); box-shadow: inset 3px 0 0 var(--accent); }
+  .ha-layout .co-row.ha-treffer,
+  .ha-zuordnung .co-row.ha-treffer { background: var(--accent-wash); box-shadow: inset 3px 0 0 var(--accent); }
 
   .ha-tent-row { padding: 10px 14px; border-bottom: 1px solid var(--hair); }
 
@@ -21,7 +22,9 @@
      Entfernen-Knopf (85 px). Vorher hing die Breite am Text, und die neun
      Eingabefelder endeten auf drei verschiedenen Kanten. */
   .ha-layout .co-row > .co-row-value,
-  .ha-layout .co-row > .ls-btn { flex: 0 0 96px; text-align: right; }
+  .ha-layout .co-row > .ls-btn,
+  .ha-zuordnung .co-row > .co-row-value,
+  .ha-zuordnung .co-row > .ls-btn { flex: 0 0 96px; text-align: right; }
   .ha-metric { flex: 0 0 110px; font-size: var(--fs-text); }
   .ha-metric small { color: var(--faint); font-size: var(--fs-etikett); }
   /* Der Satz unter einer Zeile, deren Etikett allein missverständlich wäre
@@ -41,7 +44,8 @@
      braucht rund 266 px, man sah also gut die Haelfte nicht und musste im Feld
      scrollen, um zu pruefen, was man eingetragen hat. */
   @media (max-width: 560px) {
-    .ha-layout .co-row { flex-wrap: wrap; }
+    .ha-layout .co-row,
+    .ha-zuordnung .co-row { flex-wrap: wrap; }
     .ha-layout .ha-entity-input { flex: 1 1 100%; order: 1; }
   }
 
@@ -67,4 +71,11 @@
      Hier stand bis 2.0.0-beta.15 ein zweiter, der auf die Ingress-Adresse mit
      Token zeigte und darum nur einmal funktionierte. */
   .ha-pair-text { margin: 5px 0 0; font-size: var(--fs-text); line-height: 1.5; color: var(--muted); }
+}
+
+@layer features {
+  /* Zuordnung (cc.285): Überschrift je Messgröße, darunter eine Zeile je Zelt. */
+  .ha-messgroesse { padding: 12px 14px 2px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ha-messgroesse small { color: var(--faint); font-size: var(--fs-etikett); }
+  .ha-zuordnung .ha-metric-hinweis { padding: 0 14px 8px; }
 }

@@ -33,6 +33,12 @@ export type EntityDefinition = {
  */
 const AUSSEN_HINWEIS = 'Luft außerhalb des Zelts, z. B. der Sensor am Controller — nicht die Luft von draußen.'
 
+/**
+ * cc.285: VPD ist kein Kernwert. Ohne zugeordnete Entität rechnet der Fork ihn aus Lufttemperatur und Feuchte
+ * (`GrowDashboardComposer.BuildVpdMetric`); die Zeltkarte mahnt ihn deshalb nirgends an.
+ */
+const VPD_HINWEIS = 'Leer lassen: Der Fork rechnet VPD aus Temperatur und Feuchte.'
+
 export const groups: Array<{ key: GroupKey; label: string }> = [
   { key: 'tent', label: 'Zelt' },
   { key: 'reservoir', label: 'RDWC/DWC' },
@@ -42,7 +48,7 @@ export const groups: Array<{ key: GroupKey; label: string }> = [
 export const definitions: EntityDefinition[] = [
   { metricType: 'AirTemperature', label: 'Lufttemp', group: 'tent', placeholder: 'sensor.zelt_temperatur', unit: '°C', importance: 'core' },
   { metricType: 'Humidity', label: 'Luftfeuchte', group: 'tent', placeholder: 'sensor.zelt_luftfeuchte', unit: '%', importance: 'core' },
-  { metricType: 'Vpd', label: 'VPD', group: 'tent', placeholder: 'sensor.zelt_vpd', unit: 'kPa', importance: 'core' },
+  { metricType: 'Vpd', label: 'VPD', group: 'tent', placeholder: 'sensor.zelt_vpd', unit: 'kPa', importance: 'optional', hinweis: VPD_HINWEIS },
   { metricType: 'Ppfd', label: 'PPFD', group: 'tent', placeholder: 'sensor.lampe_ppfd', unit: 'µmol/m²/s', importance: 'optional' },
   { metricType: 'Co2', label: 'CO₂', group: 'tent', placeholder: 'sensor.zelt_co2', unit: 'ppm', importance: 'optional' },
   { metricType: 'LightStatus', label: 'Licht', group: 'tent', placeholder: 'switch.licht', importance: 'optional' },

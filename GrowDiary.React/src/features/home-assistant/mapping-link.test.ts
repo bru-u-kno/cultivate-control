@@ -3,9 +3,9 @@ import { lesenMappingZiel, mappingLink } from './mapping-link'
 
 describe('Mapping-Link', () => {
   it('baut Zelt und Messgröße in die Adresse', () => {
-    expect(mappingLink(2, 'Humidity')).toBe('/home-assistant?zelt=2&messwert=Humidity')
-    expect(mappingLink(2)).toBe('/home-assistant?zelt=2')
-    expect(mappingLink()).toBe('/home-assistant')
+    expect(mappingLink(2, 'Humidity')).toBe('/geraete?reiter=zuordnung&zelt=2&messwert=Humidity')
+    expect(mappingLink(2)).toBe('/geraete?reiter=zuordnung&zelt=2')
+    expect(mappingLink()).toBe('/geraete?reiter=zuordnung')
   })
 
   it('liest sie wieder und verwirft Unbekanntes', () => {

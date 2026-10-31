@@ -13,6 +13,7 @@ import {
   type PunktZeile,
 } from '../features/hardware/kalibrierpunkte'
 import { unlesbarMeldung } from '../zahlenfeld'
+import { mappingLink } from '../features/home-assistant/mapping-link'
 import '../features/hardware/hardware.css'
 
 const FILTERS: Array<{ value: HardwareFilter; label: string }> = [
@@ -776,7 +777,7 @@ function HardwareRowView({ row, liveState, saving, onStatus, onEdit, onDelete, o
         ? <code className="hw-entity">{item.haEntityId}</code>
         : inferDeviceKind(item) === 'HandheldMeter'
           ? <span className="hw-empty">von Hand</span>
-          : <Link className="hw-empty" to="/home-assistant">zuordnen →</Link>}</td>
+          : <Link className="hw-empty" to={mappingLink()}>zuordnen →</Link>}</td>
       <td data-label="Wert">{liveState ?? <span className="hw-empty">—</span>}</td>
       <td data-label="Kalibrierung">
         {row.nextCare ? (

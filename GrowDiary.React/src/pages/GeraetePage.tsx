@@ -8,7 +8,7 @@ import { V1Select } from '../components/V1Select'
 import type { V1Option } from '../components/V1Select'
 import { V1Sheet } from '../components/V1Sheet'
 import { V1Tabs } from '../components/v1'
-import { MessgroessenReiter } from '../features/geraete/MessgroessenReiter'
+import { ZuordnungReiter } from '../features/geraete/ZuordnungReiter'
 import { RollenReiter } from '../features/geraete/RollenReiter'
 import { RaumName } from '../features/geraete/RaumName'
 import { ordneEintraege } from '../features/geraete/eintraegeOrdnung'
@@ -74,7 +74,7 @@ function zielOptionen(alle: Geraet[]): V1Option[] {
 
 /** Wohin eine Verwendung führt — die Stelle, an der sie gepflegt wird. */
 const QUELLEN_ZIEL: Record<string, string> = {
-  messgroesse: '/geraete',
+  messgroesse: '/geraete?reiter=zuordnung',
   zelt: '/zelte',
   inventar: '/sensoren',
   dosierung: '/dosierung',
@@ -102,8 +102,8 @@ function steuerungsModul(verwendung: Verwendung): string | null {
   return treffer ? treffer[1].toLowerCase() : null
 }
 
-type Reiter = 'geraete' | 'rollen' | 'raeume' | 'messgroessen' | 'wartung'
-const REITER: Reiter[] = ['geraete', 'rollen', 'raeume', 'messgroessen', 'wartung']
+type Reiter = 'geraete' | 'rollen' | 'raeume' | 'zuordnung' | 'wartung'
+const REITER: Reiter[] = ['geraete', 'rollen', 'raeume', 'zuordnung', 'wartung']
 
 type SpeichernRequest = {
   name: string
@@ -137,7 +137,8 @@ export default function GeraetePage() {
   // Fork AI (forkai.134): Der Reiter steht in der Adresse — so führen Links aus
   // der Steuerung direkt in „Rollen" und dort zur passenden Regelung.
   const [params, setParams] = useSearchParams()
-  const reiterParam = params.get('reiter')
+  // cc.285: „Messgrößen“ heißt jetzt „Zuordnung“ — alte Lesezeichen mit reiter=messgroessen führen weiter hierher.
+  const reiterParam = params.get('reiter') === 'messgroessen' ? 'zuordnung' : params.get('reiter')
   const reiter: Reiter = REITER.includes(reiterParam as Reiter) ? (reiterParam as Reiter) : 'geraete'
   const modulParam = params.get('modul')
   const setReiter = (neu: Reiter) => setParams(neu === 'geraete' ? {} : { reiter: neu }, { replace: true })
@@ -431,7 +432,7 @@ export default function GeraetePage() {
           { value: 'geraete', label: 'Geräte' },
           { value: 'rollen', label: 'Rollen' },
           { value: 'raeume', label: 'Räume' },
-          { value: 'messgroessen', label: 'Messgrößen' },
+          { value: 'zuordnung', label: 'Zuordnung' },
           { value: 'wartung', label: 'Wartung' },
         ]}
       />
@@ -450,7 +451,7 @@ export default function GeraetePage() {
 
       {reiter === 'rollen' ? <RollenReiter modulVorwahl={modulParam} onModul={setModul} />
         : reiter === 'raeume' ? <><RaumName /><RollenReiter nurModule={['raum']} schlank /></>
-        : reiter === 'messgroessen' ? <MessgroessenReiter entities={entities} />
+        : reiter === 'zuordnung' ? <ZuordnungReiter entities={entities} />
         : reiter === 'wartung' ? <WartungReiter geraeteNamen={geraeteNamen} /> : <>
 
       {letzte && (

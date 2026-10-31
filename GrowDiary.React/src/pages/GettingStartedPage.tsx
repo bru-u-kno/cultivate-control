@@ -1,3 +1,4 @@
+import { mappingLink } from '../features/home-assistant/mapping-link'
 import { V1Card, V1LinkButton, V1Page, V1Section } from '../components/v1'
 
 function GettingStartedPage() {
@@ -66,7 +67,7 @@ function GettingStartedPage() {
             <span className="v1-card-kicker">Zelt-Kamera</span>
             <h2>Live-Kamera</h2>
             <p>Jede Home-Assistant-Kamera-Entity als Live-Bild im Dashboard (z. B. USB-Webcam via go2rtc). Beim Zelt-Mapping auswählen und „Kamera testen".</p>
-            <V1LinkButton to="/home-assistant">Kamera einrichten</V1LinkButton>
+            <V1LinkButton to={mappingLink()}>Kamera einrichten</V1LinkButton>
           </V1Card>
         </div>
       </V1Section>

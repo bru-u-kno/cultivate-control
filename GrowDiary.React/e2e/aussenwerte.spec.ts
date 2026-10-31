@@ -59,17 +59,18 @@ test.describe('Außenwerte', () => {
   test('das Zuordnungsformular bietet sie an und sagt, was „Außen" heißt', async ({ page, request }) => {
     darfUeberspringen(!(await backendAntwortet(request)), 'Kein Backend — das Formular braucht die laufende App.')
     await page.setViewportSize({ width: 390, height: 900 })
-    await page.goto('/home-assistant', { waitUntil: 'networkidle' })
+    await page.goto('/geraete?reiter=zuordnung', { waitUntil: 'networkidle' })
     const zeilen = page.locator('[data-audit="ha-entity-row"]')
     expect(await zeilen.count(), 'Keine Zuordnungszeilen — die Prüfung sähe nichts.').toBeGreaterThanOrEqual(6)
 
     for (const { name } of AUSSEN) {
-      const zeile = zeilen.filter({ has: page.locator('.ha-metric', { hasText: name }) })
-      await expect(zeile, `Keine Zeile „${name}" in der Gruppe Zelt.`).toHaveCount(1)
-      await expect(zeile.locator('.ha-metric-hinweis')).toContainText('außerhalb des Zelts')
-      await expect(zeile.locator('.ha-metric-hinweis')).toContainText('nicht die Luft von draußen')
-      // Der Demobestand ordnet sie zu — die Zeile zeigt den Livewert, nicht „nicht gemappt".
-      await expect(zeile.locator('.co-row-value')).not.toHaveText(/nicht gemappt/i)
+      // cc.285: je Messgröße ein Block mit Überschrift und Satz, darunter eine Zeile je Zelt.
+      const block = page.locator('[data-audit="ha-messgroesse"]').filter({ has: page.locator('.ls-label', { hasText: name }) })
+      await expect(block, `Kein Block „${name}" in der Gruppe Zelt.`).toHaveCount(1)
+      await expect(block.locator('.ha-metric-hinweis')).toContainText('außerhalb des Zelts')
+      await expect(block.locator('.ha-metric-hinweis')).toContainText('nicht die Luft von draußen')
+      // Der Demobestand ordnet sie dem ersten Zelt zu — seine Zeile zeigt den Livewert, nicht „nicht gemappt".
+      await expect(block.locator('[data-audit="ha-entity-row"]').first().locator('.co-row-value')).not.toHaveText(/nicht gemappt/i)
     }
   })
 })

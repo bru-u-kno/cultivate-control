@@ -33,21 +33,22 @@ test.beforeEach(async ({ request }) => {
 
 test('Direktlink wählt das Trockenzelt, zeigt nur dessen Messwerte und hebt die Zeile hervor', async ({ page }) => {
   await trockenzeltEinlegen(page)
-  await page.goto('/home-assistant?zelt=99&messwert=Humidity', { waitUntil: 'networkidle' })
+  await page.goto('/geraete?reiter=zuordnung&zelt=99&messwert=Humidity', { waitUntil: 'networkidle' })
 
-  await expect(page.locator('.v1-tab.active')).toHaveText('Trockenzelt (Testdaten)')
-  const zeilen = page.locator('[data-audit="ha-entity-row"]')
-  await expect(zeilen).toHaveCount(3)
-  await expect(page.getByRole('tab', { name: 'RDWC/DWC' })).toHaveCount(0)
-  const treffer = page.locator('[data-metric="Humidity"]')
+  // cc.285: eine Zeile je Zelt unter der Messgröße. Das Trockenzelt hat genau drei (Temperatur, Feuchte, VPD) und keine in „RDWC/DWC".
+  const seine = page.locator('[data-audit="ha-entity-row"][data-tent="99"]')
+  await expect(seine).toHaveCount(3)
+  const treffer = page.locator('[data-metric="Humidity"][data-tent="99"]')
   await expect(treffer).toHaveClass(/ha-treffer/)
   await expect(treffer).toBeInViewport()
-  await expect(page.locator('[data-metric="AirTemperature"]')).not.toHaveClass(/ha-treffer/)
+  await expect(page.locator('[data-metric="AirTemperature"][data-tent="99"]')).not.toHaveClass(/ha-treffer/)
+  await page.getByRole('tab', { name: 'RDWC/DWC' }).click()
+  await expect(page.locator('[data-audit="ha-entity-row"][data-tent="99"]')).toHaveCount(0)
 })
 
 test('Ein Messwert aus „Reservoir" öffnet die richtige Gruppe beim Produktionszelt', async ({ page }) => {
-  await page.goto('/home-assistant?messwert=ReservoirPh', { waitUntil: 'networkidle' })
-  await expect(page.locator('[data-metric="ReservoirPh"]')).toHaveClass(/ha-treffer/)
+  await page.goto('/geraete?reiter=zuordnung&messwert=ReservoirPh', { waitUntil: 'networkidle' })
+  await expect(page.locator('[data-metric="ReservoirPh"]').first()).toHaveClass(/ha-treffer/)
 })
 
 test('„Mappen" in der Zeltliste springt zum Zelt und zur fehlenden Messgröße', async ({ page }) => {
@@ -56,6 +57,12 @@ test('„Mappen" in der Zeltliste springt zum Zelt und zur fehlenden Messgröße
   await page.getByText('Trockenzelt (Testdaten)').first().click()
   await expect(page.getByText('Luftwechsel')).toHaveCount(0)
   await page.getByRole('link', { name: 'Mappen' }).first().click()
-  await expect(page).toHaveURL(/\/home-assistant\?zelt=99&messwert=AirTemperature/)
-  await expect(page.locator('[data-metric="AirTemperature"]')).toHaveClass(/ha-treffer/)
+  await expect(page).toHaveURL(/\/geraete\?reiter=zuordnung&zelt=99&messwert=AirTemperature/)
+  await expect(page.locator('[data-metric="AirTemperature"][data-tent="99"]')).toHaveClass(/ha-treffer/)
+})
+
+test('Eine alte Adresse der Home-Assistant-Seite führt auf die Zuordnung weiter', async ({ page }) => {
+  await page.goto('/home-assistant?zelt=1&messwert=Humidity', { waitUntil: 'networkidle' })
+  await expect(page).toHaveURL(/\/geraete\?reiter=zuordnung&zelt=1&messwert=Humidity/)
+  await expect(page.locator('[data-metric="Humidity"][data-tent="1"]')).toHaveClass(/ha-treffer/)
 })

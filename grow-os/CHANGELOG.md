@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.285
+
+**Eine Stelle für die Zuordnung — und sie kann nichts mehr überschreiben.**
+
+- **Was war:** Messgrößen wurden an zwei Stellen zugeordnet (Seite „Home Assistant“ und Geräte › Messgrößen), erst nach Zelt, dann nach Gruppe sortiert. Die Seite „Home Assistant“ hielt einen beim Öffnen geladenen Entwurf aller 20 Zeilen und ersetzte beim Speichern ALLE Sensorzeilen — wer sie offen hatte, während woanders zugeordnet wurde, löschte diese Zuordnung beim Speichern wieder (so verschwand die Zuordnung des Trockenzelts). Dazu verlangte die Seite für das Trockenzelt VPD als Kernwert, während die Zeltkarte nur Temperatur und Feuchte anmahnt.
+- **Was jetzt ist:** Die Zuordnung steht nur noch unter Geräte & Entitäten › Zuordnung. Erst die Gruppe (Zelt, RDWC/DWC, Technik, Kameras), dann je Messgröße eine Überschrift mit einer Zeile je Zelt. Jede Zeile speichert für sich und sofort; sie kennt nur sich selbst und kann nichts anderes überschreiben. Das Trockenzelt erscheint nur bei Temperatur, Feuchte und VPD.
+- **VPD ist optional:** Leer lassen heißt, der Fork rechnet ihn aus Temperatur und Feuchte; die Zeile zeigt den gerechneten Wert („≈ 1,13 kPa“). Wer einen eigenen VPD-Sensor hat, ordnet ihn weiter zu.
+- **Die Seite „Home Assistant“** zeigt nur noch die Verbindung (Adresse, Schlüssel, Schalter) und den Stand der Anbindung. Alte Adressen mit Zelt und Messgröße führen auf die Zuordnung weiter; „Mappen“ am Zelt springt wie zuvor zur Zeile.
+- **Messbar:** Zuordnungszeile speichern, Seite neu laden, andere Zeile speichern — die erste bleibt; die Querschnittsprüfungen (Handy 360–768 px, Umbruch, Kontrast, Touch-Ziele) laufen grün.
+
 ## 2.0.0-cc.284
 
 **Korrektur: „Mappen“ führt jetzt direkt zum Zelt und zur fehlenden Messgröße.**
