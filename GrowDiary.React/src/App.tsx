@@ -1,3 +1,4 @@
+import { useLetzteSeite } from './useLetzteSeite'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import AddbackPage from './pages/AddbackPage'
 import { GrowScopedSectionPage } from './pages/GrowScopedSectionPage'
@@ -130,6 +131,8 @@ function App() {
   const counts = useNavCounts()
   // Tipp auf eine Push-Meldung: HA nennt die Seite, die App öffnet sie.
   useHaTiefenlink()
+  // Nach einem Neuladen des iframes (HA-App auf dem Handy) wieder auf der zuletzt offenen Seite weitermachen.
+  useLetzteSeite()
 
   return (
     <KiAktivProvider>

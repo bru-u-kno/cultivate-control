@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.295
+
+**Nach einem Neuladen der Seite macht die App dort weiter, wo man war, statt auf „Live“ zu springen.**
+
+- **Anlass:** Wer in der Home-Assistant-App auf dem Handy eine Unterseite geöffnet hatte, um etwas einzutragen, und nach ein paar Minuten zurückkam, sah einen hellen Blitz: Home Assistant lud die Seite neu, und die App startete wieder auf „Live“. Die Unterseite und alles, was man dort begonnen hatte, war weg. Das Neuladen löst Home Assistant bzw. die Handy-App aus, nicht die App selbst; der iframe, in dem sie läuft, beginnt danach immer auf der Startseite.
+- **Jetzt:** Die App merkt sich am Gerät die zuletzt geöffnete Seite samt ihrer Einstellung in der Adresse (zum Beispiel das gewählte Zelt) und öffnet sie nach dem Neuladen wieder. Das gilt nur, wenn die letzte Bedienung (Tippen, Tasten, Scrollen oder ein Seitenwechsel) höchstens 30 Minuten zurückliegt; wer das Panel nach Stunden öffnet, beginnt wie gewohnt auf „Live“. Wer bewusst auf „Live“ gewechselt hat, bleibt dort.
+- **Was bleibt:** Ein Link mit eigenem Ziel (Tipp auf eine Push-Meldung, Sprung aus Home Assistant) hat Vorrang und wird nicht überschrieben. Angefangene Eingaben in einem Formular werden damit noch nicht gerettet — die App öffnet die Seite wieder, die Felder sind leer.
+
 ## 2.0.0-cc.294
 
 **Grow-Abschluss: Pflanzen stehen danach auf „geerntet“, ein leeres Zelt meldet keine Alarme mehr, und der CC empfiehlt die Reinigung des leeren Systems.**
