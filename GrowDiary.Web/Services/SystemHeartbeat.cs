@@ -48,6 +48,31 @@ public sealed class SystemHeartbeat
         lock (_gate) { return (_lastSnapshotRunUtc, _lastHaSuccessUtc, _lastHaError); }
     }
 
+    private DateTime? _haUnreachableSinceUtc;
+
+    /// <summary>
+    /// Der Alarm-Wächter hat Home Assistant im Minutentakt nicht erreicht (Verbindung, nicht ein einzelner Sensor).
+    /// Merkt nur den ersten Zeitpunkt der Lücke.
+    /// </summary>
+    public void MarkHaUnreachable(DateTime nowUtc)
+    {
+        lock (_gate) { _haUnreachableSinceUtc ??= nowUtc; }
+    }
+
+    /// <summary>
+    /// Home Assistant antwortet wieder. Gibt die Länge der Lücke zurück, wenn vorher eine bestand, sonst null
+    /// — und schließt sie damit ab (jede Lücke wird genau einmal gemeldet).
+    /// </summary>
+    public TimeSpan? MarkHaReachable(DateTime nowUtc)
+    {
+        lock (_gate)
+        {
+            if (_haUnreachableSinceUtc is not { } seit) return null;
+            _haUnreachableSinceUtc = null;
+            return nowUtc - seit;
+        }
+    }
+
     /// <summary>The problem code the user was last told about (null = last told all is well).</summary>
     public string? NotifiedCode
     {

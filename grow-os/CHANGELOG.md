@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.288
+
+**Start-Meldungen: Du erfährst per Push, wenn Cultivate Control neu startet oder Home Assistant wieder da ist — und Kalibrier-Erinnerung und Tagesbericht kommen nach einem Neustart nicht mehr doppelt.**
+
+- **Was war:** Nach jedem Neustart von Cultivate Control oder Home Assistant kam die Meldung „Kalibrierung fällig“ noch einmal, obwohl sie am selben Tag schon gekommen war. Der Grund: Der Merker „heute schon erinnert“ lebte nur im Arbeitsspeicher und war nach dem Start leer. Beim Tagesbericht war es genauso. Ob ein Neustart stattgefunden hatte, erfuhr man dagegen gar nicht.
+- **Was jetzt gilt:** Beide Merker stehen in der Datenbank. Die Erinnerung kommt einmal am Tag, auch wenn das Add-on dazwischen neu startet.
+- **Neu: Start-Meldungen.** Ein eigener Schalter unter Benachrichtigungen (Voreinstellung an, folgt dem gewählten Gerät und der Ruhezeit):
+  - Nach einem **Update** steht die neue Versionsnummer in der Meldung: „Cultivate Control wurde auf Version … aktualisiert.“
+  - Nach einem **Neustart** des Add-ons steht keine Versionsnummer drin: „Cultivate Control wurde neu gestartet.“
+  - Läuft **Home Assistant** nach einer Unterbrechung von mindestens 90 Sekunden wieder, kommt: „Home Assistant ist wieder erreichbar (nach N Min.).“ War die Unterbrechung so lang, dass die Systemüberwachung schon gewarnt hat, meldet deren Entwarnung die Rückkehr — du bekommst keine zweite Meldung.
+- **Woran man es misst:** Die Versionsnummer wird beim Start mit der zuletzt gestarteten verglichen (Schlüssel in der Datenbank). Gleiche Nummer ist ein Neustart, neue Nummer ein Update.
+
 ## 2.0.0-cc.287
 
 **Einrichtung an einer Stelle: Schritte mit Stand, Anlage und Technik — und im Menü nur noch ein Eintrag.**

@@ -207,6 +207,8 @@ builder.Services.AddScoped<TrendWatchRunner>();
 builder.Services.AddSingleton<TentSensorHardwareSyncService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<CalibrationReminderService>();
+builder.Services.AddScoped<StartMeldung>();
+builder.Services.AddHostedService<StartMeldungWorker>();
 builder.Services.AddScoped<DigestService>();
 builder.Services.AddHostedService<HomeAssistantSnapshotWorker>();
 // Fork AI (forkai.138, F-034): frühere Rollen-Vorgaben einmalig fest übernehmen.

@@ -110,6 +110,10 @@ public sealed class AlertWatchWorker : BackgroundService
 
         var pumpen = scope.ServiceProvider.GetRequiredService<PumpWatchNotifier>();
 
+        // Gab es vor diesem Durchlauf schon eine Meldung der Systemüberwachung, meldet deren Entwarnung die Rückkehr.
+        var heartbeat = scope.ServiceProvider.GetRequiredService<SystemHeartbeat>();
+        var bereitsGewarnt = heartbeat.NotifiedCode is not null;
+
         foreach (var tent in repository.GetTents())
         {
             try
@@ -130,6 +134,36 @@ public sealed class AlertWatchWorker : BackgroundService
             {
                 _logger.LogWarning(ex, "Alarm-Auswertung im Wächter fehlgeschlagen: Zelt {TentId}.", tent.Id);
             }
+        }
+
+        await HomeAssistantZurueckPruefenAsync(scope.ServiceProvider, haService, heartbeat, bereitsGewarnt, cancellationToken);
+    }
+
+    /// <summary>
+    /// Merkt, wenn Home Assistant nach einer Lücke wieder antwortet (etwa nach einem Neustart),
+    /// und meldet das einmal. Das Signal ist der Verbindungs-Schutzschalter des Dienstes: er öffnet
+    /// sich bei Transportfehlern und schließt sich mit der ersten gelungenen Abfrage.
+    /// </summary>
+    private async Task HomeAssistantZurueckPruefenAsync(
+        IServiceProvider dienste, HomeAssistantService haService, SystemHeartbeat heartbeat, bool bereitsGewarnt, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var jetzt = DateTime.UtcNow;
+            if (haService.UnreachableUntilUtc is not null)
+            {
+                heartbeat.MarkHaUnreachable(jetzt);
+                return;
+            }
+
+            if (heartbeat.MarkHaReachable(jetzt) is { } luecke && !bereitsGewarnt)
+            {
+                await dienste.GetRequiredService<StartMeldung>().HomeAssistantZurueckMelden(luecke, cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Meldung „Home Assistant wieder erreichbar“ fehlgeschlagen.");
         }
     }
 }
