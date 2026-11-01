@@ -77,4 +77,11 @@ describe('Schutzregeln des Live-Layouts', () => {
     // Telefon alles Darunterliegende aus dem Bild.
     expect(css).toMatch(/\.ls-cam-stage\.is-empty\s*\{[^}]*min-height:\s*0/)
   })
+  it('laesst die Bereichszeile im Anpassen-Modus umbrechen und die Spalte nie aufweiten', () => {
+    // Name + ↑ + ↓ + „Bereich entfernen“ sind zusammen breiter als ein Handy
+    // (369 px). Ohne Umbruch weitete die Zeile das Raster: die Seite stand
+    // 59 px ueber, Kopf, Knoepfe und die rechte Kachelspalte waren abgeschnitten.
+    expect(css).toMatch(/\.ls-band-label\.is-editing\s*\{[^}]*flex-wrap:\s*wrap/)
+    expect(css).toMatch(/\.ls-metrics\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/)
+  })
 })

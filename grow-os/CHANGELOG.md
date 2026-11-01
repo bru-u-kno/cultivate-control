@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.304
+
+**Live › Anpassen: auf dem Handy ragt nichts mehr über den rechten Rand.**
+
+- **Anlass:** Im Anpassen-Modus waren auf dem Smartphone Texte und Knöpfe rechts abgeschnitten bzw. überlagert: „Nicht bewertet“ im Zeltkopf, „Messen“, „Zurücksetzen“, „Bereich entfernen“ und die rechte Kachelspalte.
+- **Ursache:** Die Zeile eines Bereichs (Name, ↑, ↓, „Bereich entfernen“) durfte nicht umbrechen und war breiter als das Display. Dadurch wurde die ganze Seite breiter als der Bildschirm. Gemessen bei 369 px: 59 px Überstand.
+- **Jetzt:** Die Bereichszeile bricht um („Bereich entfernen“ rutscht in die zweite Zeile), und eine zu breite Zeile kann die Seite nicht mehr aufweiten. Gemessen bei 369 px: kein Überstand, beide Kachelspalten vollständig sichtbar.
+
 ## 2.0.0-cc.303
 
 **Live: jedes Zelt hat seinen eigenen Abschnitt — mit Score, Kernwerten und allem, was zu ihm gehört.**

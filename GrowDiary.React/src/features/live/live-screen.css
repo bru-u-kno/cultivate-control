@@ -136,7 +136,15 @@
   .ls-btn.is-ghost { border-style: dashed; color: var(--muted); }
 
   .ls-band { display: contents; }
-  .ls-band-label.is-editing { gap: 8px; }
+  /* Darf umbrechen: Name, ↑, ↓ und „Bereich entfernen“ sind zusammen breiter
+     als ein Handy (369 px). Ohne Umbruch weitete die Zeile das ganze Raster —
+     die Seite stand 59 px über und Knöpfe, Kacheln und Kopf waren rechts
+     abgeschnitten. */
+  .ls-band-label.is-editing { gap: 8px; flex-wrap: wrap; }
+  /* Die Trennlinie hat in der umbrechenden Zeile keinen Platz mehr, sie stünde
+     sonst als Strich allein am Rand. */
+  .ls-band-label.is-editing > i { display: none; }
+  .ls-band-label.is-editing .ls-band-rename { flex: 1 1 150px; max-width: 320px; }
   /* Breit genug fuer „Hydroponik · Naehrloesung": ein abgeschnittener Name
      sieht aus wie ein Fehler, und umbenennen kann man nur, was man liest. */
   .ls-band-rename {
@@ -329,7 +337,9 @@
   .ls-firstrun .ls-btn { margin-left: auto; }
 
   /* ---------- Messwertreihen ---------- */
-  .ls-metrics { display: grid; gap: 7px; }
+  /* minmax(0, 1fr): eine zu breite Zeile darf die Spalte nie über den Bildschirm
+     aufweiten, sie bricht stattdessen in sich um. */
+  .ls-metrics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
   .ls-band-label { display: flex; align-items: center; gap: 8px; }
   .ls-band-label span {
     font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--faint);
