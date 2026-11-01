@@ -1,0 +1,17 @@
+/* Plan › „Gilt für …“ — Liste mit Haken (Düngeplan: Grows, Trocknungsplan: Trockenzelte). */
+.gf-bereich { margin-top: var(--s-3); }
+.gf-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.gf-zeile {
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  min-height: 44px; padding: var(--s-2) 0; cursor: pointer;
+}
+.gf-zeile input[type='checkbox'] { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); }
+.gf-zeile input[type='checkbox']:disabled { cursor: default; }
+.gf-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gf-text b { overflow-wrap: anywhere; }
+.gf-text small { color: var(--muted); font-size: var(--fs-klein); line-height: 1.35; overflow-wrap: anywhere; }
+.gf-text .gf-zusatz.is-warn { color: var(--warn-text); }
+.gf-text .gf-zusatz.is-ok { color: var(--accent-text); }
+.gf-hinweis { margin: var(--s-2) 0 0; color: var(--muted); font-size: var(--fs-klein); line-height: 1.45; }
+.gf-knoepfe { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.gf-frage { margin-top: var(--s-3); }

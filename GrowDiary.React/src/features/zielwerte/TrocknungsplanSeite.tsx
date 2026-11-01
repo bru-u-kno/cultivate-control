@@ -52,7 +52,7 @@ export function TrocknungsplanSeite() {
           />
         </div>
       )}
-      <TrocknungsplanReiter key={gewaehlt.id} zeltId={gewaehlt.id} />
+      <TrocknungsplanReiter key={gewaehlt.id} zeltId={gewaehlt.id} weitereZelte={zelte.filter((z) => z.id !== gewaehlt.id).map((z) => ({ id: z.id, name: z.name }))} />
     </>
   )
 }

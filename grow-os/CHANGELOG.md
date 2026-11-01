@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.301
+
+**Pläne zuweisen: der Düngeplan an Grows, der Trocknungsplan an Trockenzelte — von der Seite Plan aus.**
+
+- **Anlass:** Ein Programm ließ sich nur im Formular eines einzelnen Grows wählen, und wer mehrere Zelte betreibt, hatte keinen Überblick, welcher Grow welchem Plan folgt. Der Trocknungsplan eines Zelts ließ sich nicht auf ein zweites Trockenzelt übernehmen.
+- **Düngeplan gehört dem Grow:** Auf der Seite Plan zeigt der neue Block „Gilt für diese Grows“ unter „Plan von“, sobald dort ein Programm gewählt ist, alle laufenden und geplanten Grows mit Zelt, Zustand und dem Programm, das heute gilt. Du kreuzt an, wem das gewählte Programm zugewiesen wird, und siehst vorher, was es ersetzt. Abgeschlossene Grows erscheinen nicht, ihr Plan ist eingefroren.
+- **Derselbe Wechsel wie im Grow-Formular:** Bei einem Grow mit Plan wechseln Plan und Programm in einem Zug. Hat der Plan eigene Änderungen, fragt die Seite vorher, ob sie in die gleichnamigen Wochen des neuen Programms mitgehen oder entfallen; wie viele entfielen, steht danach im Satz. Ein Grow ohne Plan (zum Beispiel ein geplanter, der noch nicht gestartet ist) bekommt das Programm am Grow eingetragen.
+- **Trocknungsplan gehört dem Zelt:** Gibt es mehr als ein Trockenzelt, zeigt Plan › Trocknung den Block „Gilt für diese Trockenzelte“. Du kreuzt die Zelte an, die diesen Plan bekommen sollen, und übertragen wird der gespeicherte Plan. Ein Zelt hat genau einen Trocknungsplan, ein übertragener ersetzt den bisherigen. Es ist eine Kopie: Ändert man danach eines der Zelte, bleibt das andere unberührt. Der Plan eines Zelts gilt ab dem Speichern; eine Charge, die dort gerade trocknet, folgt ihm. Mit nur einem Trockenzelt gibt es nichts zu wählen, der Block fehlt.
+- **Beliebig viele:** Die Listen zeigen alle Grows und Trockenzelte deiner Einrichtung; feste Namen oder Nummern gibt es nicht. Beide Blöcke lassen sich einklappen.
+
 ## 2.0.0-cc.300
 
 **Trocknung: Der Trocknungsplan ist ein eigener Plan des Trockenzelts, unabhängig vom Düngeplan — mit eigenem Reiter unter Plan.**

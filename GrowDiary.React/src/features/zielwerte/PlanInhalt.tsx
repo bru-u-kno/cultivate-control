@@ -5,6 +5,7 @@ import { V1Alert, V1Skeleton, V1Tabs } from '../../components/v1'
 import { V1Select, type V1Option } from '../../components/V1Select'
 import { PlanReiter } from './PlanReiter'
 import { ProgrammReiter } from './ProgrammReiter'
+import { ProgrammZuweisung } from './ProgrammZuweisung'
 import { TrocknungsplanSeite } from './TrocknungsplanSeite'
 import { WochenZeile } from './WochenZeile'
 import { hatRaster, programmZeile, type ProgrammKurz } from './programm-plan'
@@ -124,6 +125,8 @@ export function PlanInhalt() {
           />
         </div>
       )}
+
+      {art === 'duenge' && gewaehlt && <ProgrammZuweisung key={`zuweisung-${gewaehlt.id}`} programmId={gewaehlt.id} programmName={gewaehlt.name} />}
 
       {art === 'duenge' && !programmId && (
         <>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Badge, V1Button, V1Skeleton } from '../../components/v1'
 import { classNames } from '../../utils'
+import { TrocknungZuweisung } from './TrocknungZuweisung'
 import '../wochenplan/wochenplan.css'
 import {
   NAME_MAX, entwurfAus, etappeEinfuegen, etappeEntfernen, etappenAus, fehler, feldSetzen, istGeaendert, laeuftText, summeTage,
@@ -48,7 +49,7 @@ function Zelle({ titel, einheit, wert, audit, name, unter, onChange }: {
  * Der Plan gehört dem Zelt und ist unabhängig vom Düngeprogramm: Er gilt für jede Charge im Trockenzelt, egal, womit sie gewachsen
  * ist. Die Live-Kacheln und die Steuerung der Geräte folgen ihm. Ohne eigene Etappen gilt der Standard „langsam trocknen“.
  */
-export function TrocknungsplanReiter({ zeltId }: { zeltId: number }) {
+export function TrocknungsplanReiter({ zeltId, weitereZelte = [] }: { zeltId: number; weitereZelte?: ReadonlyArray<{ id: number; name: string }> }) {
   const [daten, setDaten] = useState<TrocknungsplanZelt | null>(null)
   const [laden, setLaden] = useState(true)
   const [entwurf, setEntwurf] = useState<EtappeEntwurf[]>([])
@@ -120,6 +121,14 @@ export function TrocknungsplanReiter({ zeltId }: { zeltId: number }) {
         Trocknungsplan · <b>{daten.zeltName}</b>
         {daten.istStandard && <> <V1Badge tone="neutral">Standard</V1Badge></>}
       </p>
+
+      <TrocknungZuweisung
+        zeltId={daten.zeltId}
+        zeltName={daten.zeltName}
+        etappen={daten.etappen}
+        ungespeichert={geaendert}
+        weitere={weitereZelte}
+      />
 
       <V1Alert
         tone="neutral"
