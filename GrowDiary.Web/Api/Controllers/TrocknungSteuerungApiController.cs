@@ -91,8 +91,7 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         s.Trocknet, s.Betrieb, s.PortsErreichbar, s.Tag, s.TageGeplant, s.Etappe, s.TempMin, s.TempMax, s.FeuchteMin, s.FeuchteMax,
         s.Geraete.Select(g => new TrocknungSteuerungGeraetDto(
             g.Rolle, g.PortName, g.Folgt, g.Modus, g.WertAmGeraet, g.Einheit, g.PlanWert, g.Urteil, g.Vorher,
-            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null)).ToList(),
-        s.ProgrammId);
+            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null)).ToList());
 }
 
 public sealed class TrocknungSteuerungRequest
@@ -113,7 +112,6 @@ public sealed record TrocknungSteuerungGeraetDto(
 
 public sealed record TrocknungSteuerungDto(
     bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-    double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<TrocknungSteuerungGeraetDto> Geraete,
-    string? ProgrammId = null);
+    double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<TrocknungSteuerungGeraetDto> Geraete);
 
 public sealed record TrocknungZuruecksetzenDto(int Zurueck, int Gescheitert, TrocknungSteuerungDto Stand);

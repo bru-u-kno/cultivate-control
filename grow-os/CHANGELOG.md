@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.300
+
+**Trocknung: Der Trocknungsplan ist ein eigener Plan des Trockenzelts, unabhängig vom Düngeplan — mit eigenem Reiter unter Plan.**
+
+- **Anlass:** Die Etappen der Trocknung hingen am Düngeprogramm der geernteten Charge. Wer ohne laufenden Grow unter Plan nachsah, fand sie nicht, ein Wechsel des Düngeprogramms hätte den Trocknungsplan gewechselt, und beim Speichern einer mitgelieferten Vorlage entstand eine Kopie des Düngeprogramms. Düngen und Trocknen haben fachlich nichts miteinander zu tun.
+- **Neu: Plan › Trocknung.** Oben auf der Seite Plan steht jetzt der Umschalter „Düngeplan | Trocknung“. Der Reiter „Trocknung“ zeigt den Plan des Trockenzelts: Etappen mit Name, Dauer, Lufttemperatur, Luftfeuchte und RH-Obergrenze, dazu „Standard „langsam trocknen“ wiederherstellen“. Es gibt keine Auswahl „Plan von“ und kein Düngeprogramm mehr dabei; Speichern legt keine Kopie an. Gibt es mehrere Trockenzelte, wählst du oben das Zelt; die Adresse trägt `?art=trocknung&zelt=…`.
+- **Gilt für das Zelt:** Der Plan gilt für jede Charge im Trockenzelt, egal mit welchem Düngeprogramm sie gewachsen ist. Die Zielbänder der Live-Kacheln, die Karte „Trocknungs-Ziel“ und die Steuerung der Geräte (Steuerung › Trocknung) folgen ihm.
+- **Düngeplan:** Der Bereich „Trocknung“ neben „Wochen“ entfällt. Programme ohne Wochenwerte (Canna Aqua, VBX) zeigen den Hinweis und verweisen auf den Reiter „Trocknung“.
+- **Übernahme:** Hatte ein Zelt noch keinen eigenen Plan, die trocknende Charge aber ein Düngeprogramm mit eigenen Trocknungs-Etappen, werden diese Etappen einmalig als Plan des Zelts übernommen. Danach ändert sich der Trocknungsplan nicht mehr mit dem Programm. Ohne eigene Etappen gilt wie bisher der Standard „langsam trocknen“ (3 / 4 / 3 Tage).
+- **Zielwert je Tag:** Der Plan kennt Etappen, keine einzelnen Tage. Für einen Wert pro Tag legst du Etappen von einem Tag Dauer an.
+- **Link:** „Plan ›“ unter Steuerung › Trocknung öffnet diesen Reiter.
+
 ## 2.0.0-cc.298
 
 **Trocknung: Der Link „Plan ›“ öffnet das richtige Programm, und die Kühlung sagt ehrlich, warum sie dem Plan nicht folgt, wenn ihr Port aus ist.**

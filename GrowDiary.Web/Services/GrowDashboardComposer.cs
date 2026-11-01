@@ -17,6 +17,7 @@ public sealed class GrowDashboardComposer
     private readonly HarvestRepository? _harvests;
     private readonly LightCycleReader? _lightCycles;
     private readonly KnowledgeBaseLoader? _knowledge;
+    private readonly TrocknungPlanQuelle? _trocknungsplan;
     private readonly ILogger<GrowDashboardComposer> _logger;
 
     public GrowDashboardComposer(
@@ -29,9 +30,11 @@ public sealed class GrowDashboardComposer
         GrowRepository? grows = null,
         HarvestRepository? harvests = null,
         LightCycleReader? lightCycles = null,
-        KnowledgeBaseLoader? knowledge = null)
+        KnowledgeBaseLoader? knowledge = null,
+        TrocknungPlanQuelle? trocknungsplan = null)
     {
         _knowledge = knowledge;
+        _trocknungsplan = trocknungsplan;
         _targetValues = targetValues;
         _alertRules = alertRules;
         _hydroSetups = hydroSetups;
@@ -487,9 +490,11 @@ public sealed class GrowDashboardComposer
         if (activeGrow is not null) return;
         if (DryingWindow.StandFor(_grows, _harvests, tent.Id, DateTime.Today) is not { } trocknung) return;
 
+        // Der Plan gehört dem Zelt (TrocknungPlanQuelle); ohne sie (nur in Tests) gilt der Plan des Programms der geernteten Charge.
         var programm = _knowledge?.NutrientPrograms.FirstOrDefault(p =>
             string.Equals(p.Id, trocknung.Grow.FeedProgramId, StringComparison.OrdinalIgnoreCase));
-        if (TrocknungsPlan.EtappeAm(TrocknungsPlan.Fuer(programm), trocknung.Tag) is not { } stand) return;
+        var etappen = _trocknungsplan is { } quelle ? quelle.Etappen(tent.Id, trocknung.Grow) : TrocknungsPlan.Fuer(programm);
+        if (TrocknungsPlan.EtappeAm(etappen, trocknung.Tag) is not { } stand) return;
 
         var band = TrocknungsPlan.BandFuer(stand.Etappe);
         var vermerk = $"Trocknung · Tag {trocknung.Tag} · {stand.Etappe.Name}";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  entwurfAus, ergebnisText, etappeEinfuegen, etappeEntfernen, etappenAus, fehler, feldSetzen, istGeaendert, laeuftText, speichernAnfrage, summeTage,
-  type Trocknung, type TrockenEtappe, vorlageHinweis,
+  entwurfAus, etappeEinfuegen, etappeEntfernen, etappenAus, fehler, feldSetzen, istGeaendert, laeuftText, summeTage,
+  type TrockenEtappe,
 } from './trocknung-plan'
 
 const e = (name: string, dauer: number, temp = 19, ziel = 58, max = 65): TrockenEtappe =>
@@ -131,41 +131,5 @@ describe('Trocknung: Zeile „trocknet gerade“', () => {
 
     expect(laeuftText(l)).toBe('Trocknet gerade: Trockenzelt · Tag 4 · Etappe 2 „Hauptphase“')
     expect(laeuftText({ ...l, tag: 15, gehalten: true })).toContain('die letzte Etappe gilt weiter')
-  })
-})
-
-describe('Trocknung: Speichern', () => {
-  const dto = (name: string): Trocknung => ({
-    programmId: 'eigen-x', programmName: name, eigen: true, istStandard: false, maxTage: 21, maxEtappen: 8,
-    etappen: [], standard: [], laeuft: [],
-  })
-
-  it('berichtet, ob eine Kopie entstand', () => {
-    expect(ergebnisText({ trocknung: dto('Meins'), neuAngelegt: true }))
-      .toBe('Trocknung gespeichert — als neues eigenes Programm „Meins“. Die Vorlage bleibt unverändert.')
-    expect(ergebnisText({ trocknung: dto('Meins'), neuAngelegt: false })).toBe('Trocknung gespeichert in „Meins“.')
-  })
-
-  it('schickt den Namen nur mit, wenn eine Kopie entsteht und einer eingetragen ist', () => {
-    const liste = [e('A', 3)]
-    expect(speichernAnfrage(liste, false, '  Meins  ')).toEqual({ etappen: liste, name: 'Meins' })
-    expect(speichernAnfrage(liste, false, '   ')).toEqual({ etappen: liste })
-    // Ein eigenes Programm behält seinen Namen — auch wenn im Feld noch Text stand.
-    expect(speichernAnfrage(liste, true, 'Meins')).toEqual({ etappen: liste })
-  })
-})
-
-describe('Trocknung: Hinweis bei einer Vorlage, nach der gerade getrocknet wird', () => {
-  const laeuft = [{ zelt: 'Trockenzelt', tag: 4, etappeNr: 2, etappeName: 'Haupt', gehalten: false }]
-
-  it('warnt nur bei einer Vorlage, nach der ein Zelt trocknet', () => {
-    expect(vorlageHinweis({ eigen: false, laeuft })).toContain('Das Zelt „Trockenzelt“ trocknet gerade nach dieser Vorlage.')
-    expect(vorlageHinweis({ eigen: true, laeuft })).toBeNull()        // ein eigenes wird an Ort und Stelle geändert
-    expect(vorlageHinweis({ eigen: false, laeuft: [] })).toBeNull()   // niemand trocknet danach
-  })
-
-  it('nennt mehrere Zelte', () => {
-    const zwei = [...laeuft, { ...laeuft[0], zelt: 'Zelt 2' }]
-    expect(vorlageHinweis({ eigen: false, laeuft: zwei })).toContain('„Trockenzelt“ und „Zelt 2“')
   })
 })

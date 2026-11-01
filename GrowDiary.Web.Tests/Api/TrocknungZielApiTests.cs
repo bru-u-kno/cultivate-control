@@ -51,7 +51,7 @@ public sealed class TrocknungZielApiTests : IDisposable
     }
 
     private TrocknungApiController Controller(IReadOnlyList<TrocknungZiel.Port>? ports, Func<string, HomeAssistantState?>? zustand = null)
-        => new(_grows, _ernten, new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance),
+        => new(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(_paths)),
             new TrocknungWaegungRepository(_paths), _ports,
             new TrocknungZielService(
                 _ => Task.FromResult(ports),

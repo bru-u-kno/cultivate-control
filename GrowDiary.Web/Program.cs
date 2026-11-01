@@ -62,6 +62,8 @@ builder.Services.AddSingleton<HarvestRepository>();
 builder.Services.AddSingleton<TrocknungWaegungRepository>();
 builder.Services.AddSingleton<TrocknungPortRepository>();
 builder.Services.AddSingleton<TrocknungZielService>();
+builder.Services.AddSingleton<TrocknungPlanRepository>();
+builder.Services.AddSingleton<TrocknungPlanQuelle>();
 builder.Services.AddSingleton<TrocknungSteuerungRepository>();
 builder.Services.AddSingleton<TrocknungSteuerungService>();
 builder.Services.AddSingleton<CuringRepository>();

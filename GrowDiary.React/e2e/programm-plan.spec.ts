@@ -117,98 +117,22 @@ test('Plan: beim Anlegen einer Kopie blitzt keine Fehlermeldung auf, und „Zur�
   await expect(page.getByText('als neues eigenes Programm')).toHaveCount(0)
 })
 
-test('Plan: ein Programm ohne Wochenwerte öffnet auf der Trocknung und sagt bei den Wochen, warum dort nichts zu ändern ist', async ({ page }) => {
+test('Plan: ein Programm ohne Wochenwerte sagt, warum dort nichts zu ändern ist, und verweist auf den eigenen Trocknungsplan', async ({ page }) => {
   const liste = await programme(page)
   const ohne = liste.find((p) => p.wochen === 0)
   darfUeberspringen(!ohne, 'Kein Programm ohne Wochenwerte im Bestand — Canna Aqua und VBX bringen keine mit.')
 
-  // Ohne Angabe öffnet es dort, wo es etwas zu ändern gibt.
   await page.goto(`/plan?programm=${ohne!.id}`, { waitUntil: 'networkidle' })
-  await expect(page.getByText(/Etappe 1 von \d/)).toBeVisible()
-  await expect(page.locator('[data-audit=trocknung-reiter]')).toBeVisible()
-
-  await page.getByRole('tablist', { name: 'Bereich' }).getByRole('button', { name: 'Wochen' }).click()
   await expect(page.getByText('keine Wochenwerte')).toBeVisible()
+  await expect(page.getByText('Reiter „Trocknung“ oben')).toBeVisible()
   await expect(page.locator('[data-audit=programm-speichern]')).toHaveCount(0)
+  // Die Trocknung gehört nicht mehr zum Düngeprogramm: Hier gibt es weder Etappen noch einen Reiter „Bereich“.
+  await expect(page.locator('[data-audit=trocknung-reiter]')).toHaveCount(0)
+  await expect(page.getByRole('tablist', { name: 'Bereich' })).toHaveCount(0)
 })
 
 test('Plan: ein unbekanntes Programm meldet sich, statt leer zu bleiben', async ({ page }) => {
   await page.goto('/plan?programm=gibt-es-nicht', { waitUntil: 'networkidle' })
 
   await expect(page.getByText('Dieses Programm gibt es nicht')).toBeVisible()
-})
-
-type Etappe = { name: string; dauerTage: number; lufttemperaturC: number }
-type Trocknung = { programmId: string; istStandard: boolean; etappen: Etappe[] }
-
-test('Plan: Trocknung ändern legt eine Kopie an, ein zweites Speichern ändert die Kopie, die Vorlage bleibt beim Standard', async ({ page }) => {
-  const liste = await programme(page)
-  const vorlage = liste.find((p) => !p.eigen)
-  darfUeberspringen(!vorlage, 'Kein mitgeliefertes Programm im Bestand — der Demobestand liefert SKX und Athena.')
-  const name = `E2E Trocknung ${Date.now()}`
-
-  await page.goto(`/plan?programm=${vorlage!.id}&bereich=trocknung`, { waitUntil: 'networkidle' })
-  await expect(page.getByText('Dieses Programm führt noch keine eigenen Etappen')).toBeVisible()
-  await expect(page.getByText('Etappe 1 von 3')).toBeVisible()
-  await expect(page.locator('[data-audit=trocknung-speichern]')).toBeDisabled() // nichts geändert
-
-  // Erste Etappe umbenennen und kühler machen, dahinter eine neue einfügen.
-  await page.locator('#trocknung-etappenname').fill('Kalt')
-  await page.locator('[data-audit=trocknung-temp]').fill('17,5')
-  await page.locator('[data-audit=trocknung-etappe-danach]').click()
-  await expect(page.getByText('Etappe 2 von 4')).toBeVisible()
-  await page.locator('#trocknung-etappenname').fill('Zusatz')
-  await page.locator('[data-audit=trocknung-dauer]').fill('2')
-  await page.locator('#trocknung-programmname').fill(name)
-  await page.locator('[data-audit=trocknung-speichern]').click()
-
-  // Die Seite wechselt auf die Kopie, bleibt im Bereich Trocknung und sagt, was geschah.
-  await expect(page).toHaveURL(/programm=eigen-.*bereich=trocknung|bereich=trocknung.*programm=eigen-/)
-  await expect(page.getByText(`Trocknung gespeichert — als neues eigenes Programm „${name}“`)).toBeVisible()
-  const kopieId = new URL(page.url()).searchParams.get('programm')!
-  const kopie = (await (await page.request.get(`/api/programme/${kopieId}/trocknung`)).json()) as Trocknung
-  expect(kopie.istStandard).toBe(false)
-  expect(kopie.etappen.map((e) => e.name)).toEqual(['Kalt', 'Zusatz', 'Hauptphase', 'Ausklang'])
-  expect(kopie.etappen[0].lufttemperaturC).toBe(17.5)
-  expect(kopie.etappen[1].dauerTage).toBe(2)
-  expect(((await (await page.request.get(`/api/programme/${vorlage!.id}/trocknung`)).json()) as Trocknung).istStandard).toBe(true)
-
-  // Zweites Speichern: jetzt am eigenen Programm, ohne Namensfeld, ohne weitere Kopie. Die Kopie öffnet auf
-  // Etappe 1 (3 Tage) — 4 ist also wirklich eine Änderung.
-  await page.locator('[data-audit=trocknung-dauer]').fill('4')
-  await expect(page.locator('#trocknung-programmname')).toHaveCount(0)
-  await page.locator('[data-audit=trocknung-speichern]').click()
-  await expect(page.getByText(`Trocknung gespeichert in „${name}“`)).toBeVisible()
-  expect((await programme(page)).filter((p) => p.name === name)).toHaveLength(1)
-
-  // Nach dem Neuladen steht es da: Etappe 1 von 4 mit den eigenen Werten.
-  await page.reload({ waitUntil: 'networkidle' })
-  await expect(page.getByText('Etappe 1 von 4')).toBeVisible()
-  await expect(page.locator('#trocknung-etappenname')).toHaveValue('Kalt')
-  await expect(page.locator('[data-audit=trocknung-temp]')).toHaveValue('17,5')
-})
-
-test('Plan: eine zu lange Trocknung wird gemeldet und lässt sich nicht speichern', async ({ page }) => {
-  const liste = await programme(page)
-  const vorlage = liste.find((p) => !p.eigen)
-  darfUeberspringen(!vorlage, 'Kein mitgeliefertes Programm im Bestand — der Demobestand liefert SKX und Athena.')
-
-  await page.goto(`/plan?programm=${vorlage!.id}&bereich=trocknung`, { waitUntil: 'networkidle' })
-  await page.locator('[data-audit=trocknung-dauer]').fill('30')
-
-  await expect(page.getByText(/Zusammen \d+ Tage — das Trocknungsfenster endet 21 Tage nach der Ernte/)).toBeVisible()
-  await expect(page.locator('[data-audit=trocknung-speichern]')).toBeDisabled()
-})
-
-test('Plan: eine Etappe lässt sich löschen, die letzte bleibt', async ({ page }) => {
-  const liste = await programme(page)
-  const vorlage = liste.find((p) => !p.eigen)
-  darfUeberspringen(!vorlage, 'Kein mitgeliefertes Programm im Bestand — der Demobestand liefert SKX und Athena.')
-
-  await page.goto(`/plan?programm=${vorlage!.id}&bereich=trocknung`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: '✕ Etappe löschen' }).click()
-  await expect(page.getByText('Etappe 1 von 2')).toBeVisible()
-  await page.getByRole('button', { name: '✕ Etappe löschen' }).click()
-  await expect(page.getByText('Etappe 1 von 1')).toBeVisible()
-  await expect(page.getByRole('button', { name: '✕ Etappe löschen' })).toBeDisabled()
 })

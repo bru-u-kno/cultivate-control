@@ -3,11 +3,9 @@ import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Badge, V1Button, V1Skeleton } from '../../components/v1'
 import { classNames } from '../../utils'
 import '../wochenplan/wochenplan.css'
-import { NAME_MAX, kopieName, nameFehler, speichernText } from './programm-plan'
 import {
-  entwurfAus, ergebnisText, etappeEinfuegen, etappeEntfernen, etappenAus, fehler, feldSetzen, istGeaendert, laeuftText,
-  speichernAnfrage, summeTage, vorlageHinweis,
-  type EtappeEntwurf, type Trocknung, type TrocknungGespeichert,
+  NAME_MAX, entwurfAus, etappeEinfuegen, etappeEntfernen, etappenAus, fehler, feldSetzen, istGeaendert, laeuftText, summeTage,
+  type EtappeEntwurf, type TrocknungsplanZelt,
 } from './trocknung-plan'
 
 /** Eine Zelle des Blatts: Beschriftung, Eingabe, darunter ein Satz. */
@@ -45,59 +43,43 @@ function Zelle({ titel, einheit, wert, audit, name, unter, onChange }: {
 }
 
 /**
- * Fork AI (A-029, Etappe 2): die Trocknung eines Programms — frei editierbare Etappen mit Dauer,
- * Temperatur- und Feuchteziel.
+ * Plan › Trocknung (A-029): der Trocknungsplan des Trockenzelts — frei editierbare Etappen mit Dauer, Temperatur- und Feuchteziel.
  *
- * Bis dahin standen die Trocknungs-Werte fest im Code (18–20 °C, 55–60 %). Jetzt führt sie das
- * Programm, und die Live-Kacheln des trocknenden Zelts folgen ihr. Ohne eigene Etappen gilt der
- * Standard („langsam trocknen“). Eine mitgelieferte Vorlage bleibt unverändert: Speichern legt eine
- * Kopie als eigenes Programm an, wie bei den Wochenwerten.
+ * Der Plan gehört dem Zelt und ist unabhängig vom Düngeprogramm: Er gilt für jede Charge im Trockenzelt, egal, womit sie gewachsen
+ * ist. Die Live-Kacheln und die Steuerung der Geräte folgen ihm. Ohne eigene Etappen gilt der Standard „langsam trocknen“.
  */
-export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
-  programmId: string
-  startMeldung?: string | null
-  onKopie: (neueId: string, text: string) => void
-}) {
-  const [daten, setDaten] = useState<Trocknung | null>(null)
+export function TrocknungsplanReiter({ zeltId }: { zeltId: number }) {
+  const [daten, setDaten] = useState<TrocknungsplanZelt | null>(null)
   const [laden, setLaden] = useState(true)
   const [entwurf, setEntwurf] = useState<EtappeEntwurf[]>([])
   const [index, setIndex] = useState(0)
-  const [name, setName] = useState('')
   const [speichert, setSpeichert] = useState(false)
-  const [meldung, setMeldung] = useState<{ text: string; ton: 'ok' | 'critical' | 'neutral' } | null>(
-    startMeldung ? { text: startMeldung, ton: 'ok' } : null,
-  )
+  const [meldung, setMeldung] = useState<{ text: string; ton: 'ok' | 'critical' | 'neutral' } | null>(null)
 
   useEffect(() => {
     let aktiv = true
     async function holen() {
       try {
-        const antwort = await apiFetch<Trocknung>(`/api/programme/${encodeURIComponent(programmId)}/trocknung`)
+        const antwort = await apiFetch<TrocknungsplanZelt>(`/api/tents/${zeltId}/trocknung/plan`)
         if (!aktiv) return
         setDaten(antwort)
         setEntwurf(entwurfAus(antwort.etappen))
         // Mit der Etappe aufmachen, die gerade läuft — sonst mit der ersten.
-        setIndex(Math.max(0, (antwort.laeuft[0]?.etappeNr ?? 1) - 1))
-        setName(kopieName(antwort.programmName))
+        setIndex(Math.max(0, (antwort.laeuft?.etappeNr ?? 1) - 1))
       } catch (caught) {
-        if (aktiv) setMeldung({ ton: 'critical', text: formatApiError(caught, 'Die Trocknung konnte nicht geladen werden.') })
+        if (aktiv) setMeldung({ ton: 'critical', text: formatApiError(caught, 'Der Trocknungsplan konnte nicht geladen werden.') })
       } finally {
         if (aktiv) setLaden(false)
       }
     }
     void holen()
     return () => { aktiv = false }
-  }, [programmId])
+  }, [zeltId])
 
   const geaendert = useMemo(() => (daten ? istGeaendert(entwurf, daten.etappen) : false), [daten, entwurf])
-  const probleme = useMemo(() => {
-    if (!daten) return []
-    const sammlung = fehler(entwurf, daten.maxTage, daten.maxEtappen)
-    const nameProblem = !daten.eigen && geaendert ? nameFehler(name) : null
-    return nameProblem ? [...sammlung, nameProblem] : sammlung
-  }, [daten, entwurf, geaendert, name])
+  const probleme = useMemo(() => (daten ? fehler(entwurf, daten.maxTage, daten.maxEtappen) : []), [daten, entwurf])
 
-  if (laden) return <V1Skeleton rows={6} label="Lade Trocknung" />
+  if (laden) return <V1Skeleton rows={6} label="Lade Trocknungsplan" />
   if (!daten) return meldung ? <V1Alert tone={meldung.ton} message={meldung.text} /> : null
 
   const aktuell = Math.min(index, Math.max(0, entwurf.length - 1))
@@ -105,7 +87,7 @@ export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
   const letzte = entwurf.length - 1
   const summe = summeTage(entwurf)
   const nr = `Etappe ${aktuell + 1}`
-  const laeuftHier = daten.laeuft.find((l) => l.etappeNr - 1 === aktuell)
+  const laeuftHier = daten.laeuft != null && daten.laeuft.etappeNr - 1 === aktuell
   const aendern = (feld: keyof EtappeEntwurf) => (text: string) => {
     setEntwurf((alt) => feldSetzen(alt, aktuell, feld, text))
     setMeldung(null)
@@ -118,19 +100,13 @@ export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
     setSpeichert(true)
     setMeldung(null)
     try {
-      const antwort = await apiFetch<TrocknungGespeichert>(`/api/programme/${encodeURIComponent(daten.programmId)}/trocknung`, {
-        method: 'POST',
-        body: JSON.stringify(speichernAnfrage(etappen, daten.eigen, name)),
+      const antwort = await apiFetch<TrocknungsplanZelt>(`/api/tents/${daten.zeltId}/trocknung/plan`, {
+        method: 'PUT',
+        body: JSON.stringify({ etappen }),
       })
-      const text = ergebnisText(antwort)
-      if (antwort.neuAngelegt) {
-        // Die Kopie ist jetzt das Programm, das man bearbeitet; die Vorlage bleibt, wie sie war.
-        onKopie(antwort.trocknung.programmId, text)
-      } else {
-        setDaten(antwort.trocknung)
-        setEntwurf(entwurfAus(antwort.trocknung.etappen))
-        setMeldung({ ton: 'ok', text })
-      }
+      setDaten(antwort)
+      setEntwurf(entwurfAus(antwort.etappen))
+      setMeldung({ ton: 'ok', text: `Trocknungsplan gespeichert — er gilt ab sofort für „${antwort.zeltName}“.` })
     } catch (caught) {
       setMeldung({ ton: 'critical', text: formatApiError(caught, 'Speichern hat nicht geklappt.') })
     } finally {
@@ -141,23 +117,15 @@ export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
   return (
     <div className="wp-bearbeiten" data-audit="trocknung-reiter">
       <p className="pr-kopf">
-        {daten.eigen ? 'Eigenes Programm' : 'Vorlage'} · <b>{daten.programmName}</b>
+        Trocknungsplan · <b>{daten.zeltName}</b>
         {daten.istStandard && <> <V1Badge tone="neutral">Standard</V1Badge></>}
       </p>
 
-      {!daten.eigen && (
-        <V1Alert tone="warn" message="Mitgelieferte Vorlage: sie bleibt unverändert. Speichern legt ein eigenes Programm an." />
-      )}
-      {daten.istStandard && (
-        <V1Alert
-          tone="neutral"
-          message="Dieses Programm führt noch keine eigenen Etappen — es gilt der Standard „langsam trocknen“. Ändere die Werte und speichere, dann gelten deine."
-        />
-      )}
-      {daten.laeuft.map((l) => (
-        <V1Alert key={l.zelt} tone="neutral" message={laeuftText(l)} />
-      ))}
-      {vorlageHinweis(daten) && <V1Alert tone="warn" message={vorlageHinweis(daten)!} />}
+      <V1Alert
+        tone="neutral"
+        message={`Eigener Plan, unabhängig vom Düngeplan. Er gilt für jede Charge, die im Trockenzelt hängt — egal, mit welchem Düngeprogramm sie gewachsen ist.${daten.istStandard ? ' Noch keine eigenen Etappen: Es gilt der Standard „langsam trocknen“. Ändere die Werte und speichere, dann gelten deine.' : ''}`}
+      />
+      {daten.laeuft && <V1Alert tone="neutral" message={laeuftText(daten.laeuft)} />}
       {meldung && <V1Alert tone={meldung.ton} message={meldung.text} />}
 
       <div className="wp-blatt">
@@ -219,44 +187,25 @@ export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
             aria-selected={i === aktuell}
             aria-label={`Etappe ${i + 1}: ${x.name}`}
             title={x.name}
-            className={classNames('wp-punkt', i === aktuell && 'ist-aktiv', daten.laeuft.some((l) => l.etappeNr - 1 === i) && 'ist-jetzt')}
+            className={classNames('wp-punkt', i === aktuell && 'ist-aktiv', daten.laeuft?.etappeNr === i + 1 && 'ist-jetzt')}
             onClick={() => setIndex(i)}
           />
         ))}
       </div>
 
-      {!daten.eigen && geaendert && (
-        <div className="pr-dosis" data-audit="trocknung-programmname">
-          <label className="wp-leise" htmlFor="trocknung-programmname">Name des eigenen Programms</label>
-          <input
-            id="trocknung-programmname"
-            className="wp-eingabe pr-name"
-            type="text"
-            value={name}
-            maxLength={NAME_MAX + 20}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-      )}
-
       {probleme.length > 0 && <V1Alert tone="critical" message={probleme[0]} />}
 
       <p className="wp-leise pr-hinweis">
         Die Kacheln des trocknenden Zelts zeigen das Zielband der laufenden Etappe (Temperatur ±1 °C, Luftfeuchte ±2 Prozentpunkte).
-        Hinter der letzten Etappe gilt sie weiter, bis das Trockengewicht eingetragen ist.
-        {!daten.istStandard && (
-          <>
-            {' '}
-            <button
-              type="button"
-              className="wp-plan-zurueck"
-              onClick={() => { setEntwurf(entwurfAus(daten.standard)); setIndex(0); setMeldung(null) }}
-            >
-              Auf den Standard zurücksetzen
-            </button>
-          </>
-        )}
+        Hinter der letzten Etappe gilt sie weiter, bis das Trockengewicht eingetragen ist. Für einen Wert pro Tag lege Etappen von einem Tag Dauer an.
       </p>
+      {!daten.istStandard && (
+        <div className="pr-dosis" data-audit="trocknung-standard">
+          <V1Button variant="ghost" onClick={() => { setEntwurf(entwurfAus(daten.standard)); setIndex(0); setMeldung(null) }} disabled={speichert}>
+            Standard „langsam trocknen“ wiederherstellen
+          </V1Button>
+        </div>
+      )}
 
       <div className="wp-balken-platz" aria-hidden="true" />
       <div className="wp-speicherbalken" data-audit="trocknung-speicherbalken">
@@ -265,7 +214,7 @@ export function TrocknungReiter({ programmId, startMeldung, onKopie }: {
           Verwerfen
         </V1Button>
         <V1Button variant="primary" onClick={() => void speichern()} disabled={speichert || !geaendert || probleme.length > 0} audit="trocknung-speichern">
-          {speichernText(daten.eigen)}
+          Speichern
         </V1Button>
       </div>
     </div>

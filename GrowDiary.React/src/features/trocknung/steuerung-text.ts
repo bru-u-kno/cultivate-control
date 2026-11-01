@@ -29,8 +29,6 @@ export interface TrocknungSteuerung {
   feuchteMin: number | null
   feuchteMax: number | null
   geraete: SteuerungGeraet[]
-  /** Das Programm der trocknenden Charge — der Plan ›-Link öffnet genau dieses. */
-  programmId?: string | null
 }
 
 export const zahl = (wert: number) => formatNumber(wert, Number.isInteger(wert) ? 0 : 1)

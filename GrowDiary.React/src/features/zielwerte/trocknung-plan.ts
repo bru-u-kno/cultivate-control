@@ -2,9 +2,9 @@ import { istLeer, zahlOderNull } from '../../zahlenfeld'
 import { alsText } from '../wochenplan/wochenwerte-bearbeiten'
 
 /**
- * Fork AI (A-029, Etappe 2): die Trocknung eines Programms — die Rechnung ohne Oberfläche.
+ * Fork AI (A-029): der Trocknungsplan eines Trockenzelts — die Rechnung ohne Oberfläche.
  *
- * Die Etappen liegen im Programm (Name, Dauer in Tagen, Temperatur- und Feuchteziel, Obergrenze der
+ * Die Etappen gehören dem Zelt, nicht dem Düngeprogramm (Name, Dauer in Tagen, Temperatur- und Feuchteziel, Obergrenze der
  * Feuchte). Der Entwurf hält den **getippten Text** je Feld, nicht die Zahl: „1," ist beim Tippen ein
  * Zwischenstand und darf nicht zu 1 werden, solange der Nutzer noch schreibt.
  *
@@ -23,20 +23,19 @@ export type TrockenEtappe = {
 
 export type TrocknungLaeuft = { zelt: string; tag: number; etappeNr: number; etappeName: string; gehalten: boolean }
 
-export type Trocknung = {
-  programmId: string
-  programmName: string
-  eigen: boolean
-  /** Das Programm führt keine eigenen Etappen — angezeigt wird der Standard. */
+/** Der Trocknungsplan eines Trockenzelts, wie `GET/PUT /api/tents/{id}/trocknung/plan` ihn liefert. */
+export type TrocknungsplanZelt = {
+  zeltId: number
+  zeltName: string
+  istTrockenzelt: boolean
+  /** Die gespeicherten Etappen sind die des Standards „langsam trocknen“. */
   istStandard: boolean
   maxTage: number
   maxEtappen: number
   etappen: TrockenEtappe[]
   standard: TrockenEtappe[]
-  laeuft: TrocknungLaeuft[]
+  laeuft: TrocknungLaeuft | null
 }
-
-export type TrocknungGespeichert = { trocknung: Trocknung; neuAngelegt: boolean }
 
 /** Eine Etappe im Entwurf: Text je Feld. */
 export type EtappeEntwurf = { name: string; dauer: string; temp: string; ziel: string; max: string }
@@ -137,31 +136,8 @@ export function feldSetzen(entwurf: readonly EtappeEntwurf[], index: number, fel
   return entwurf.map((e, i) => (i === index ? { ...e, [feld]: text } : e))
 }
 
-/** Die Zeile über dem Blatt, wenn gerade ein Zelt nach diesem Programm trocknet. */
+/** Die Zeile über dem Blatt, wenn im Zelt gerade etwas trocknet. */
 export function laeuftText(l: TrocknungLaeuft): string {
   const satz = `Trocknet gerade: ${l.zelt} · Tag ${l.tag} · Etappe ${l.etappeNr} „${l.etappeName}“`
   return l.gehalten ? `${satz} (der Plan ist abgelaufen, die letzte Etappe gilt weiter)` : satz
-}
-
-/** Der Satz nach dem Speichern. */
-export function ergebnisText(antwort: TrocknungGespeichert): string {
-  return antwort.neuAngelegt
-    ? `Trocknung gespeichert — als neues eigenes Programm „${antwort.trocknung.programmName}“. Die Vorlage bleibt unverändert.`
-    : `Trocknung gespeichert in „${antwort.trocknung.programmName}“.`
-}
-
-/** Der Rumpf der Speichern-Anfrage; der Name zählt nur bei einer neuen Kopie. */
-export function speichernAnfrage(etappen: TrockenEtappe[], eigen: boolean, name: string): { etappen: TrockenEtappe[]; name?: string } {
-  const sauber = name.trim()
-  return eigen || sauber.length === 0 ? { etappen } : { etappen, name: sauber }
-}
-
-/**
- * Läuft gerade ein Zelt nach einer mitgelieferten Vorlage, ändert eine Kopie dort nichts: Der Grow zeigt
- * weiter auf die Vorlage. Das steht vor dem Speichern da, nicht erst hinterher.
- */
-export function vorlageHinweis(daten: Pick<Trocknung, 'eigen' | 'laeuft'>): string | null {
-  if (daten.eigen || daten.laeuft.length === 0) return null
-  const zelte = daten.laeuft.map((l) => `„${l.zelt}“`).join(' und ')
-  return `Das Zelt ${zelte} trocknet gerade nach dieser Vorlage. Eine Kopie ändert dort nichts, solange der Grow nach der Vorlage läuft — ändere die Trocknung in dem eigenen Programm, nach dem der Grow läuft.`
 }

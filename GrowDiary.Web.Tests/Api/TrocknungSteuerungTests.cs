@@ -76,7 +76,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
                 if (_setzenGelingt) ZustandSetzen(id, wert.ToString(System.Globalization.CultureInfo.InvariantCulture), _ha[id].UnitOfMeasurement);
                 return Task.FromResult(_setzenGelingt);
             });
-        return new TrocknungSteuerungService(_grows, _ernten, new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), _ports, _steuerung, ziel, NullLogger<TrocknungSteuerungService>.Instance);
+        return new TrocknungSteuerungService(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(_paths)), _ports, _steuerung, ziel, NullLogger<TrocknungSteuerungService>.Instance);
     }
 
     private TrocknungSteuerungApiController Controller() => new(_grows, _ports, _steuerung, Dienst());
@@ -225,16 +225,6 @@ public sealed class TrocknungSteuerungTests : IDisposable
         ZustandSetzen("number.clima_temp", "24", "°C");
         Assert.Equal(1, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
         Assert.Equal("21", _ha["number.clima_temp"].State);
-    }
-
-    [Fact]
-    public async Task Die_Steuerung_nennt_das_Programm_der_trocknenden_Charge_fuer_den_Link_zum_Plan()
-    {
-        ErnteImTrockenzelt();
-        var grow = _grows.GetGrow(_growId)!;
-        grow.FeedProgramId = "eigen-test";
-        _grows.UpdateGrow(grow);
-        Assert.Equal("eigen-test", Wert(await Controller().Lesen(_trockenZelt.Id, default)).ProgrammId);
     }
 
     [Fact]

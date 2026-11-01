@@ -16,19 +16,19 @@ public sealed class TrocknungApiController : ApiControllerBase
 {
     private readonly GrowRepository _grows;
     private readonly HarvestRepository _harvests;
-    private readonly KnowledgeBaseLoader _wissen;
+    private readonly TrocknungPlanQuelle _plan;
     private readonly TrocknungWaegungRepository _waegungen;
     private readonly TrocknungPortRepository _ports;
     private readonly TrocknungZielService _ziel;
 
-    public TrocknungApiController(GrowRepository grows, HarvestRepository harvests, KnowledgeBaseLoader wissen, TrocknungWaegungRepository waegungen, TrocknungPortRepository ports, TrocknungZielService ziel)
+    public TrocknungApiController(GrowRepository grows, HarvestRepository harvests, TrocknungPlanQuelle plan, TrocknungWaegungRepository waegungen, TrocknungPortRepository ports, TrocknungZielService ziel)
     {
         _waegungen = waegungen;
         _ports = ports;
         _ziel = ziel;
         _grows = grows;
         _harvests = harvests;
-        _wissen = wissen;
+        _plan = plan;
     }
 
     /// <summary>Die Charge im Zelt: Grow, Trocknungstag, Etappe und deren Zielband. <c>trocknet: false</c>, wenn nichts hängt.</summary>
@@ -40,15 +40,15 @@ public sealed class TrocknungApiController : ApiControllerBase
         if (_grows.GetTent(tentId) is null) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
         if (DryingWindow.StandFor(_grows, _harvests, tentId, DateTime.Today) is not { } stand) return Ok(TrocknungStandDto.Leer);
 
-        var (geplant, etappe, band) = PlanFuer(stand);
+        var (geplant, etappe, band) = PlanFuer(tentId, stand);
         return Ok(new TrocknungStandDto(
             true, stand.Grow.Id, stand.Grow.Name, stand.Tag, geplant, etappe?.Etappe.Name,
             band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax));
     }
 
     /// <summary>Etappe und Band, die für diesen Stand gelten — EINE Stelle für Kachel, Karte „Trocknungs-Ziel“ und alles Spätere.</summary>
-    private (int Geplant, TrocknungsPlan.Stand? Etappe, TrocknungsPlan.Band? Band) PlanFuer(DryingWindow.Stand stand)
-        => TrocknungPlanStand.Fuer(_wissen, stand);
+    private (int Geplant, TrocknungsPlan.Stand? Etappe, TrocknungsPlan.Band? Band) PlanFuer(int tentId, DryingWindow.Stand stand)
+        => _plan.Fuer(tentId, stand);
 
     /// <summary>Die Fertig-Erkennung: Wägungen, Kurve in Prozent, „sinkt / hält sich / Ziel“ und die nächste Wägung.</summary>
     [HttpGet("{tentId:int}/trocknung/fertig")]
@@ -132,7 +132,7 @@ public sealed class TrocknungApiController : ApiControllerBase
         if (_grows.GetTent(tentId) is null) return NotFoundError("tent_not_found", $"Zelt mit Id {tentId} existiert nicht.");
         if (DryingWindow.StandFor(_grows, _harvests, tentId, DateTime.Today) is not { } stand) return Ok(ZielDto.Leer);
 
-        var (_, etappe, band) = PlanFuer(stand);
+        var (_, etappe, band) = PlanFuer(tentId, stand);
         var (erreichbar, vergleiche) = await _ziel.VergleicheAsync(_ports.Get(tentId), band?.FeuchteMax, band?.TempMax, ct);
         return Ok(new ZielDto(
             true, stand.Tag, etappe?.Etappe.Name,

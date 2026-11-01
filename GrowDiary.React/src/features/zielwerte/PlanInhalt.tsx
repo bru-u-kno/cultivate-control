@@ -5,7 +5,7 @@ import { V1Alert, V1Skeleton, V1Tabs } from '../../components/v1'
 import { V1Select, type V1Option } from '../../components/V1Select'
 import { PlanReiter } from './PlanReiter'
 import { ProgrammReiter } from './ProgrammReiter'
-import { TrocknungReiter } from './TrocknungReiter'
+import { TrocknungsplanSeite } from './TrocknungsplanSeite'
 import { WochenZeile } from './WochenZeile'
 import { hatRaster, programmZeile, type ProgrammKurz } from './programm-plan'
 
@@ -29,11 +29,13 @@ function planVonOptionen(liste: ProgrammKurz[]): V1Option[] {
   ]
 }
 
-type Bereich = 'wochen' | 'trocknung'
+/** Die zwei Pläne der Seite: der Düngeplan (Wochen, Programme) und der eigene Trocknungsplan des Trockenzelts. */
+type Art = 'duenge' | 'trocknung'
 
 /**
  * Fork AI (A-029, Etappe 1): der Inhalt der Seite „Plan“ — mit der Auswahl
- * „Plan von“.
+ * „Plan von“. Oben der Umschalter Düngeplan | Trocknung: Der Trocknungsplan gehört dem Trockenzelt und ist
+ * unabhängig vom Düngeprogramm.
  *
  * Bis dahin zeigte die Seite nur den Plan des laufenden Grows; zwischen zwei
  * Grows stand dort „Kein laufender Grow“, und die Programme (SKX, Athena,
@@ -86,22 +88,31 @@ export function PlanInhalt() {
   }
 
   const gewaehlt = programmId ? liste?.find((p) => p.id === programmId) : undefined
-  // Ein Programm ohne Wochenwerte (Canna Aqua, VBX) öffnet auf der Trocknung — dort gibt es etwas zu ändern.
-  const bereich: Bereich = params.get('bereich') === 'wochen' ? 'wochen'
-    : params.get('bereich') === 'trocknung' || (gewaehlt && !hatRaster(gewaehlt)) ? 'trocknung' : 'wochen'
+  const art: Art = params.get('art') === 'trocknung' ? 'trocknung' : 'duenge'
 
-  function bereichWaehlen(wert: Bereich) {
+  function artWaehlen(wert: Art) {
     setHinweis(null)
     setParams((alt) => {
       const neu = new URLSearchParams(alt)
-      neu.set('bereich', wert)
+      if (wert === 'trocknung') neu.set('art', 'trocknung')
+      else neu.delete('art')
       return neu
     }, { replace: true })
   }
 
   return (
     <>
-      {liste && liste.length > 0 && (
+      <V1Tabs
+        label="Art des Plans"
+        active={art}
+        onChange={artWaehlen}
+        items={[
+          { value: 'duenge' as Art, label: 'Düngeplan', audit: 'plan-art-duenge' },
+          { value: 'trocknung' as Art, label: 'Trocknung', audit: 'plan-art-trocknung' },
+        ]}
+      />
+      {art === 'trocknung' && <TrocknungsplanSeite />}
+      {art === 'duenge' && liste && liste.length > 0 && (
         <div data-audit="plan-von">
           <V1Select
             label="Plan von"
@@ -114,35 +125,21 @@ export function PlanInhalt() {
         </div>
       )}
 
-      {!programmId && (
+      {art === 'duenge' && !programmId && (
         <>
           <WochenZeile />
           <PlanReiter />
         </>
       )}
-      {programmId && liste === null && <V1Skeleton rows={6} label="Lade Programm" />}
-      {programmId && liste !== null && !gewaehlt && (
+      {art === 'duenge' && programmId && liste === null && <V1Skeleton rows={6} label="Lade Programm" />}
+      {art === 'duenge' && programmId && liste !== null && !gewaehlt && (
         <V1Alert tone="warn" message="Dieses Programm gibt es nicht (mehr). Wähle oben ein anderes." />
       )}
-      {gewaehlt && (
-        <V1Tabs
-          label="Bereich"
-          active={bereich}
-          onChange={bereichWaehlen}
-          items={[
-            { value: 'wochen' as Bereich, label: 'Wochen', audit: 'plan-bereich-wochen' },
-            { value: 'trocknung' as Bereich, label: 'Trocknung', audit: 'plan-bereich-trocknung' },
-          ]}
-        />
+      {art === 'duenge' && gewaehlt && !hatRaster(gewaehlt) && (
+        <V1Alert tone="neutral" title={gewaehlt.name} message={`${programmZeile(gewaehlt)}. Hier gibt es keine Wochenwerte zu ändern. Die Trocknung hat einen eigenen Plan, unabhängig vom Düngeplan: Reiter „Trocknung“ oben.`} />
       )}
-      {gewaehlt && bereich === 'wochen' && !hatRaster(gewaehlt) && (
-        <V1Alert tone="neutral" title={gewaehlt.name} message={`${programmZeile(gewaehlt)}. Hier gibt es keine Wochenwerte zu ändern — die Trocknung kannst du trotzdem einstellen.`} />
-      )}
-      {gewaehlt && bereich === 'wochen' && hatRaster(gewaehlt) && (
+      {art === 'duenge' && gewaehlt && hatRaster(gewaehlt) && (
         <ProgrammReiter key={gewaehlt.id} programmId={gewaehlt.id} startMeldung={hinweis?.programmId === gewaehlt.id ? hinweis.text : null} onKopie={(id, text) => void kopieOeffnen(id, text)} />
-      )}
-      {gewaehlt && bereich === 'trocknung' && (
-        <TrocknungReiter key={gewaehlt.id} programmId={gewaehlt.id} startMeldung={hinweis?.programmId === gewaehlt.id ? hinweis.text : null} onKopie={(id, text) => void kopieOeffnen(id, text)} />
       )}
     </>
   )

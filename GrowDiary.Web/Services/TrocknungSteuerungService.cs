@@ -1,6 +1,5 @@
 using GrowDiary.Web.Infrastructure;
 using GrowDiary.Web.Models;
-using GrowDiary.Web.Services.Knowledge;
 
 namespace GrowDiary.Web.Services;
 
@@ -21,19 +20,19 @@ public sealed class TrocknungSteuerungService
 {
     private readonly GrowRepository _grows;
     private readonly HarvestRepository _ernten;
-    private readonly KnowledgeBaseLoader _wissen;
+    private readonly TrocknungPlanQuelle _plan;
     private readonly TrocknungPortRepository _ports;
     private readonly TrocknungSteuerungRepository _steuerung;
     private readonly TrocknungZielService _ziel;
     private readonly ILogger<TrocknungSteuerungService> _logger;
 
     public TrocknungSteuerungService(
-        GrowRepository grows, HarvestRepository ernten, KnowledgeBaseLoader wissen, TrocknungPortRepository ports,
+        GrowRepository grows, HarvestRepository ernten, TrocknungPlanQuelle plan, TrocknungPortRepository ports,
         TrocknungSteuerungRepository steuerung, TrocknungZielService ziel, ILogger<TrocknungSteuerungService> logger)
     {
         _grows = grows;
         _ernten = ernten;
-        _wissen = wissen;
+        _plan = plan;
         _ports = ports;
         _steuerung = steuerung;
         _ziel = ziel;
@@ -46,8 +45,7 @@ public sealed class TrocknungSteuerungService
 
     public sealed record Stand(
         bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete,
-        string? ProgrammId = null);
+        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete);
 
     private static readonly string[] Rollen = [TrocknungZiel.RolleEntfeuchter, TrocknungZiel.RolleKuehlung];
 
@@ -61,7 +59,7 @@ public sealed class TrocknungSteuerungService
         int? geplant = null; string? etappeName = null; TrocknungsPlan.Band? band = null;
         if (trocknung is { } t)
         {
-            var plan = TrocknungPlanStand.Fuer(_wissen, t);
+            var plan = _plan.Fuer(tentId, t);
             geplant = plan.Geplant;
             etappeName = plan.Etappe?.Etappe.Name;
             band = plan.Band;
@@ -94,8 +92,7 @@ public sealed class TrocknungSteuerungService
 
         return new Stand(
             trocknung is not null, einstellung.Betrieb, erreichbar, trocknung?.Tag, geplant, etappeName,
-            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete,
-            trocknung?.Grow.FeedProgramId);
+            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete);
     }
 
     private async Task<TrocknungZiel.Wunsch> WunschAsync(string rolle, TrocknungZiel.Port port, double? planGrenze, CancellationToken ct)
@@ -124,7 +121,7 @@ public sealed class TrocknungSteuerungService
         var ports = await _ziel.PortsAsync(frisch: false, ct);
         if (ports is null) return new Abgleich(0, 0);
 
-        var band = TrocknungPlanStand.Fuer(_wissen, trocknung).Band;
+        var band = _plan.Fuer(tentId, trocknung).Band;
         var merker = _steuerung.Merkers(tentId);
         int geschrieben = 0, gescheitert = 0;
         foreach (var rolle in Rollen)

@@ -35,7 +35,7 @@ public sealed class TrocknungFertigApiTests : IDisposable
         _trockenZelt = _grows.CreateTent(new Tent { Name = "Trockenzelt", TentType = TentType.Drying });
         _growId = _grows.CreateGrow(new GrowRun { Name = "Charge A", TentId = bluete.Id, StartDate = DateTime.Today.AddDays(-90), Status = GrowStatus.Running });
         // Die Wissensbasis braucht dieser Weg nicht (nur „Stand“ liest Programme) — nicht geladen.
-        _controller = new TrocknungApiController(_grows, _ernten, new KnowledgeBaseLoader(paths, NullLogger<KnowledgeBaseLoader>.Instance), _waegungen, new TrocknungPortRepository(paths), new TrocknungZielService(_ => Task.FromResult<IReadOnlyList<TrocknungZiel.Port>?>(null), (_, _) => Task.FromResult<HomeAssistantState?>(null)));
+        _controller = new TrocknungApiController(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(paths)), _waegungen, new TrocknungPortRepository(paths), new TrocknungZielService(_ => Task.FromResult<IReadOnlyList<TrocknungZiel.Port>?>(null), (_, _) => Task.FromResult<HomeAssistantState?>(null)));
     }
 
     public void Dispose()
