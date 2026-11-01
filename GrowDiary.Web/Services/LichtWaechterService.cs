@@ -290,7 +290,22 @@ public sealed class LichtWaechterService
             return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), ZoneFuer(plan));
         }
 
-        return null;
+        return PlanAusEinstellungen();
+    }
+
+    /// <summary>
+    /// Ohne eigenen Lichtplan am Zelt gilt der Zeitplan der Lichtseite (Veggie oder Blüte) — und zwar der,
+    /// den die Phase des laufenden Grows verlangt. Ohne laufenden Grow gibt es nichts zu prüfen.
+    /// </summary>
+    private (string Ein, string Aus, TimeZoneInfo Zone)? PlanAusEinstellungen()
+    {
+        var phase = LichtPlanService.PhaseFuer(_grows.GetActiveGrows().FirstOrDefault() is { } grow
+            ? GrowStageResolver.Resolve(grow, TimeZoneInfo.ConvertTimeFromUtc(_jetztUtc(), TimeZoneInfo.Local).Date)
+            : GrowStage.Dry);
+        if (phase is null) return null;
+        var (e, a) = LichtSteuerungService.Preset(_licht.Einstellungen, phase);
+        if (!TimeOnly.TryParse(e, out var ein) || !TimeOnly.TryParse(a, out var aus) || ein == aus) return null;
+        return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), TimeZoneInfo.Local);
     }
 
     private static TimeZoneInfo ZoneFuer(LightSchedule plan)

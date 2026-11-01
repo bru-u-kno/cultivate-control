@@ -343,6 +343,12 @@ public sealed class RundwegVollstaendigTests
             "Das PUT lehnt Proben wie Modus=1 mit 400 ab (nur \"korrigieren\" oder \"melden\"), und die "
             + "Pause wird vom PUT bewusst nicht überschrieben. Dass kein Feld beim Speichern "
             + "verlorengeht, fährt LichtWaechterServiceTests.",
+        // Lichtplan
+        ["LichtKalibrierung"] =
+            "Die Merker der Automatik (AutoStufe, AutoWoche, HandBisWoche) gehoeren der Automatik und kommen beim PUT "
+            + "bewusst nicht aus dem Rumpf — eine feste Probe wie 1 koennte nie zurueckkommen. Dass Herstellerangabe und "
+            + "Messpunkte nach dem Speichern wieder dastehen, ungueltige Angaben mit 400 abgewiesen werden und die "
+            + "Merker unberuehrt bleiben, faehrt LichtPlanTests.",
         // Fork AI (forkai.20)
         ["Co2Einstellungen"] =
             "Der Rundweg faehrt jedes Feld mit einer festen Probe (1 bzw. true). Die "

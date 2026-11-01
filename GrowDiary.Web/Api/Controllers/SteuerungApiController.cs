@@ -32,6 +32,7 @@ public sealed class SteuerungApiController : ApiControllerBase
     private readonly Co2SteuerungService _co2;
     private readonly LichtSteuerungService _licht;
     private readonly LichtWaechterService _waechter;
+    private readonly LichtPlanService _lichtPlan;
     private readonly ZuluftSteuerungService _zuluft;
     private readonly ChillerSteuerungService _chiller;
     private readonly EntfeuchterSteuerungService _entfeuchter;
@@ -48,11 +49,12 @@ public sealed class SteuerungApiController : ApiControllerBase
     private readonly SteuerungAbsicherungService _absicherung;
     private readonly SteuerungProbeService _probe;
 
-    public SteuerungApiController(Co2SteuerungService co2, LichtSteuerungService licht, LichtWaechterService waechter, ZuluftSteuerungService zuluft, ChillerSteuerungService chiller, EntfeuchterSteuerungService entfeuchter, EntfeuchterZusatzSteuerungService zusatz, GrowRepository grows, HomeAssistantService ha, HomeAssistantSettingsRepository haSettings, KostenRepository kosten, SteuerungGeraeteService geraete, SteuerungBestandService bestand, SteuerungHelferService helfer, SteuerungRechenwertService rechenwerte, SteuerungAutomationService automationen, SteuerungAbsicherungService absicherung, SteuerungProbeService probe)
+    public SteuerungApiController(Co2SteuerungService co2, LichtSteuerungService licht, LichtWaechterService waechter, LichtPlanService lichtPlan, ZuluftSteuerungService zuluft, ChillerSteuerungService chiller, EntfeuchterSteuerungService entfeuchter, EntfeuchterZusatzSteuerungService zusatz, GrowRepository grows, HomeAssistantService ha, HomeAssistantSettingsRepository haSettings, KostenRepository kosten, SteuerungGeraeteService geraete, SteuerungBestandService bestand, SteuerungHelferService helfer, SteuerungRechenwertService rechenwerte, SteuerungAutomationService automationen, SteuerungAbsicherungService absicherung, SteuerungProbeService probe)
     {
         _co2 = co2;
         _licht = licht;
         _waechter = waechter;
+        _lichtPlan = lichtPlan;
         _zuluft = zuluft;
         _chiller = chiller;
         _entfeuchter = entfeuchter;
@@ -579,6 +581,28 @@ public sealed class SteuerungApiController : ApiControllerBase
             return BadRequestError("pause_invalid", "Pause: 0 (aufheben), 1, 2 oder 72 Stunden.");
         _waechter.Pausieren(request.Stunden);
         return Ok(await _waechter.StandAsync(ct));
+    }
+
+    /// <summary>Der Lichtplan: Kalibrierung, Kurve Stufe → Lichtwert, Planwochen mit Stufenvorschlag, die Phase aus dem Grow-Plan.</summary>
+    [HttpGet("licht/plan")]
+    [ProducesResponseType(typeof(LichtPlanStand), StatusCodes.Status200OK)]
+    public ActionResult<LichtPlanStand> LichtPlan() => Ok(_lichtPlan.Stand());
+
+    /// <summary>Kalibrierung speichern (Herstellerangabe, Messpunkte) und die Automatik „Stufe nach Plan“ ein- oder ausschalten.</summary>
+    [HttpPut("licht/kalibrierung")]
+    [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(LichtPlanStand), StatusCodes.Status200OK)]
+    public ActionResult<LichtPlanStand> LichtKalibrierungSpeichern([FromBody] LichtKalibrierung request)
+    {
+        if (request is null) return BadRequestError("kalibrierung_invalid", "Es wurde nichts übergeben.");
+        var (gespeichert, fehler) = _lichtPlan.Speichern(request);
+        if (gespeichert is null)
+        {
+            foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
+            return ValidationError();
+        }
+
+        return Ok(_lichtPlan.Stand());
     }
 
     /// <summary>Aus, An, Preset anwenden, Stufe setzen — oder eine gemeldete Fehlmeldung wegräumen.</summary>

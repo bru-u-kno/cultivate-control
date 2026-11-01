@@ -1,5 +1,6 @@
 import { SteuerungWechsel } from './SteuerungWechsel'
 import LichtWaechter from './LichtWaechter'
+import LichtPlan from './LichtPlan'
 import { HaStummHinweis } from './HaStummHinweis'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
@@ -11,7 +12,7 @@ import { rollenPfad } from '../geraete/rollenPfad'
 import { befehlsMeldung, speicherMeldung } from './licht-meldungen'
 import { feldFehlerAus, leereZahlenfelder, zahlAusFeld } from './feld-fehler'
 import { useFehlerZeigen } from './fehler-reiter'
-import { anzeigeLive, entwurfAbgleichen, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
+import { anzeigeLive, ausZeitAus, entwurfAbgleichen, lichtStunden, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
 import type { ModusZiel, StufenZiel } from './licht-bedienung'
 
 /**
@@ -316,18 +317,22 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
       )}
 
       {reiter === 'zeitplan' && (
-        <V1Section title="Zeitpläne">
-          <V1Card>
-            <Zeit label="Veggie · an" wert={entwurf.veggieEin} onChange={(v) => setz('veggieEin', v)} fehler={feldFehler.VeggieEin} />
-            <Zeit label="Veggie · aus" wert={entwurf.veggieAus} onChange={(v) => setz('veggieAus', v)} fehler={feldFehler.VeggieAus} />
-            <Zeit label="Blüte · an" wert={entwurf.blueteEin} onChange={(v) => setz('blueteEin', v)} fehler={feldFehler.BlueteEin} />
-            <Zeit label="Blüte · aus" wert={entwurf.blueteAus} onChange={(v) => setz('blueteAus', v)} fehler={feldFehler.BlueteAus} />
-            <p className="st-hinweis">
-              Gespeichert wird im Fork. Der Controller bekommt die Zeiten, wenn du den Zeitplan anwendest —
-              und sofort, wenn du den gerade aktiven Zeitplan bearbeitest.
-            </p>
-          </V1Card>
-        </V1Section>
+        <>
+          <V1Section title="Lichtplan">
+            <V1Card>
+              <Zeit label="Vegetativ · Licht an um" wert={entwurf.veggieEin} onChange={(v) => setEntwurf({ ...entwurf, veggieEin: v, veggieAus: ausZeitAus(v, lichtStunden(entwurf.veggieEin, entwurf.veggieAus)) })} fehler={feldFehler.VeggieEin} />
+              <Stunden label="Vegetativ · Stunden an" aus={entwurf.veggieAus} ein={entwurf.veggieEin} onChange={(h) => setz('veggieAus', ausZeitAus(entwurf.veggieEin, h))} fehler={feldFehler.VeggieAus} />
+              <Zeit label="Blüte · Licht an um" wert={entwurf.blueteEin} onChange={(v) => setEntwurf({ ...entwurf, blueteEin: v, blueteAus: ausZeitAus(v, lichtStunden(entwurf.blueteEin, entwurf.blueteAus)) })} fehler={feldFehler.BlueteEin} />
+              <Stunden label="Blüte · Stunden an" aus={entwurf.blueteAus} ein={entwurf.blueteEin} onChange={(h) => setz('blueteAus', ausZeitAus(entwurf.blueteEin, h))} fehler={feldFehler.BlueteAus} />
+              <p className="st-hinweis">
+                Hier stehen die Zeiten einmal; Steuerung und Wächter lesen sie von hier. Die Phase (Vegetativ oder Blüte) kommt aus dem Grow-Plan.
+                Gespeichert wird im Fork. Der Controller bekommt die Zeiten, wenn du den Zeitplan anwendest —
+                und sofort, wenn du den gerade aktiven Zeitplan bearbeitest.
+              </p>
+            </V1Card>
+          </V1Section>
+          <LichtPlan />
+        </>
       )}
 
       {reiter === 'waechter' && <LichtWaechter />}
@@ -395,6 +400,43 @@ function Zeit({ label, wert, onChange, fehler }: {
           aria-invalid={fehler ? true : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
+      </span>
+    </div>
+  )
+}
+
+/** Stunden Licht je Tag: die Aus-Zeit wird aus Ein-Zeit und Stunden gerechnet und steht darunter. */
+function Stunden({ label, ein, aus, onChange, fehler }: {
+  label: string
+  ein: string
+  aus: string
+  onChange: (stunden: number) => void
+  fehler?: string
+}) {
+  const stunden = lichtStunden(ein, aus)
+  return (
+    <div className="st-feldzeile">
+      <span className="st-etikett">
+        {label}
+        <small>Licht aus um {aus}</small>
+        {fehler && <span className="st-fehler">{fehler}</span>}
+      </span>
+      <span className="st-eingaben">
+        <input
+          type="number"
+          inputMode="decimal"
+          min={1}
+          max={23}
+          step={0.5}
+          value={stunden}
+          aria-label={label}
+          aria-invalid={fehler ? true : undefined}
+          onChange={(e) => {
+            const h = zahlAusFeld(e.target.value)
+            if (h != null && h >= 1 && h <= 23) onChange(h)
+          }}
+        />
+        <span className="st-einheit">h</span>
       </span>
     </div>
   )

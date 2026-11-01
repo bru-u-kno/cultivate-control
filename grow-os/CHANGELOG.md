@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.297
+
+**Lichtplan: Zeiten und Stunden an einer Stelle, Kalibrierung der Lichtleistung und ein Stufenvorschlag je Planwoche.**
+
+- **Anlass:** Die Lichtzeiten standen in zwei getrennten Zeitplänen, und der Licht-Wächter fand auf deiner Anlage keinen Lichtplan und prüfte deshalb nichts. Außerdem nannte der Plan je Woche einen Lichtwert, aber nichts übersetzte ihn in eine Lampenstufe.
+- **Zeiten und Stunden:** Unter Steuerung › Licht heißt der Reiter jetzt „Lichtplan“. Dort stellst du je Phase die Einschaltzeit und die Stunden Licht ein (zum Beispiel vegetativ 18 Stunden, Blüte 12 Stunden); die Ausschaltzeit rechnet der Fork. Gespeichert wird weiter im Fork, der Controller bekommt die Zeiten beim Anwenden des Zeitplans wie bisher.
+- **Wächter ohne eigenen Lichtplan:** Fehlt am Zelt ein Lichtplan, prüft der Wächter jetzt gegen die Zeiten dieser Seite — und zwar die der Phase, die der Grow-Plan gerade verlangt (vegetativ oder Blüte). Ohne laufenden Grow gibt es nichts zu prüfen.
+- **Lichtleistung im Plan:** Die Seite zeigt je Planwoche den Lichtwert des Plans (µmol/m²s) und die Lampenstufe, die dazu am besten passt.
+- **Kalibrierung:** Trage die Herstellerangabe (Lichtwert bei Stufe 10 und Abstand) und eigene Messpunkte ein, zum Beispiel bei Stufe 5 und Stufe 3. Der Fork verbindet die Punkte zu einer Kurve und zeigt sie als Tabelle; ohne Messung ist die Herstellerangabe nur eine grobe Schätzung.
+- **Stufe nach Plan (Voreinstellung aus):** Auf Wunsch setzt der Fork die Stufe zu Beginn jeder neuen Planwoche. Eingeschaltet wird sie nur von dir und nur mit Kalibrierung. Stellst du die Stufe selbst um, wartet die Automatik bis zur nächsten Planwoche; bei ausgeschaltetem Licht oder ruhendem Zelt tut sie nichts.
+- **Was bleibt:** Die Zeitpläne werden nicht von selbst auf den Controller geschrieben; „Zeitplan anwenden“ bleibt deine Entscheidung.
+
 ## 2.0.0-cc.296
 
 **Nach einem Neuladen der Seite macht die App dort weiter, wo man war, statt auf „Live“ zu springen.**

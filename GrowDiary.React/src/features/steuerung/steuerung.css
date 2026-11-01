@@ -421,3 +421,13 @@
   .ef-linkknoepfe { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
   .ef-linkknoepfe .v1-button { justify-content: space-between; }
 }
+
+/* Lichtplan (Lichtseite › Lichtplan): Wochen- und Kurventabelle, Messpunkte */
+.st-plantabelle { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0.5rem 0; }
+.st-plantabelle th,
+.st-plantabelle td { text-align: left; padding: 0.4rem 0.3rem; border-top: 1px solid var(--line, rgba(128, 128, 128, 0.25)); vertical-align: top; }
+.st-plantabelle th { font-weight: 600; border-top: 0; }
+.st-plantabelle tr.is-jetzt td { font-weight: 600; }
+.st-messpunkte { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+.st-messpunkt { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.st-messpunkt input { width: 5.5rem; }

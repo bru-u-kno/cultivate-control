@@ -82,6 +82,7 @@ public sealed class KiEinstufungBTests
         // aber, ob er später den Zeitplan am Controller zurücksetzt — deshalb beide Stufen.
         ["SteuerungApiController.LichtWaechterSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtWaechterPause"] = "GeraeteSchalten, Verwaltung",
+        ["SteuerungApiController.LichtKalibrierungSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.Probeschaltung"] = "GeraeteSchalten",
         ["SteuerungApiController.AutomationenAnlegen"] = "Verwaltung",
         ["SteuerungApiController.Absichern"] = "Verwaltung",
