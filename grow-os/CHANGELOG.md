@@ -6,6 +6,7 @@
 > Geschichte und werden nicht nachübersetzt.
 
 ## 2.0.0-cc.299
+
 **Lichtplan: Zeiten und Stunden an einer Stelle, Kalibrierung der Lichtleistung und ein Stufenvorschlag je Planwoche.**
 
 - **Anlass:** Die Lichtzeiten standen in zwei getrennten Zeitplänen, und der Licht-Wächter fand auf deiner Anlage keinen Lichtplan und prüfte deshalb nichts. Außerdem nannte der Plan je Woche einen Lichtwert, aber nichts übersetzte ihn in eine Lampenstufe.
@@ -17,6 +18,7 @@
 - **Was bleibt:** Die Zeitpläne werden nicht von selbst auf den Controller geschrieben; „Zeitplan anwenden“ bleibt deine Entscheidung.
 
 ## 2.0.0-cc.298
+
 **Trocknung: Der Link „Plan ›“ öffnet das richtige Programm, und die Kühlung sagt ehrlich, warum sie dem Plan nicht folgt, wenn ihr Port aus ist.**
 
 - **Anlass:** Wer ohne laufenden Grow von Steuerung › Trocknung auf „Plan ›“ tippte, landete auf „Plan von: Laufender Grow“ mit dem Satz „Kein laufender Grow“ und fand den Trocknungsplan nicht — er gehört zum Programm der Charge, nicht zu einem laufenden Grow.
