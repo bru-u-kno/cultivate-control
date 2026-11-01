@@ -62,6 +62,8 @@ builder.Services.AddSingleton<HarvestRepository>();
 builder.Services.AddSingleton<TrocknungWaegungRepository>();
 builder.Services.AddSingleton<TrocknungPortRepository>();
 builder.Services.AddSingleton<TrocknungZielService>();
+builder.Services.AddSingleton<TrocknungSteuerungRepository>();
+builder.Services.AddSingleton<TrocknungSteuerungService>();
 builder.Services.AddSingleton<CuringRepository>();
 builder.Services.AddSingleton<PhenoRepository>();
 builder.Services.AddSingleton<DashboardLayoutRepository>();
@@ -228,6 +230,7 @@ if (GrowDiary.Web.Infrastructure.ForkAiSchalter.CropSteeringAktiv)
 }
 builder.Services.AddHostedService<ZaehlerstandWorker>(); // Fork AI (forkai.6)
 builder.Services.AddHostedService<Co2SyncWorker>(); // Fork AI (forkai.20)
+builder.Services.AddHostedService<TrocknungSteuerungWorker>(); // A-029 Etappe 3 Teil B
 builder.Services.AddHostedService<WochenplanSyncWorker>(); // Fork AI (forkai.53)
 
 var defaultUrls = builder.Configuration["Hosting:DefaultUrls"];

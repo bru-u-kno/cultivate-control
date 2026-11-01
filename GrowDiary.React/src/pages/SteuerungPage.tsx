@@ -7,6 +7,7 @@ import { V1Alert, V1Button, V1Card, V1Empty, V1LinkButton, V1Page, V1Section, V1
 import LichtDetail from '../features/steuerung/LichtDetail'
 import ZuluftDetail from '../features/steuerung/ZuluftDetail'
 import ChillerDetail from '../features/steuerung/ChillerDetail'
+import TrocknungDetail from '../features/trocknung/TrocknungDetail'
 import EntfeuchtungSeite from '../features/steuerung/EntfeuchtungSeite'
 import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
@@ -142,6 +143,10 @@ export default function SteuerungPage() {
     return <ChillerDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
+  if (modul === 'trocknung') {
+    return <TrocknungDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
   if (modul === ENTFEUCHTUNG_KENNUNG) {
     return <EntfeuchtungSeite module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
@@ -170,7 +175,7 @@ export default function SteuerungPage() {
   }
 
   return (
-    <V1Page eyebrow="Betrieb" title="Steuerung" subtitle="Alle Regelungen des RDWC-Zelts · laufen in Home Assistant">
+    <V1Page eyebrow="Betrieb" title="Steuerung" subtitle="Alle Regelungen · laufen in Home Assistant">
       {fehler && <V1Alert tone="critical" message={fehler} />}
       {uebersicht && <HaStummHinweis haErreichbar={uebersicht.haErreichbar} eingerichtet={module.length > 0} />}
       {laedt && !uebersicht ? (

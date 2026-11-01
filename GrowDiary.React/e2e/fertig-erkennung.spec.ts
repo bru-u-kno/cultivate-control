@@ -91,12 +91,29 @@ test('Fertig-Erkennung: eintragen, wiederfinden, falsche Eingabe, löschen, Weg 
     await expect(k).toContainText('Noch keine Geräte zugeordnet')
     await expect(k).toContainText('Plan: 18 °C · 55 % Luftfeuchte')
 
+    // Die Live-Seite zeigt nur Werte (Teil B): die Zuordnung steht unter Steuerung › Trocknung, nicht an der Karte.
+    await expect(k.locator('button:not(.ls-fold-titel)'), 'Die Live-Karte darf keine Bedienknöpfe tragen — eingestellt wird unter Steuerung.').toHaveCount(0)
+    await k.getByRole('link', { name: /Unter Steuerung zuordnen/ }).click()
+    await expect(page).toHaveURL(/\/steuerung\/trocknung/)
+    await expect(page.getByRole('heading', { name: 'Trocknung', level: 1 })).toBeVisible()
+    await expect(page.getByText('Nur melden').first()).toBeVisible()
+
     // Die Demo hat kein Home Assistant: Das Blatt sagt es, statt eine leere Auswahl anzubieten, und Speichern ist gesperrt.
-    await k.getByRole('button', { name: 'Ports zuordnen' }).click()
+    await page.getByRole('button', { name: /Ports bearbeiten/ }).click()
     await expect(page.getByRole('alert')).toContainText('nicht erreichbar')
     await expect(page.getByRole('button', { name: 'Speichern', exact: true })).toBeDisabled()
     await page.getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page.getByRole('alert')).toHaveCount(0)
+
+    // Schnittstelle: ohne zugeordneten Port lässt sich „Folgt dem Plan“ nicht einschalten, eine unbekannte Betriebsart nicht setzen.
+    const ohnePort = await request.put(`/api/tents/${zeltId}/trocknung/steuerung`, { data: { betrieb: 'regeln', entfeuchterFolgt: true, kuehlungFolgt: false } })
+    expect(ohnePort.status()).toBe(400)
+    const falsch = await request.put(`/api/tents/${zeltId}/trocknung/steuerung`, { data: { betrieb: 'x', entfeuchterFolgt: false, kuehlungFolgt: false } })
+    expect(falsch.status()).toBe(400)
+    const lesen = await (await request.get(`/api/tents/${zeltId}/trocknung/steuerung`)).json()
+    expect(lesen.betrieb, 'Nach den abgewiesenen Anfragen steht die Betriebsart unverändert auf „melden“.').toBe('melden')
+    // Zurück zur Live-Seite für die folgenden Schritte (Zeltwahl steckt im Router-Zustand).
+    await page.goto(`/live/${zeltId}`, { waitUntil: 'networkidle' })
   })
 
   await test.step('Erste Wägung im Blatt, Wägungen früherer Tage per Schnittstelle, nach dem Neuladen wiederfinden', async () => {

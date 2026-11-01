@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.297
+
+**Trocknung: Die Geräte am Trockenzelt können jetzt dem Plan folgen — eingestellt wird unter Steuerung, die Live-Seite zeigt nur noch Werte.**
+
+- **Anlass:** Der Trocknungsplan (Etappen mit Temperatur und Luftfeuchte) stand bisher nur da; die Geräte richteten sich nicht danach. Außerdem lag die Karte „Trocknungs-Ziel“ mit ihren Knöpfen auf der Live-Seite, obwohl Live nur Werte zeigen soll und Einstellungen unter Steuerung gehören.
+- **Neu: Steuerung › Trocknung.** Sobald es ein Zelt mit dem Zweck „Trocknung“ gibt, steht in der Steuerung eine Zeile „Trocknung“. Die Seite zeigt Etappe und Plan-Band, die Betriebsart und je Gerät (Entfeuchter, Kühlung) einen Schalter „Folgt dem Plan“. Die Ports am Controller ordnest du dort zu („Ports bearbeiten“).
+- **„Nur melden“ (Voreinstellung) schreibt nichts.** Die Seite zeigt, was der Fork einstellen würde. Erst „Regeln“ schreibt: Der Fork setzt dann die Grenze des Auslösers (Luftfeuchte-Obergrenze am Entfeuchter, Temperatur-Obergrenze an der Kühlung) auf den oberen Rand des Bands der Etappe — sofort, beim Start und bei jedem Etappenwechsel (Abgleich alle fünf Minuten). Vor dem Umstellen fragt die Seite und listet genau auf, was geschrieben wird.
+- **Was nie angefasst wird:** der Modus eines Ports (steht er auf Aus, bleibt er auf Aus; die Grenze wirkt dann erst, wenn du ihn auf Auto stellst), die Ein-Schalter der Auslöser und jedes Gerät, bei dem „Folgt dem Plan“ aus ist. Dein eigener Wert bleibt damit stehen, auch wenn der Plan etwas anderes verlangt.
+- **Alte Werte zurück:** Der Fork merkt sich den Wert, der vor der ersten Übernahme am Gerät stand (nicht den der Etappe davor). „Alte Werte zurück“ setzt ihn wieder ein und stellt auf „Nur melden“. Ließ sich ein Wert nicht zurücksetzen, bleibt er gemerkt und die Seite sagt es.
+- **Live-Seite:** Die Karte „Trocknungs-Ziel“ zeigt nur noch Plan und Werte am Gerät und verweist auf Steuerung. Die Zuordnung der Ports ist von der Karte auf die Steuerungsseite gezogen.
+- **Zielwert je Tag:** Der Plan kennt Etappen, keine einzelnen Tage. Für einen Wert pro Tag legst du unter Plan › Trocknung Etappen von einem Tag Dauer an.
+- **Grenzen:** Geschrieben werden nur ganze Werte innerhalb der Spanne der Entität; Fahrenheit wird nicht beschrieben. Ist Home Assistant nicht erreichbar, schreibt der Fork nichts und sagt es.
+
 ## 2.0.0-cc.296
 
 **Nach einem Neuladen der Seite macht die App dort weiter, wo man war, statt auf „Live“ zu springen.**

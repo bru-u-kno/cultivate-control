@@ -10,3 +10,6 @@
 .zj-chip.is-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .zj-chip.is-ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
 .zj-etappe { font-size: .85rem; }
+/* Steuerung › Trocknung (Teil B) */
+.zj-aktionen { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.zj-rueckfrage .zj-wert { border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; }

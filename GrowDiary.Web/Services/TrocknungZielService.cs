@@ -18,6 +18,7 @@ public sealed class TrocknungZielService
 
     private readonly Func<CancellationToken, Task<IReadOnlyList<TrocknungZiel.Port>?>> _ports;
     private readonly Func<string, CancellationToken, Task<HomeAssistantState?>> _zustand;
+    private readonly Func<string, double, CancellationToken, Task<bool>> _setze;
     private readonly object _sperre = new();
     private (DateTime Zeit, IReadOnlyList<TrocknungZiel.Port>? Ports)? _gemerkt;
 
@@ -30,18 +31,34 @@ public sealed class TrocknungZielService
                 // Ein leeres Register heißt: Home Assistant ist nicht erreichbar oder nicht eingerichtet.
                 return herkunft.Count == 0 ? null : TrocknungZiel.Erkennen(herkunft.Values);
             },
-            (entityId, ct) => ha.GetEntityStateAsync(einstellungen.GetEffectiveHomeAssistantSettings(), entityId, ct))
+            (entityId, ct) => ha.GetEntityStateAsync(einstellungen.GetEffectiveHomeAssistantSettings(), entityId, ct),
+            (entityId, wert, ct) => ha.CallEntityServiceAsync(
+                einstellungen.GetEffectiveHomeAssistantSettings(), "number", "set_value", entityId, ct,
+                new Dictionary<string, object> { ["value"] = wert }))
     {
     }
 
-    /// <summary>Für Tests: Ports und Zustände von außen.</summary>
+    /// <summary>Für Tests: Ports, Zustände und das Setzen von außen. Ohne <paramref name="setze"/> gelingt das Setzen nie (Teil A schreibt nichts).</summary>
     public TrocknungZielService(
         Func<CancellationToken, Task<IReadOnlyList<TrocknungZiel.Port>?>> ports,
-        Func<string, CancellationToken, Task<HomeAssistantState?>> zustand)
+        Func<string, CancellationToken, Task<HomeAssistantState?>> zustand,
+        Func<string, double, CancellationToken, Task<bool>>? setze = null)
     {
         _ports = ports;
         _zustand = zustand;
+        _setze = setze ?? ((_, _, _) => Task.FromResult(false));
     }
+
+    public Task<HomeAssistantState?> ZustandAsync(string entityId, CancellationToken ct) => _zustand(entityId, ct);
+
+    /// <summary>
+    /// Setzt die Zahl einer <c>number</c>-Entität (Teil B). Nur diese Art Entität: Der Fork schaltet über diesen Weg weder
+    /// Modus noch Schalter des Controllers.
+    /// </summary>
+    public Task<bool> SetzeZahlAsync(string entityId, double wert, CancellationToken ct)
+        => entityId.StartsWith("number.", StringComparison.OrdinalIgnoreCase) && double.IsFinite(wert)
+            ? _setze(entityId, wert, ct)
+            : Task.FromResult(false);
 
     /// <summary>Alle Ports mit eigener Automatik; <c>null</c>, wenn Home Assistant sich nicht erreichen lässt.</summary>
     public async Task<IReadOnlyList<TrocknungZiel.Port>?> PortsAsync(bool frisch, CancellationToken ct)
