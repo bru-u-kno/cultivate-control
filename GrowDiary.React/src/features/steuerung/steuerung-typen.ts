@@ -21,6 +21,8 @@ export type SteuerungModul = {
   zustand?: ZuluftZustand | null
   /** Fork AI (forkai.238): Nur die Zuluft bei „zu wenig Unterschied" — das Band mit Messwert und Grenzen. */
   balken?: ZuluftBalken | null
+  /** A-029 (Teil B): Nur die Trocknung — das Zelt, zu dem die Seite gehört. */
+  zeltId?: number | null
 }
 
 /** Fork AI (forkai.238): Warum der Lüfter gerade läuft oder nicht — Schild, Grund mit Zahlen, Farbe. */

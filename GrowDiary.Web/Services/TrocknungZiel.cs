@@ -146,6 +146,38 @@ public static partial class TrocknungZiel
         return new Vergleich(rolle, port.Name, modus, wert, einheit, planOberGrenze, urteil);
     }
 
+    /// <summary>Was Teil B für EINE Rolle am Gerät tun würde — unabhängig vom Modus des Ports (die Grenze lässt sich auch bei „Aus“ setzen).</summary>
+    public sealed record Wunsch(string Rolle, string? Entity, string? Modus, double? Jetzt, string? Einheit, double? Plan, string Urteil)
+    {
+        public bool Setzen => Urteil == "weichtAb" && Entity is not null && Plan is not null;
+    }
+
+    /// <summary>
+    /// Die Grenze, auf die der Plan sie setzen würde: oberer Rand des Bands, auf eine ganze Zahl gerundet (die Auslöser des
+    /// Controllers kennen nur ganze Werte) und in die Spanne der Entität gezwungen. Das Urteil: <c>passt</c>,
+    /// <c>weichtAb</c>, <c>unbekannt</c> (nicht lesbar), <c>keinAusloeser</c> oder <c>keinPlan</c>.
+    /// </summary>
+    public static Wunsch Entscheide(string rolle, Port port, Func<string, HomeAssistantState?> zustand, double? planOberGrenze)
+    {
+        var modusState = zustand(port.ModusEntity);
+        var modus = IstNichtLesbar(modusState) ? null : modusState!.State;
+        var feuchte = rolle == RolleEntfeuchter;
+        var wertEntity = feuchte ? port.FeuchteWertEntity : port.TempWertEntity;
+        if (wertEntity is null) return new Wunsch(rolle, null, modus, null, null, null, "keinAusloeser");
+
+        var wertState = zustand(wertEntity);
+        if (IstNichtLesbar(wertState)) return new Wunsch(rolle, wertEntity, modus, null, null, null, "unbekannt");
+        var einheit = wertState!.UnitOfMeasurement;
+        if (!feuchte && einheit is not null && einheit != "°C") return new Wunsch(rolle, wertEntity, modus, null, einheit, null, "unbekannt");
+        if (Zahlenlesen.Maschine(wertState.State) is not { } jetzt) return new Wunsch(rolle, wertEntity, modus, null, einheit, null, "unbekannt");
+        if (planOberGrenze is not { } plan || !double.IsFinite(plan)) return new Wunsch(rolle, wertEntity, modus, jetzt, einheit, null, "keinPlan");
+
+        var ziel = Math.Round(plan, MidpointRounding.AwayFromZero);
+        if (wertState.AttributMin is { } min) ziel = Math.Max(ziel, min);
+        if (wertState.AttributMax is { } max) ziel = Math.Min(ziel, max);
+        return new Wunsch(rolle, wertEntity, modus, jetzt, einheit, ziel, Math.Abs(jetzt - ziel) < 0.5 ? "passt" : "weichtAb");
+    }
+
     private static bool IstNichtLesbar(HomeAssistantState? zustand)
         => zustand is null
             || string.Equals(zustand.State, "unavailable", StringComparison.OrdinalIgnoreCase)

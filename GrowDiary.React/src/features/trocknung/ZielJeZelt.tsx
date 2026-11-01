@@ -1,23 +1,18 @@
 import { useEffect, useState } from 'react'
-import { apiFetch, ApiRequestError } from '../../api'
-import { V1Sheet } from '../../components/V1Sheet'
+import { apiFetch } from '../../api'
+import { Link } from 'react-router-dom'
 import { KlappTitel } from '../live/Einklappen'
 import { classNames } from '../../utils'
 import { amGeraetText, URTEIL_TEXT, zahl, type Ziel, type ZielGeraet } from './ziel-text'
 import './fertig.css'
 import './ziel.css'
 
-interface Ports {
-  erreichbar: boolean
-  entfeuchter: string | null
-  kuehlung: string | null
-  verfuegbar: Array<{ deviceId: string; name: string }>
-}
-
-/** Karte „Trocknungs-Ziel“ an der Live-Seite — nur, solange das Zelt trocknet; schreibt nichts. */
+/**
+ * Karte „Trocknungs-Ziel“ an der Live-Seite — nur, solange das Zelt trocknet; zeigt nur Werte. Was die Geräte dem Plan folgen
+ * lässt, stellt man unter Steuerung › Trocknung ein (A-029, Teil B).
+ */
 export function ZielJeZelt({ tentId, zu, onKlappe }: { tentId: number | null; zu: boolean; onKlappe?: () => void }) {
   const [geladen, setGeladen] = useState<{ tentId: number; ziel: Ziel } | null>(null)
-  const [blatt, setBlatt] = useState(false)
   const ziel = geladen && geladen.tentId === tentId ? geladen.ziel : null
 
   useEffect(() => {
@@ -48,9 +43,9 @@ export function ZielJeZelt({ tentId, zu, onKlappe }: { tentId: number | null; zu
           {leer ? (
             <>
               <strong>Noch keine Geräte zugeordnet</strong>
-              <p>Ordne den Port des Entfeuchters und den der Kühlung zu. Dann zeigt der Fork, was der Plan vorgibt und was am Gerät steht — ohne etwas zu ändern.</p>
+              <p>Ordne unter Steuerung den Port des Entfeuchters und den der Kühlung zu. Dann zeigt der Fork hier, was der Plan vorgibt und was am Gerät steht.</p>
               <div className="fe-knoepfe">
-                <button type="button" className="ls-btn is-primary" onClick={() => setBlatt(true)}>Ports zuordnen</button>
+                <Link className="ls-btn is-primary" to="/steuerung/trocknung">Unter Steuerung zuordnen ›</Link>
               </div>
               <p className="fe-hinweis">{plan}{ziel.etappe ? ` (${ziel.etappe})` : ''}.</p>
             </>
@@ -58,26 +53,19 @@ export function ZielJeZelt({ tentId, zu, onKlappe }: { tentId: number | null; zu
             <>
               <strong>{plan}</strong>
               <p className="zj-etappe">{ziel.etappe}</p>
-              <p>Ein Vorschlag, wie der Plan an den Geräten aussähe (oberer Rand des Bands). Der Fork schreibt dabei noch nichts — das hier ist nur der Vergleich.</p>
+              <p>Der Plan gegen die Grenzen an den Geräten (oberer Rand des Bands).</p>
               <div className="zj-geraete">
                 {ziel.geraete.map((g) => <GeraetZeile key={g.rolle} g={g} />)}
               </div>
               {!ziel.portsErreichbar && <p className="fe-hinweis">Home Assistant ist gerade nicht erreichbar — die Werte am Gerät lassen sich nicht lesen.</p>}
-              <p className="fe-hinweis">Deine Werte an den Geräten bleiben, wie sie sind. Dem Plan folgen sollen sie nur, wenn du es später einschaltest.</p>
+              <p className="fe-hinweis">Hier stehen nur Werte. Ob die Geräte dem Plan folgen, stellst du unter Steuerung ein.</p>
               <div className="fe-knoepfe">
-                <button type="button" className="ls-btn" onClick={() => setBlatt(true)}>Ports ändern</button>
+                <Link className="ls-btn" to="/steuerung/trocknung">Einstellen unter Steuerung ›</Link>
               </div>
             </>
           )}
         </div>
       )}
-      <PortBlatt
-        key={blatt ? 'offen' : 'zu'}
-        open={blatt}
-        onClose={() => setBlatt(false)}
-        tentId={tentId}
-        onGespeichert={(neu) => { setGeladen(neu == null || tentId == null ? null : { tentId, ziel: neu }); setBlatt(false) }}
-      />
     </article>
   )
 }
@@ -104,85 +92,3 @@ function GeraetZeile({ g }: { g: ZielGeraet }) {
   )
 }
 
-function PortBlatt({ open, onClose, tentId, onGespeichert }: {
-  open: boolean
-  onClose: () => void
-  tentId: number | null
-  onGespeichert: (neu: Ziel | null) => void
-}) {
-  const [ports, setPorts] = useState<Ports | null>(null)
-  const [entfeuchter, setEntfeuchter] = useState('')
-  const [kuehlung, setKuehlung] = useState('')
-  const [fehler, setFehler] = useState<string | null>(null)
-  const [speichert, setSpeichert] = useState(false)
-
-  useEffect(() => {
-    if (!open || tentId == null) return
-    const controller = new AbortController()
-    apiFetch<Ports>(`/api/tents/${tentId}/trocknung/ports`, { signal: controller.signal })
-      .then((antwort) => {
-        setPorts(antwort)
-        setEntfeuchter(antwort.entfeuchter ?? '')
-        setKuehlung(antwort.kuehlung ?? '')
-      })
-      .catch(() => { /* das Blatt zeigt dann „nicht erreichbar“ */ })
-    return () => controller.abort()
-  }, [open, tentId])
-
-  const speichern = async () => {
-    setSpeichert(true)
-    setFehler(null)
-    try {
-      await apiFetch<Ports>(`/api/tents/${tentId}/trocknung/ports`, {
-        method: 'PUT',
-        body: JSON.stringify({ entfeuchter: entfeuchter || null, kuehlung: kuehlung || null }),
-      })
-    } catch (caught) {
-      setFehler(caught instanceof ApiRequestError ? caught.message : 'Die Ports konnten nicht gespeichert werden.')
-      setSpeichert(false)
-      return
-    }
-    // Gespeichert ist gespeichert: Schlägt nur das Nachlesen der Karte fehl, bleibt es dabei — die Karte lädt beim nächsten Öffnen neu.
-    try {
-      onGespeichert(await apiFetch<Ziel>(`/api/tents/${tentId}/trocknung/ziel`))
-    } catch {
-      onGespeichert(null)
-    } finally {
-      setSpeichert(false)
-    }
-  }
-
-  const auswahl = (wert: string, setzen: (w: string) => void, label: string) => (
-    <label className="fe-feld">
-      <span>{label}</span>
-      <select value={wert} onChange={(e) => setzen(e.target.value)} aria-label={label} disabled={!ports?.erreichbar}>
-        <option value="">— keiner —</option>
-        {wert && ports && !ports.verfuegbar.some((p) => p.deviceId === wert) && <option value={wert}>Gespeicherter Port (gerade nicht gefunden)</option>}
-        {ports?.verfuegbar.map((p) => <option key={p.deviceId} value={p.deviceId}>{p.name}</option>)}
-      </select>
-    </label>
-  )
-
-  return (
-    <V1Sheet
-      open={open}
-      onClose={onClose}
-      title="Ports zuordnen"
-      footer={(
-        <>
-          <button type="button" className="ls-btn" onClick={onClose}>Abbrechen</button>
-          <button type="button" className="ls-btn is-primary" disabled={speichert || !ports?.erreichbar} onClick={() => void speichern()}>{speichert ? 'Speichert…' : 'Speichern'}</button>
-        </>
-      )}
-    >
-      <div className="fe-blatt">
-        <p>Angeboten werden nur Ports mit eigener Automatik (Auslöser für Temperatur und Luftfeuchte).</p>
-        {ports && !ports.erreichbar && <p className="fe-fehler" role="alert">Home Assistant ist gerade nicht erreichbar — die Ports lassen sich nicht auswählen.</p>}
-        {ports?.erreichbar && ports.verfuegbar.length === 0 && <p className="fe-hinweis">Home Assistant kennt keinen Port mit eigener Automatik.</p>}
-        {auswahl(entfeuchter, setEntfeuchter, 'Port des Entfeuchters')}
-        {auswahl(kuehlung, setKuehlung, 'Port der Kühlung')}
-        {fehler && <p className="fe-fehler" role="alert">{fehler}</p>}
-      </div>
-    </V1Sheet>
-  )
-}

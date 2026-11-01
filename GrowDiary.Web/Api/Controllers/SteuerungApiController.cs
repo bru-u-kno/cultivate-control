@@ -76,7 +76,7 @@ public sealed class SteuerungApiController : ApiControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(SteuerungUebersichtDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<SteuerungUebersichtDto>> Uebersicht([FromServices] SteuerungAuswahlService auswahl, CancellationToken ct)
+    public async Task<ActionResult<SteuerungUebersichtDto>> Uebersicht([FromServices] SteuerungAuswahlService auswahl, [FromServices] TrocknungSteuerungService trocknung, CancellationToken ct)
     {
         var live = await _co2.LiveAsync(ct);
         var licht = await _licht.LiveAsync(ct);
@@ -171,12 +171,33 @@ public sealed class SteuerungApiController : ApiControllerBase
         // Fork AI (A-016): Nur die Steuerungen, die der Nutzer hat. Der Rest steht als „nicht eingerichtet" daneben.
         var gewaehlt = auswahl.Gewaehlt();
         var sichtbar = module.Where(m => SteuerungAuswahlService.Sichtbar(m.Kennung, gewaehlt)).ToList();
+        // A-029 (Teil B): „Trocknung“ gehört dem Trockenzelt, nicht der Auswahl der RDWC-Steuerungen — sie erscheint, sobald ein Zelt
+        // mit dem Zweck „Trocknung“ existiert.
+        if (_grows.GetTents().FirstOrDefault(t => t.TentType == TentType.Drying) is { } trockenZelt)
+            sichtbar.Add(await TrocknungModulAsync(trockenZelt, trocknung, ct));
         var nichtEingerichtet = SteuerungAuswahlService.Alle
             .Where(a => !gewaehlt.Contains(a.Kennung))
             .Select(a => new SteuerungKarteDto(a.Kennung, a.Titel, a.Beschreibung))
             .ToList();
 
         return Ok(new SteuerungUebersichtDto(live.HaErreichbar, sichtbar, nichtEingerichtet, DateTime.UtcNow));
+    }
+
+    private static async Task<SteuerungModulDto> TrocknungModulAsync(Tent zelt, TrocknungSteuerungService trocknung, CancellationToken ct)
+    {
+        var stand = await trocknung.StandAsync(zelt.Id, ct);
+        var betrieb = stand.Betrieb == TrocknungSteuerungRepository.BetriebRegeln ? "Regeln" : "Nur melden";
+        // „warn“, wenn ein Gerät dem Plan folgen soll, der Port aber nicht lesbar ist.
+        var warn = stand.Trocknet && stand.Geraete.Any(g => g.Folgt && g.Urteil is "unbekannt" or "nichtZugeordnet");
+        return new SteuerungModulDto(
+            Kennung: "trocknung",
+            Titel: "Trocknung",
+            Status: !stand.Trocknet ? "aus" : warn ? "warn" : "an",
+            Kurz: stand.Trocknet ? $"{zelt.Name} · Tag {stand.Tag} · {betrieb}" : $"{zelt.Name} · {betrieb}",
+            Wert: stand.Trocknet ? $"Tag {stand.Tag} von {stand.TageGeplant}" : "–",
+            Unterzeile: stand.Trocknet ? stand.Etappe ?? "ohne Etappe" : "trocknet nichts",
+            HatDetail: true,
+            ZeltId: zelt.Id);
     }
 
     // -------------------------------------------------------------- Auswahl
@@ -968,7 +989,7 @@ public static class ZuluftKachel
 /// <param name="Zustand">Fork AI (forkai.238): Nur die Zuluft — Schild und Satz als eigene Zeile unter dem Wert; die anderen Module behalten ihre Unterzeile rechts.</param>
 /// <param name="Balken">Fork AI (forkai.238): Nur die Zuluft bei „zu wenig Unterschied" — das Band mit Messwert und Grenzen.</param>
 public sealed record SteuerungModulDto(string Kennung, string Titel, string Status, string Kurz, string Wert, string Unterzeile, bool HatDetail,
-    SteuerungModulZustandDto? Zustand = null, SteuerungModulBalkenDto? Balken = null);
+    SteuerungModulZustandDto? Zustand = null, SteuerungModulBalkenDto? Balken = null, int? ZeltId = null);
 public sealed record SteuerungModulZustandDto(string Wort, string Satz, string Ton);
 public sealed record SteuerungModulBalkenDto(double Ist, double AusUnter, double AnAb);
 public sealed record SteuerungKarteDto(string Kennung, string Titel, string Beschreibung);

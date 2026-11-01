@@ -333,6 +333,11 @@ public sealed class RundwegVollstaendigTests
             + "zurückkommen könnten, und das PUT lehnt Proben wie \"1\" mit 400 ab (nur Ports, die Home Assistant als Ports "
             + "mit eigener Automatik kennt). Setzen, Lösen, Abweisen unbekannter und doppelter Ports und dass die "
             + "bestehende Zuordnung danach unverändert bleibt, fährt TrocknungZielApiTests.",
+        // A-029 Etappe 3, Teil B
+        ["TrocknungSteuerungRequest"] =
+            "Die Betriebsart ist ein Wort aus zwei erlaubten (\"melden\", \"regeln\"); die feste Probe \"1\" lehnt das PUT mit 400 ab, "
+            + "und ein Schalter ohne zugeordneten Port ebenso. Setzen, Zurücksetzen, die Merker und dass nur number-Entitäten beschrieben "
+            + "werden, fährt TrocknungSteuerungTests.",
         // cc.277
         ["ZeltRuheAuswahlRequest"] =
             "Eine Liste von Kennungen, kein Formular mit Feldern, die einzeln zurückkommen könnten, und das PUT lehnt "
