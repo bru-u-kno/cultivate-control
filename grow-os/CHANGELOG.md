@@ -5,8 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.298
-
+## 2.0.0-cc.299
 **Lichtplan: Zeiten und Stunden an einer Stelle, Kalibrierung der Lichtleistung und ein Stufenvorschlag je Planwoche.**
 
 - **Anlass:** Die Lichtzeiten standen in zwei getrennten Zeitplänen, und der Licht-Wächter fand auf deiner Anlage keinen Lichtplan und prüfte deshalb nichts. Außerdem nannte der Plan je Woche einen Lichtwert, aber nichts übersetzte ihn in eine Lampenstufe.
@@ -16,6 +15,13 @@
 - **Kalibrierung:** Trage die Herstellerangabe (Lichtwert bei Stufe 10 und Abstand) und eigene Messpunkte ein, zum Beispiel bei Stufe 5 und Stufe 3. Der Fork verbindet die Punkte zu einer Kurve und zeigt sie als Tabelle; ohne Messung ist die Herstellerangabe nur eine grobe Schätzung.
 - **Stufe nach Plan (Voreinstellung aus):** Auf Wunsch setzt der Fork die Stufe zu Beginn jeder neuen Planwoche. Eingeschaltet wird sie nur von dir und nur mit Kalibrierung. Stellst du die Stufe selbst um, wartet die Automatik bis zur nächsten Planwoche; bei ausgeschaltetem Licht oder ruhendem Zelt tut sie nichts.
 - **Was bleibt:** Die Zeitpläne werden nicht von selbst auf den Controller geschrieben; „Zeitplan anwenden“ bleibt deine Entscheidung.
+
+## 2.0.0-cc.298
+**Trocknung: Der Link „Plan ›“ öffnet das richtige Programm, und die Kühlung sagt ehrlich, warum sie dem Plan nicht folgt, wenn ihr Port aus ist.**
+
+- **Anlass:** Wer ohne laufenden Grow von Steuerung › Trocknung auf „Plan ›“ tippte, landete auf „Plan von: Laufender Grow“ mit dem Satz „Kein laufender Grow“ und fand den Trocknungsplan nicht — er gehört zum Programm der Charge, nicht zu einem laufenden Grow.
+- **Jetzt:** Der Link öffnet das Programm, nach dem das Zelt gerade trocknet, gleich auf dem Reiter „Trocknung“.
+- **Gerät aus:** Der Controller stellt die Grenzen eines Ports nur im Modus Auto bereit. Steht ein Port auf Aus, zeigt die Seite jetzt „Gerät aus“ statt „nicht lesbar“, und der Hinweis sagt, was wirklich gilt: Solange der Port aus ist, schreibt der Fork nichts; sobald er auf Auto steht, setzt der Fork die Grenze beim nächsten Abgleich. In den Release Notes zu 2.0.0-cc.297 stand dazu etwas anderes („die Grenze wirkt erst, wenn du ihn auf Auto stellst“) — das war ungenau.
 
 ## 2.0.0-cc.297
 

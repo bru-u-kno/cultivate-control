@@ -2,7 +2,7 @@ import { formatNumber } from '../../utils'
 
 /** Antwort von `GET/PUT /api/tents/{id}/trocknung/steuerung` (A-029, Etappe 3, Teil B). */
 export type Betrieb = 'melden' | 'regeln'
-export type SteuerungUrteil = 'nichtZugeordnet' | 'unbekannt' | 'keinAusloeser' | 'keinPlan' | 'passt' | 'weichtAb'
+export type SteuerungUrteil = 'nichtZugeordnet' | 'unbekannt' | 'geraetAus' | 'ohneAutomatik' | 'keinAusloeser' | 'keinPlan' | 'passt' | 'weichtAb'
 
 export interface SteuerungGeraet {
   rolle: 'entfeuchter' | 'kuehlung'
@@ -29,6 +29,8 @@ export interface TrocknungSteuerung {
   feuchteMin: number | null
   feuchteMax: number | null
   geraete: SteuerungGeraet[]
+  /** Das Programm der trocknenden Charge — der Plan ›-Link öffnet genau dieses. */
+  programmId?: string | null
 }
 
 export const zahl = (wert: number) => formatNumber(wert, Number.isInteger(wert) ? 0 : 1)
@@ -42,6 +44,8 @@ export const ROLLE = {
 export function plakette(g: SteuerungGeraet, betrieb: Betrieb): { text: string; ton?: 'warn' | 'ok' } {
   if (g.urteil === 'nichtZugeordnet') return { text: 'nicht zugeordnet' }
   if (g.urteil === 'unbekannt') return { text: 'nicht lesbar', ton: 'warn' }
+  if (g.urteil === 'geraetAus') return { text: 'Gerät aus' }
+  if (g.urteil === 'ohneAutomatik') return { text: 'ohne Automatik', ton: 'warn' }
   if (!g.folgt) return betrieb === 'regeln' ? { text: 'eigener Wert', ton: 'ok' } : { text: 'bleibt', ton: 'ok' }
   if (g.urteil === 'keinAusloeser') return { text: 'ohne Auslöser', ton: 'warn' }
   if (g.urteil === 'keinPlan') return { text: 'kein Plan' }
@@ -67,7 +71,10 @@ export function wuerdeSchreiben(geraete: SteuerungGeraet[], folgt: { entfeuchter
 export function geraetHinweis(g: SteuerungGeraet): string {
   const grenze = 'Der Fork ändert nur die Grenze, nie den Modus.'
   if (!g.folgt) return 'Folgt dem Plan ist aus: dein Wert bleibt unangetastet.'
-  if (g.modus && g.modus.toLowerCase() !== 'auto') return `Der Modus bleibt ${g.modus === 'Off' ? 'Aus' : g.modus}. ${grenze} Sie wirkt erst, wenn du ihn auf Auto stellst.`
+  // Der Controller stellt die Grenze nur im Modus Auto bereit — sonst gibt es nichts zu lesen und nichts zu schreiben.
+  if (g.urteil === 'geraetAus' || g.urteil === 'ohneAutomatik') {
+    return `Der Port steht auf ${g.modus === 'Off' ? 'Aus' : g.modus ?? 'einem anderen Modus'}; so lange stellt das Gerät die Grenze nicht bereit, und der Fork schreibt nichts. ${grenze} Sobald du den Port auf Auto stellst, setzt der Fork sie.`
+  }
   return grenze
 }
 

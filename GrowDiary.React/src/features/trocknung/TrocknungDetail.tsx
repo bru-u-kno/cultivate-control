@@ -152,9 +152,9 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
         <div className="st-feldzeile">
           <span className="st-etikett">
             Die Etappen änderst du im Plan.
-            <small>Zielwert je Etappe; für einen Wert pro Tag lege Etappen von einem Tag an.</small>
+            <small>Zielwert je Etappe; für einen Wert pro Tag lege Etappen von einem Tag an. Der Link öffnet das Programm dieser Charge.</small>
           </span>
-          <V1LinkButton to="/plan?bereich=trocknung" variant="ghost">Plan ›</V1LinkButton>
+          <V1LinkButton to={stand.programmId ? `/plan?programm=${encodeURIComponent(stand.programmId)}&bereich=trocknung` : '/plan'} variant="ghost">Plan ›</V1LinkButton>
         </div>
       </V1Card>
 

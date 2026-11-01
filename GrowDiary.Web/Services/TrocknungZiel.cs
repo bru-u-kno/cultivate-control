@@ -155,7 +155,8 @@ public static partial class TrocknungZiel
     /// <summary>
     /// Die Grenze, auf die der Plan sie setzen würde: oberer Rand des Bands, auf eine ganze Zahl gerundet (die Auslöser des
     /// Controllers kennen nur ganze Werte) und in die Spanne der Entität gezwungen. Das Urteil: <c>passt</c>,
-    /// <c>weichtAb</c>, <c>unbekannt</c> (nicht lesbar), <c>keinAusloeser</c> oder <c>keinPlan</c>.
+    /// <c>weichtAb</c>, <c>unbekannt</c> (nicht lesbar), <c>geraetAus</c> / <c>ohneAutomatik</c> (der Port stellt die Grenze in diesem Modus nicht bereit),
+    /// <c>keinAusloeser</c> oder <c>keinPlan</c>.
     /// </summary>
     public static Wunsch Entscheide(string rolle, Port port, Func<string, HomeAssistantState?> zustand, double? planOberGrenze)
     {
@@ -166,7 +167,14 @@ public static partial class TrocknungZiel
         if (wertEntity is null) return new Wunsch(rolle, null, modus, null, null, null, "keinAusloeser");
 
         var wertState = zustand(wertEntity);
-        if (IstNichtLesbar(wertState)) return new Wunsch(rolle, wertEntity, modus, null, null, null, "unbekannt");
+        if (IstNichtLesbar(wertState))
+        {
+            // Der Controller stellt die Grenzen eines Ports nur im Modus Auto bereit; steht er auf Aus oder einem anderen Modus,
+            // meldet die Entität „nicht verfügbar“ — das ist kein Fehler, sondern der Zustand des Geräts (und es lässt sich dann nichts schreiben).
+            var urteil = modus is null || string.Equals(modus, "Auto", StringComparison.OrdinalIgnoreCase) ? "unbekannt"
+                : string.Equals(modus, "Off", StringComparison.OrdinalIgnoreCase) ? "geraetAus" : "ohneAutomatik";
+            return new Wunsch(rolle, wertEntity, modus, null, null, null, urteil);
+        }
         var einheit = wertState!.UnitOfMeasurement;
         if (!feuchte && einheit is not null && einheit != "°C") return new Wunsch(rolle, wertEntity, modus, null, einheit, null, "unbekannt");
         if (Zahlenlesen.Maschine(wertState.State) is not { } jetzt) return new Wunsch(rolle, wertEntity, modus, null, einheit, null, "unbekannt");
