@@ -5,6 +5,12 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.302
+
+**Plan: Gibt es keinen laufenden oder geplanten Grow, zeigt „Gilt für diese Grows“ keinen Knopf mehr.**
+
+- **Anlass:** Bei einer Anlage, deren Grows alle abgeschlossen sind, stand unter dem Satz „Es gibt noch keinen laufenden oder geplanten Grow.“ trotzdem der Knopf „Zuweisung speichern“, obwohl es nichts zuzuweisen gab. Jetzt steht dort nur der Satz.
+
 ## 2.0.0-cc.301
 
 **Pläne zuweisen: der Düngeplan an Grows, der Trocknungsplan an Trockenzelte — von der Seite Plan aus.**
