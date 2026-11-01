@@ -73,7 +73,7 @@ export default function LichtPlan() {
         <V1Card>
           <p className="st-hinweis">
             {phaseText
-              ? <>Aus dem Grow-Plan gilt jetzt die Phase <b>{phaseText}</b> — die Zeiten oben für diese Phase prüft der Wächter.</>
+              ? <>Aus dem Grow-Plan gilt jetzt die Phase <b>{phaseText}</b> — ohne eigenen Lichtplan am Zelt prüft der Wächter die Zeiten oben für diese Phase (nur melden, nichts wird umgestellt).</>
               : 'Es läuft gerade kein Grow mit Plan; deshalb gibt es keine Phase und der Wächter prüft nichts.'}
           </p>
           {stand.wochen.length === 0 ? (

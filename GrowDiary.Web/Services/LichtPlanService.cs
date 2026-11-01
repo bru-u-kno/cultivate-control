@@ -60,15 +60,31 @@ public sealed class LichtPlanService
         _ => null,
     };
 
-    /// <summary>Die Phase, die jetzt im Zelt gilt — aus dem aktiven Grow, sonst null.</summary>
-    public string? AktuellePhase()
-        => _grows.GetActiveGrows().FirstOrDefault() is { } grow ? PhaseFuer(GrowStageResolver.Resolve(grow, _heute())) : null;
+    /// <summary>
+    /// Der eine laufende Grow, nach dem sich das Licht richtet. Planung zählt nicht (ein angelegter Folge-Grow darf die Phase
+    /// des laufenden nicht verdrängen), und bei mehr als einem laufenden Grow ist offen, welcher gemeint ist: dann keiner.
+    /// </summary>
+    public static GrowRun? LaufenderGrow(IEnumerable<GrowRun> aktive)
+    {
+        var laufend = aktive.Where(g => g.Status == GrowStatus.Running).ToList();
+        return laufend.Count == 1 ? laufend[0] : null;
+    }
+
+    /// <summary>
+    /// Die Phase eines Grows für das Licht: Autoflower laufen durchgehend mit eigenen Zeiten, ihnen schiebt der Plan keine
+    /// Blütezeiten unter (null = nichts zu prüfen, nichts zu setzen).
+    /// </summary>
+    public static string? PhaseFuerGrow(GrowRun? grow, DateTime heute)
+        => grow is null || grow.SeedType == SeedType.Autoflower ? null : PhaseFuer(GrowStageResolver.Resolve(grow, heute));
+
+    /// <summary>Die Phase, die jetzt im Zelt gilt — aus dem laufenden Grow, sonst null.</summary>
+    public string? AktuellePhase() => PhaseFuerGrow(LaufenderGrow(_grows.GetActiveGrows()), _heute());
 
     /// <summary>Das Programm, dessen Wochen gezeigt werden, und die gerade laufende Woche (nur bei aktivem Grow).</summary>
     private (NutrientProgramDefinition? Programm, FeedChartColumn? Jetzt) ProgrammUndWoche()
     {
         var programme = _wissen.NutrientPrograms;
-        var aktiv = _grows.GetActiveGrows().FirstOrDefault();
+        var aktiv = LaufenderGrow(_grows.GetActiveGrows());
         var grow = aktiv ?? _grows.GetArchivedGrows().FirstOrDefault();
         if (grow is null) return (null, null);
         var programm = MischplanService.ProgrammFuerGrow(grow, programme);
@@ -110,6 +126,8 @@ public sealed class LichtPlanService
     public (LichtKalibrierung? Gespeichert, Dictionary<string, string> Fehler) Speichern(LichtKalibrierung neu)
     {
         var fehler = LichtKennlinie.Pruefen(neu);
+        if (neu.AutomatikStufe && LichtKennlinie.Kurve(neu).Count == 0)
+            fehler[nameof(neu.AutomatikStufe)] = "Ohne Kalibrierung kann die Automatik keine Stufe wählen — erst Herstellerangabe oder Messpunkte eintragen.";
         if (fehler.Count > 0) return (null, fehler);
 
         var alt = Kalibrierung;
@@ -149,7 +167,7 @@ public sealed class LichtPlanService
         if (k.AutoWoche == woche)
         {
             // Schon gesetzt (oder beim Einschalten übernommen): nur noch auf eine Handstellung achten.
-            return k.AutoStufe is { } gesetzt && liveStufe is { } ist && ist != gesetzt
+            return k.AutoStufe is { } gesetzt && liveStufe is { } ist && ist > 0 && ist != gesetzt
                 ? (LichtAutoEntscheidung.HandErkannt, null)
                 : (LichtAutoEntscheidung.Nichts, null);
         }
@@ -165,7 +183,7 @@ public sealed class LichtPlanService
 
         var kurve = LichtKennlinie.Kurve(k);
         var (_, jetzt) = ProgrammUndWoche();
-        if (jetzt is null || kurve.Count == 0) return;
+        if (jetzt is null || kurve.Count == 0 || AktuellePhase() is null) return;
 
         double? ppfd = jetzt.PpfdMin ?? jetzt.PpfdMax;
         int? vorschlag = ppfd is { } p ? LichtKennlinie.StufeFuer(kurve, p) : null;
@@ -178,8 +196,7 @@ public sealed class LichtPlanService
         switch (entscheidung)
         {
             case LichtAutoEntscheidung.HandErkannt:
-                k.HandBisWoche = jetzt.Id;
-                _repo.SetEinstellungen(Modul, k);
+                Merker(k => k.HandBisWoche = jetzt.Id);
                 _logger.LogInformation("Licht-Plan: Stufe von Hand verstellt ({Ist}), Automatik wartet bis zur nächsten Planwoche.", live.Stufe);
                 break;
 
@@ -190,11 +207,22 @@ public sealed class LichtPlanService
                     return;
                 }
 
-                k.AutoWoche = jetzt.Id;
-                k.AutoStufe = stufe;
-                _repo.SetEinstellungen(Modul, k);
+                if (!Merker(m => { m.AutoWoche = jetzt.Id; m.AutoStufe = stufe; })) return;
                 _logger.LogInformation("Licht-Plan: {Woche} – Stufe {Stufe} gesetzt (Plan {Ppfd} µmol/m²s).", jetzt.Label, stufe, ppfd);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Die drei Merker der Automatik frisch lesen und nur sie ändern: Hat der Nutzer die Automatik inzwischen ausgeschaltet
+    /// oder die Kalibrierung geändert (der Befehl an die Lampe dauert Sekunden), bleibt das so. Falsch, wenn sie aus ist.
+    /// </summary>
+    private bool Merker(Action<LichtKalibrierung> setzen)
+    {
+        var frisch = Kalibrierung;
+        if (!frisch.AutomatikStufe) return false;
+        setzen(frisch);
+        _repo.SetEinstellungen(Modul, frisch);
+        return true;
     }
 }

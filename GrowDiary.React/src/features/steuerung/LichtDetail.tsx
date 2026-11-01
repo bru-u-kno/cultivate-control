@@ -320,12 +320,12 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
         <>
           <V1Section title="Lichtplan">
             <V1Card>
-              <Zeit label="Vegetativ · Licht an um" wert={entwurf.veggieEin} onChange={(v) => setEntwurf({ ...entwurf, veggieEin: v, veggieAus: ausZeitAus(v, lichtStunden(entwurf.veggieEin, entwurf.veggieAus)) })} fehler={feldFehler.VeggieEin} />
+              <Zeit label="Vegetativ · Licht an um" wert={entwurf.veggieEin} onChange={(v) => setEntwurf({ ...entwurf, veggieEin: v, ...(/^\d{1,2}:\d{2}$/.test(v) ? { veggieAus: ausZeitAus(v, lichtStunden(entwurf.veggieEin, entwurf.veggieAus)) } : {}) })} fehler={feldFehler.VeggieEin} />
               <Stunden label="Vegetativ · Stunden an" aus={entwurf.veggieAus} ein={entwurf.veggieEin} onChange={(h) => setz('veggieAus', ausZeitAus(entwurf.veggieEin, h))} fehler={feldFehler.VeggieAus} />
-              <Zeit label="Blüte · Licht an um" wert={entwurf.blueteEin} onChange={(v) => setEntwurf({ ...entwurf, blueteEin: v, blueteAus: ausZeitAus(v, lichtStunden(entwurf.blueteEin, entwurf.blueteAus)) })} fehler={feldFehler.BlueteEin} />
+              <Zeit label="Blüte · Licht an um" wert={entwurf.blueteEin} onChange={(v) => setEntwurf({ ...entwurf, blueteEin: v, ...(/^\d{1,2}:\d{2}$/.test(v) ? { blueteAus: ausZeitAus(v, lichtStunden(entwurf.blueteEin, entwurf.blueteAus)) } : {}) })} fehler={feldFehler.BlueteEin} />
               <Stunden label="Blüte · Stunden an" aus={entwurf.blueteAus} ein={entwurf.blueteEin} onChange={(h) => setz('blueteAus', ausZeitAus(entwurf.blueteEin, h))} fehler={feldFehler.BlueteAus} />
               <p className="st-hinweis">
-                Hier stehen die Zeiten einmal; Steuerung und Wächter lesen sie von hier. Die Phase (Vegetativ oder Blüte) kommt aus dem Grow-Plan.
+                Hier stehen die Zeiten einmal; die Steuerung schreibt sie beim Anwenden in den Controller, der Wächter prüft ohne eigenen Lichtplan am Zelt gegen sie. Die Phase (Vegetativ oder Blüte) kommt aus dem Grow-Plan.
                 Gespeichert wird im Fork. Der Controller bekommt die Zeiten, wenn du den Zeitplan anwendest —
                 und sofort, wenn du den gerade aktiven Zeitplan bearbeitest.
               </p>

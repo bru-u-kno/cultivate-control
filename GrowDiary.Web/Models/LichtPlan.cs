@@ -117,6 +117,15 @@ public static class LichtKennlinie
     public static int? StufeFuer(IReadOnlyList<LichtKurvenPunkt> kurve, double ppfd)
         => kurve.Count == 0 ? null : kurve.OrderBy(p => Math.Abs(p.Ppfd - ppfd)).ThenBy(p => p.Stufe).First().Stufe;
 
+    /// <summary>Messpunkte (und die Herstellerangabe bei Stufe 10) müssen mit der Stufe steigen, sonst ergibt die Kurve Unsinn.</summary>
+    private static bool SteigtNicht(LichtKalibrierung k)
+    {
+        var anker = Anker(k);
+        for (var i = 1; i < anker.Count; i++)
+            if (anker[i].Ppfd <= anker[i - 1].Ppfd) return true;
+        return false;
+    }
+
     public static Dictionary<string, string> Pruefen(LichtKalibrierung k)
     {
         var fehler = new Dictionary<string, string>();
@@ -130,6 +139,8 @@ public static class LichtKennlinie
             fehler[nameof(k.Messpunkte)] = "Stufe 1 bis 10, Wert zwischen 1 und 3000 µmol/m²s.";
         else if (k.Messpunkte.GroupBy(m => m.Stufe).Any(g => g.Count() > 1))
             fehler[nameof(k.Messpunkte)] = "Jede Stufe nur einmal messen.";
+        else if (SteigtNicht(k))
+            fehler[nameof(k.Messpunkte)] = "Eine höhere Stufe muss mehr Licht liefern — bitte die Messwerte prüfen.";
         return fehler;
     }
 }

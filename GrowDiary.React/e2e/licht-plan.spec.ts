@@ -60,4 +60,18 @@ test.describe('Lichtplan', () => {
     await page.getByRole('button', { name: 'Kalibrierung speichern' }).click()
     await expect(page.getByText(/Wert zwischen 1 und 3000/)).toBeVisible()
   })
+
+  test('Stunden an: die Ausschaltzeit wird aus Einschaltzeit und Stunden gerechnet, ohne zu speichern', async ({ page }) => {
+    await page.goto('/steuerung/licht', { waitUntil: 'networkidle' })
+    await page.getByText('Lichtplan', { exact: true }).first().click()
+    const ein = await page.getByLabel('Blüte · Licht an um').inputValue()
+    const [h, m] = ein.split(':').map(Number)
+    await page.getByLabel('Blüte · Stunden an').fill('10')
+    const aus = `${String((h + 10) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    await expect(page.getByText(`Licht aus um ${aus}`).last()).toBeVisible()
+    // Die Einschaltzeit verschieben lässt die Stunden stehen.
+    await page.getByLabel('Blüte · Licht an um').fill('07:00')
+    await expect(page.getByLabel('Blüte · Stunden an')).toHaveValue('10')
+    await expect(page.getByText('Licht aus um 17:00').last()).toBeVisible()
+  })
 })

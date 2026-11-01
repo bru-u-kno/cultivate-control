@@ -196,7 +196,10 @@ public sealed class LichtWaechterService
             return;
         }
 
+        // Ein Ersatzplan (Zeiten der Lichtseite statt eigenem Lichtplan am Zelt) wird nur gemeldet, nie auf den Controller
+        // geschrieben: Die Phase wechselt mit dem Grow-Plan, die Zeiten am Controller wechseln nur, wenn der Nutzer sie anwendet.
         if (LichtWaechterRegeln.Korrigierbar(befund)
+            && !plan.Value.Rueckfall
             && e.Modus == LichtWaechterEinstellungen.Korrigieren
             && zustand.Korrekturen < LichtWaechterRegeln.MaxKorrekturen)
         {
@@ -279,7 +282,7 @@ public sealed class LichtWaechterService
 
     // ------------------------------------------------------------------ Plan
 
-    private (string Ein, string Aus, TimeZoneInfo Zone)? PlanLaden()
+    private (string Ein, string Aus, TimeZoneInfo Zone, bool Rueckfall)? PlanLaden()
     {
         foreach (var zelt in _grows.GetTents())
         {
@@ -287,7 +290,7 @@ public sealed class LichtWaechterService
             if (plan is null) continue;
             if (!TimeOnly.TryParse(plan.LightsOnTime, out var ein) || !TimeOnly.TryParse(plan.LightsOffTime, out var aus) || ein == aus)
                 continue;
-            return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), ZoneFuer(plan));
+            return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), ZoneFuer(plan), false);
         }
 
         return PlanAusEinstellungen();
@@ -297,15 +300,15 @@ public sealed class LichtWaechterService
     /// Ohne eigenen Lichtplan am Zelt gilt der Zeitplan der Lichtseite (Veggie oder Blüte) — und zwar der,
     /// den die Phase des laufenden Grows verlangt. Ohne laufenden Grow gibt es nichts zu prüfen.
     /// </summary>
-    private (string Ein, string Aus, TimeZoneInfo Zone)? PlanAusEinstellungen()
+    private (string Ein, string Aus, TimeZoneInfo Zone, bool Rueckfall)? PlanAusEinstellungen()
     {
-        var phase = LichtPlanService.PhaseFuer(_grows.GetActiveGrows().FirstOrDefault() is { } grow
-            ? GrowStageResolver.Resolve(grow, TimeZoneInfo.ConvertTimeFromUtc(_jetztUtc(), TimeZoneInfo.Local).Date)
-            : GrowStage.Dry);
+        var phase = LichtPlanService.PhaseFuerGrow(
+            LichtPlanService.LaufenderGrow(_grows.GetActiveGrows()),
+            TimeZoneInfo.ConvertTimeFromUtc(_jetztUtc(), TimeZoneInfo.Local).Date);
         if (phase is null) return null;
         var (e, a) = LichtSteuerungService.Preset(_licht.Einstellungen, phase);
         if (!TimeOnly.TryParse(e, out var ein) || !TimeOnly.TryParse(a, out var aus) || ein == aus) return null;
-        return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), TimeZoneInfo.Local);
+        return (ein.ToString("HH:mm", CultureInfo.InvariantCulture), aus.ToString("HH:mm", CultureInfo.InvariantCulture), TimeZoneInfo.Local, true);
     }
 
     private static TimeZoneInfo ZoneFuer(LightSchedule plan)

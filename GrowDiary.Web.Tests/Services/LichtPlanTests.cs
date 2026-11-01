@@ -238,4 +238,55 @@ public sealed class LichtPlanTests : IDisposable
         Assert.Null(k.AutoStufe);
         Assert.Null(k.HandBisWoche);
     }
+
+    // ---------------------------------------------------------------- Befunde des Prüfers
+
+    [Fact]
+    public void Nur_ein_laufender_Grow_bestimmt_die_Phase_Planung_und_Mehrdeutiges_zaehlen_nicht()
+    {
+        GrowRun Grow(GrowStatus status) => new() { Status = status };
+        Assert.Null(LichtPlanService.LaufenderGrow([]));
+        Assert.Null(LichtPlanService.LaufenderGrow([Grow(GrowStatus.Planning)]));
+        Assert.Null(LichtPlanService.LaufenderGrow([Grow(GrowStatus.Running), Grow(GrowStatus.Running)]));
+        var laufend = Grow(GrowStatus.Running);
+        Assert.Same(laufend, LichtPlanService.LaufenderGrow([Grow(GrowStatus.Planning), laufend]));
+    }
+
+    [Fact]
+    public void Autoflower_bekommen_keine_Phase_untergeschoben()
+    {
+        var grow = new GrowRun { Status = GrowStatus.Running, SeedType = SeedType.Autoflower, StartDate = new DateTime(2026, 9, 1) };
+        Assert.Null(LichtPlanService.PhaseFuerGrow(grow, new DateTime(2026, 11, 1)));
+        Assert.Null(LichtPlanService.PhaseFuerGrow(null, new DateTime(2026, 11, 1)));
+    }
+
+    [Fact]
+    public void Eine_fallende_Kurve_wird_abgelehnt()
+    {
+        var fallend = new LichtKalibrierung { Messpunkte = [new() { Stufe = 8, Ppfd = 900 }, new() { Stufe = 9, Ppfd = 850 }] };
+        Assert.Contains(nameof(LichtKalibrierung.Messpunkte), LichtKennlinie.Pruefen(fallend).Keys);
+        // Auch eine Herstellerangabe unter der Messung bei Stufe 8 macht die Kurve unsinnig.
+        var zuNiedrig = new LichtKalibrierung { HerstellerPpfd = 500, Messpunkte = [new() { Stufe = 8, Ppfd = 900 }] };
+        Assert.Contains(nameof(LichtKalibrierung.Messpunkte), LichtKennlinie.Pruefen(zuNiedrig).Keys);
+    }
+
+    [Fact]
+    public void Die_Automatik_laesst_sich_ohne_Kurve_nicht_einschalten()
+    {
+        var dienst = Dienst();
+        var (gespeichert, fehler) = dienst.Speichern(new LichtKalibrierung { AutomatikStufe = true });
+        Assert.Null(gespeichert);
+        Assert.Contains(nameof(LichtKalibrierung.AutomatikStufe), fehler.Keys);
+        Assert.False(dienst.Kalibrierung.AutomatikStufe);
+    }
+
+    [Fact]
+    public void Stufe_null_in_der_Dunkelphase_gilt_nicht_als_Handstellung()
+    {
+        var k = Beispiel();
+        k.AutomatikStufe = true;
+        k.AutoWoche = "flower-w1";
+        k.AutoStufe = 8;
+        Assert.Equal(LichtAutoEntscheidung.Nichts, LichtPlanService.Entscheiden(k, "flower-w1", 8, 0).Entscheidung);
+    }
 }
