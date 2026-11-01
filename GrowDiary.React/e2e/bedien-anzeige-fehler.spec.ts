@@ -82,8 +82,8 @@ test.describe('Licht: Leistungsstufe und ungespeicherter Zeitplan', () => {
     await expect(feld).toBeVisible({ timeout: 15000 })
 
     // Ungespeicherte Änderung im Zeitplan.
-    await reiter(page, 'Zeitplan').click()
-    const veggieAn = page.getByLabel('Veggie · an')
+    await reiter(page, 'Lichtplan').click()
+    const veggieAn = page.getByLabel('Vegetativ · Licht an um')
     const vorher = await veggieAn.inputValue()
     const neu = vorher === '06:15' ? '06:45' : '06:15'
     await veggieAn.fill(neu)
@@ -102,7 +102,7 @@ test.describe('Licht: Leistungsstufe und ungespeicherter Zeitplan', () => {
 
     // Der Entwurf lebt noch.
     await expect(page.getByRole('button', { name: 'Speichern' })).toBeVisible()
-    await reiter(page, 'Zeitplan').click()
+    await reiter(page, 'Lichtplan').click()
     await expect(veggieAn).toHaveValue(neu)
 
     // Zweiter Durchgang, erschwert: weggescrollt, anderer Wert, verlassen per
@@ -122,7 +122,7 @@ test.describe('Licht: Leistungsstufe und ungespeicherter Zeitplan', () => {
     await page.getByRole('button', { name: '+', exact: true }).click()
     await dritte
     expect(befehle).toHaveLength(3)
-    await reiter(page, 'Zeitplan').click()
+    await reiter(page, 'Lichtplan').click()
     await expect(veggieAn, 'Ein Befehl hat den ungespeicherten Zeitplan verworfen.').toHaveValue(neu)
     await expect(page.getByRole('button', { name: 'Speichern' })).toBeVisible()
   }

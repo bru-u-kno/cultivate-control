@@ -343,10 +343,47 @@ export type LichtSeite = {
  */
 export const LICHT_MODI = { aus: 'Off', an: 'On', zeitplan: 'Schedule' } as const
 
+/** Lichtplan: ein gemessener Punkt der Lampe (bei dieser Stufe kommen so viele µmol/m²s an). */
+export type LichtMesspunkt = { stufe: number; ppfd: number }
+
+/** Kalibrierung der Lichtleistung und die Automatik „Stufe nach Plan“ (Voreinstellung aus). */
+export type LichtKalibrierung = {
+  herstellerPpfd: number | null
+  herstellerAbstandCm: number | null
+  messpunkte: LichtMesspunkt[]
+  automatikStufe: boolean
+  autoStufe: number | null
+  autoWoche: string | null
+  handBisWoche: string | null
+}
+
+export type LichtKurvenPunkt = { stufe: number; ppfd: number; herkunft: 'gemessen' | 'Herstellerangabe' | 'Rechnung' }
+
+export type LichtPlanWoche = {
+  id: string
+  label: string
+  phase: string
+  ppfd: number | null
+  vorschlagStufe: number | null
+  erreicht: number | null
+  jetzt: boolean
+}
+
+export type LichtPlanStand = {
+  kalibrierung: LichtKalibrierung
+  kalibriert: boolean
+  kurve: LichtKurvenPunkt[]
+  programm: string | null
+  /** `veggie` | `bluete` aus dem Grow-Plan; null, wenn gerade kein Grow läuft. */
+  phase: 'veggie' | 'bluete' | null
+  wochen: LichtPlanWoche[]
+  automatikHinweis: string
+}
+
 export type LichtReiter = 'betrieb' | 'zeitplan' | 'waechter' | 'erweitert'
 export const LICHT_REITER: Array<{ value: LichtReiter; label: string }> = [
   { value: 'betrieb', label: 'Betrieb' },
-  { value: 'zeitplan', label: 'Zeitplan' },
+  { value: 'zeitplan', label: 'Lichtplan' },
   { value: 'waechter', label: 'Wächter' },
   { value: 'erweitert', label: 'Erweitert' },
 ]

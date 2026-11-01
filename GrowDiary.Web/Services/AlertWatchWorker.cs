@@ -93,6 +93,16 @@ public sealed class AlertWatchWorker : BackgroundService
         {
             _logger.LogWarning(ex, "Licht-Wächter fehlgeschlagen.");
         }
+
+        // Lichtplan: Stufe nach dem Plan, nur wenn der Nutzer die Automatik eingeschaltet hat (Voreinstellung aus).
+        try
+        {
+            await scope.ServiceProvider.GetRequiredService<LichtPlanService>().AutomatikLaufAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Licht-Plan (Automatik) fehlgeschlagen.");
+        }
     }
 
     private async Task EvaluateAllTentsAsync(CancellationToken cancellationToken)

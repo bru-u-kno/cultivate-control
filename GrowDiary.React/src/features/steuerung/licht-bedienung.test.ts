@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anzeigeLive, entwurfAbgleichen, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
+import { anzeigeLive, ausZeitAus, entwurfAbgleichen, lichtStunden, modusZielOffen, stufeAusFeld, stufeBasis, stufeSchritt } from './licht-bedienung'
 
 describe('stufeAusFeld', () => {
   it('liest ganze Zahlen von 1 bis 10', () => {
@@ -79,5 +79,31 @@ describe('anzeigeLive', () => {
   })
   it('ohne Ziel bleibt alles beim Livewert', () => {
     expect(anzeigeLive(live, null)).toBe(live)
+  })
+})
+
+describe('lichtStunden und ausZeitAus', () => {
+  it('rechnet Stunden zwischen Ein- und Aus-Zeit, auch über Mitternacht', () => {
+    expect(lichtStunden('05:00', '23:00')).toBe(18)
+    expect(lichtStunden('05:00', '17:00')).toBe(12)
+    expect(lichtStunden('18:00', '06:00')).toBe(12)
+    expect(lichtStunden('06:30', '18:00')).toBe(11.5)
+  })
+  it('liest keine Unsinnszeiten', () => {
+    expect(lichtStunden('', '17:00')).toBe(0)
+    expect(lichtStunden('05:00', 'x')).toBe(0)
+  })
+  it('berechnet die Aus-Zeit aus Ein-Zeit und Stunden', () => {
+    expect(ausZeitAus('05:00', 18)).toBe('23:00')
+    expect(ausZeitAus('05:00', 12)).toBe('17:00')
+    expect(ausZeitAus('18:00', 12)).toBe('06:00')
+    expect(ausZeitAus('06:30', 11.5)).toBe('18:00')
+  })
+  it('Ein-Zeit verschieben und zurückrechnen verändert die Stunden nicht', () => {
+    const stunden = lichtStunden('05:00', '17:00')
+    expect(lichtStunden('07:00', ausZeitAus('07:00', stunden))).toBe(12)
+  })
+  it('bei unlesbarer Ein-Zeit bleibt sie stehen', () => {
+    expect(ausZeitAus('', 12)).toBe('')
   })
 })

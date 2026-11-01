@@ -87,3 +87,25 @@ export function entwurfAbgleichen<T extends object>(entwurf: T, alt: T, neu: T):
   }
   return ergebnis as T
 }
+
+/** Stunden Licht zwischen Ein- und Aus-Zeit (HH:mm), über Mitternacht gerechnet; 0, wenn eine Zeit nicht lesbar ist. */
+export function lichtStunden(ein: string, aus: string): number {
+  const min = (t: string) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t)
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null
+  }
+  const e = min(ein)
+  const a = min(aus)
+  if (e == null || a == null) return 0
+  const diff = (a - e + 1440) % 1440
+  return Math.round((diff / 60) * 10) / 10
+}
+
+/** Die Aus-Zeit zu Ein-Zeit und Stunden Licht (HH:mm); bei unlesbarer Ein-Zeit die Ein-Zeit selbst. */
+export function ausZeitAus(ein: string, stunden: number): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(ein)
+  if (!m || !Number.isFinite(stunden)) return ein
+  const gesamt = (Number(m[1]) * 60 + Number(m[2]) + Math.round(stunden * 60)) % 1440
+  const h = Math.floor(gesamt / 60)
+  return `${String(h).padStart(2, '0')}:${String(gesamt % 60).padStart(2, '0')}`
+}
