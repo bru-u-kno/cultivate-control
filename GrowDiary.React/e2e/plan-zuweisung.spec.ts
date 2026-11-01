@@ -78,6 +78,18 @@ test('Düngeplan: einem Grow zuweisen — Plan und Grow stimmen überein, die Li
   }
 })
 
+test('Düngeplan: ohne laufenden oder geplanten Grow steht der Satz da, aber kein Knopf', async ({ page, request }) => {
+  const programme = (await (await request.get('/api/programme')).json()) as Array<{ id: string; eigen: boolean; wochen: number }>
+  const ziel = programme.find((p) => !p.eigen && p.wochen > 0)
+  darfUeberspringen(!ziel, 'Kein mitgeliefertes Programm mit Wochenraster.')
+  // Die Liste wird leer geliefert (wie bei einer Anlage, deren Grows alle abgeschlossen sind) — der Bestand bleibt unberührt.
+  await page.route(`**/api/programme/${ziel!.id}/zuweisung`, (route) => route.fulfill({ json: [] }))
+  await page.goto(`/plan?programm=${ziel!.id}`, { waitUntil: 'networkidle' })
+  await expect(page.locator('[data-audit=programm-zuweisung]')).toHaveCount(1)
+  await expect(page.getByText('Es gibt noch keinen laufenden oder geplanten Grow.')).toBeVisible()
+  await expect(page.locator('[data-audit=plan-zuweisen]')).toHaveCount(0)
+})
+
 test('Trocknungsplan: ein einziges Trockenzelt hat nichts zu wählen — zwei: der Plan geht als Kopie ans andere', async ({ page, request }) => {
   const anlegen = async (name: string) => {
     const antwort = await request.post('/api/settings/tents', { data: { name: `${name} ${Date.now()}`, tentType: 'Drying', status: 'Active', displayOrder: 99 } })

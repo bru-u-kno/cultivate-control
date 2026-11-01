@@ -19,6 +19,12 @@
 - **Mehrere Zelte gleichzeitig offen:** Eingeklappte Bereiche, Kacheln und Karten sowie die angehefteten Kopfknöpfe gelten für alle Zelte gemeinsam am Gerät. Vorher hätten sich zwei offene Zelte beim Speichern gegenseitig überschrieben.
 - **Nachgeprüft:** Fünf neue Prüfungen am Demobestand mit vier Zelten (Score einmal je Zelt, Pfeil links, zweimal auf- und zuklappen, Merken nach dem Neuladen, kein Überstand bei 369 px) und Tests für Merkzettel, Kopfwerte und Zeltansicht; gezeigt, dass der Test zur Nährlösung ohne die Änderung rot wird.
 
+## 2.0.0-cc.302
+
+**Plan: Gibt es keinen laufenden oder geplanten Grow, zeigt „Gilt für diese Grows“ keinen Knopf mehr.**
+
+- **Anlass:** Bei einer Anlage, deren Grows alle abgeschlossen sind, stand unter dem Satz „Es gibt noch keinen laufenden oder geplanten Grow.“ trotzdem der Knopf „Zuweisung speichern“, obwohl es nichts zuzuweisen gab. Jetzt steht dort nur der Satz.
+
 ## 2.0.0-cc.301
 
 **Pläne zuweisen: der Düngeplan an Grows, der Trocknungsplan an Trockenzelte — von der Seite Plan aus.**

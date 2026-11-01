@@ -99,9 +99,12 @@ export function ProgrammZuweisung({ programmId, programmName }: { programmId: st
         leer="Es gibt noch keinen laufenden oder geplanten Grow."
         hinweis={`Ein Grow hat einen Düngeplan. Wählst du „${programmName}“ hier, löst es den bisherigen ab. Bei einem laufenden Grow wechseln die Wochenwerte; was schon abgeschlossen ist, bleibt unverändert.`}
       >
-        <V1Button variant="primary" disabled={gewaehlt.size === 0 || arbeitet} onClick={speichern} audit="plan-zuweisen">
-          Zuweisung speichern
-        </V1Button>
+        {/* Ohne Grow gibt es nichts zuzuweisen — dann auch keinen Knopf. */}
+        {grows.length > 0 && (
+          <V1Button variant="primary" disabled={gewaehlt.size === 0 || arbeitet} onClick={speichern} audit="plan-zuweisen">
+            Zuweisung speichern
+          </V1Button>
+        )}
       </GiltFuer>
       {frage && (
         <div className="gf-frage" data-audit="plan-zuweisen-frage">
