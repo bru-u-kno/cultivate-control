@@ -46,7 +46,8 @@ public sealed class TrocknungSteuerungService
 
     public sealed record Stand(
         bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete);
+        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete,
+        string? ProgrammId = null);
 
     private static readonly string[] Rollen = [TrocknungZiel.RolleEntfeuchter, TrocknungZiel.RolleKuehlung];
 
@@ -93,7 +94,8 @@ public sealed class TrocknungSteuerungService
 
         return new Stand(
             trocknung is not null, einstellung.Betrieb, erreichbar, trocknung?.Tag, geplant, etappeName,
-            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete);
+            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete,
+            trocknung?.Grow.FeedProgramId);
     }
 
     private async Task<TrocknungZiel.Wunsch> WunschAsync(string rolle, TrocknungZiel.Port port, double? planGrenze, CancellationToken ct)

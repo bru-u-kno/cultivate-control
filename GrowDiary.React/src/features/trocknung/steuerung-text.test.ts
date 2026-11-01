@@ -28,7 +28,9 @@ describe('Trocknung: Steuerung', () => {
 
   it('Hinweis: nennt den Modus, wenn der Port nicht auf Auto steht, und sagt, dass der Modus nie geändert wird', () => {
     expect(geraetHinweis(g({ folgt: false }))).toContain('bleibt unangetastet')
-    expect(geraetHinweis(g({ modus: 'Off' }))).toContain('Der Modus bleibt Aus')
+    expect(geraetHinweis(g({ modus: 'Off', urteil: 'geraetAus' }))).toContain('der Fork schreibt nichts')
+    expect(geraetHinweis(g({ modus: 'Off', urteil: 'geraetAus' }))).toContain('Sobald du den Port auf Auto stellst')
     expect(geraetHinweis(g({ modus: 'Auto' }))).toContain('nie den Modus')
+    expect(plakette(g({ urteil: 'geraetAus' }), 'regeln').text).toBe('Gerät aus')
   })
 })

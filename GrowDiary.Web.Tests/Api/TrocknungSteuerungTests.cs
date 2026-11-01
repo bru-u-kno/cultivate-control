@@ -209,6 +209,35 @@ public sealed class TrocknungSteuerungTests : IDisposable
     }
 
     [Fact]
+    public async Task Steht_ein_Port_auf_Aus_und_meldet_die_Grenze_nicht_verfuegbar_ist_es_Geraet_aus_und_es_wird_nichts_geschrieben()
+    {
+        // So verhält sich der echte Controller: Modus Aus → die Entität der Temperatur-Obergrenze ist „unavailable“.
+        ZustandSetzen("number.clima_temp", "unavailable");
+        ErnteImTrockenzelt();
+        var c = Controller();
+
+        var stand = Wert(await c.Setzen(_trockenZelt.Id, Anfrage("regeln", false, true), default));
+
+        Assert.Empty(_gesetzt);
+        Assert.Equal("geraetAus", stand.Geraete.Single(g => g.Rolle == "kuehlung").Urteil);
+        // Sobald der Port auf Auto steht, zieht der nächste Durchlauf nach.
+        ZustandSetzen("select.clima_modus", "Auto");
+        ZustandSetzen("number.clima_temp", "24", "°C");
+        Assert.Equal(1, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
+        Assert.Equal("21", _ha["number.clima_temp"].State);
+    }
+
+    [Fact]
+    public async Task Die_Steuerung_nennt_das_Programm_der_trocknenden_Charge_fuer_den_Link_zum_Plan()
+    {
+        ErnteImTrockenzelt();
+        var grow = _grows.GetGrow(_growId)!;
+        grow.FeedProgramId = "eigen-test";
+        _grows.UpdateGrow(grow);
+        Assert.Equal("eigen-test", Wert(await Controller().Lesen(_trockenZelt.Id, default)).ProgrammId);
+    }
+
+    [Fact]
     public async Task Ohne_Trocknung_ohne_Port_und_bei_falschen_Angaben_wird_nichts_geschrieben_oder_abgewiesen()
     {
         var c = Controller();

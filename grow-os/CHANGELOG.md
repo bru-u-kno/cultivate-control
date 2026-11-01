@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.298
+
+**Trocknung: Der Link „Plan ›“ öffnet das richtige Programm, und die Kühlung sagt ehrlich, warum sie dem Plan nicht folgt, wenn ihr Port aus ist.**
+
+- **Anlass:** Wer ohne laufenden Grow von Steuerung › Trocknung auf „Plan ›“ tippte, landete auf „Plan von: Laufender Grow“ mit dem Satz „Kein laufender Grow“ und fand den Trocknungsplan nicht — er gehört zum Programm der Charge, nicht zu einem laufenden Grow.
+- **Jetzt:** Der Link öffnet das Programm, nach dem das Zelt gerade trocknet, gleich auf dem Reiter „Trocknung“.
+- **Gerät aus:** Der Controller stellt die Grenzen eines Ports nur im Modus Auto bereit. Steht ein Port auf Aus, zeigt die Seite jetzt „Gerät aus“ statt „nicht lesbar“, und der Hinweis sagt, was wirklich gilt: Solange der Port aus ist, schreibt der Fork nichts; sobald er auf Auto steht, setzt der Fork die Grenze beim nächsten Abgleich. In den Release Notes zu 2.0.0-cc.297 stand dazu etwas anderes („die Grenze wirkt erst, wenn du ihn auf Auto stellst“) — das war ungenau.
+
 ## 2.0.0-cc.297
 
 **Trocknung: Die Geräte am Trockenzelt können jetzt dem Plan folgen — eingestellt wird unter Steuerung, die Live-Seite zeigt nur noch Werte.**
