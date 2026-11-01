@@ -89,10 +89,6 @@
   .ls-head-bar .ls-head-meta { flex: 1 1 auto; min-width: 0; }
   .ls-head-bar .ls-head-actions { flex: 0 0 auto; flex-wrap: nowrap; }
   .ls-head-more { padding-inline: 12px; line-height: 1; }
-  .ls-sheet-zelt {
-    display: flex; align-items: center; gap: 10px; padding: 10px 4px;
-    font: 400 var(--fs-klein)/1.4 var(--font-mono); color: var(--muted);
-  }
 
   /* Anheften-Marke im Blatt. Kein gefüllter Knopf: die Zeile ist schon
      anklickbar, ein zweiter Knopf darin wäre eine Falle. */
@@ -311,15 +307,6 @@
     .ls-panel-head .ls-btn.is-small ~ .ls-btn.is-small,
     .v1-section-head .ls-btn.is-small ~ .ls-btn.is-small { margin-left: 0; }
   }
-
-  /* Zelt-Auswahl in der Kopfzeile — sieht aus wie ein Knopf, ist aber ein Feld. */
-  .ls-tent-select {
-    min-height: 32px; padding: 0 8px;
-    border: 1px solid var(--hair-2); border-radius: 8px;
-    background: var(--sunk); color: var(--ink);
-    font: 500 var(--fs-klein)/1 var(--font-mono); cursor: pointer;
-  }
-  /* Touch: die Untergrenze aus widgets.css greift hier ebenfalls. */
 
   /* ---------- Erstlauf ----------
      Nummerierte Schritte, weil hier die Reihenfolge wirklich zaehlt: ohne Zelt
@@ -729,4 +716,81 @@
     .ls-fold { top: 0; right: 0; width: 32px; height: var(--h-lg); }
     .ls-tile-slot.has-fold > .gos-metric .gos-metric-head { padding-right: 28px; }
   }
+}
+
+/* ---------- Mehrere Zelte: je Zelt ein Abschnitt ----------
+   Der Kopf trägt Pfeil, Score-Ring, Name und Zustandswort; darunter die Phase
+   und — zugeklappt — die Kernwerte in der Farbe ihres Urteils. Der Score steht
+   NUR im Kopf: der aufgeklappte Inhalt hat keinen zweiten Ring. */
+@layer features {
+  .ls-seitenkopf { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .ls-seitenkopf .ls-eyebrow { margin: 0; white-space: nowrap; }
+
+  .ls-zb { display: grid; gap: 14px; min-width: 0; }
+  .ls-zb-inhalt { display: grid; gap: 14px; min-width: 0; }
+
+  .ls-zb-kopf {
+    display: grid; row-gap: 6px; width: 100%; box-sizing: border-box; margin: 0; padding: 12px;
+    border: 1px solid var(--hair-2); border-radius: 12px; background: var(--panel);
+    color: inherit; font: inherit; text-align: left; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ls-zb-kopf:hover { border-color: var(--hair-2); background: var(--panel-2); }
+  .ls-zb-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ls-zb-zeile { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ls-zb-zeile strong {
+    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font: 700 var(--fs-gross)/1.2 var(--font-sans);
+  }
+  .ls-zb-zeile .ls-fold-pfeil {
+    flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
+    border: 1px solid var(--hair-2); border-radius: 6px;
+    color: var(--muted); font: 500 var(--fs-klein)/1 var(--font-mono);
+  }
+  .ls-zb-kopf:hover .ls-fold-pfeil { border-color: var(--accent); color: var(--ink); }
+
+  .ls-zb-chip {
+    flex: 0 0 auto; white-space: nowrap; padding: 5px 9px;
+    border: 1px solid currentColor; border-radius: 999px;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
+  }
+  .ls-zb-kopf.is-ok .ls-zb-chip { color: var(--accent-text); }
+  .ls-zb-kopf.is-warn .ls-zb-chip { color: var(--warn-text); }
+  .ls-zb-kopf.is-critical .ls-zb-chip { color: var(--danger-text); }
+
+  /* Der Ring: Farbe und Füllung nur in der Hülle, die Zahl liegt darüber —
+     so bleibt sie scharf und die Maske schneidet nur den Ring aus. */
+  .ls-zb-ringhuelle { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; }
+  .ls-zb-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    --c: var(--faint); --p: 0;
+    background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--sunk) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  }
+  .ls-zb-ring.is-ok { --c: var(--accent); }
+  .ls-zb-ring.is-warn { --c: var(--warn); }
+  .ls-zb-ring.is-critical { --c: var(--danger); }
+  .ls-zb-ringhuelle b { position: relative; font: 700 var(--fs-klein)/1 var(--font-mono); }
+
+  .ls-zb-sub { font: 400 var(--fs-etikett)/1.4 var(--font-mono); color: var(--muted); }
+
+  .ls-zb-werte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 2px; }
+  .ls-zb-hydro { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--hair-2); }
+  .ls-zb-werte small {
+    display: block; font: 400 var(--fs-etikett)/1.3 var(--font-mono); color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .ls-zb-werte b { font: 600 var(--fs-gross)/1.3 var(--font-mono); }
+  .ls-zb-werte b.is-ok { color: var(--accent-text); }
+  .ls-zb-werte b.is-warn { color: var(--warn-text); }
+  .ls-zb-werte b.is-bad { color: var(--danger-text); }
+  .ls-zb-werte u { text-decoration: none; font: 400 var(--fs-etikett)/1 var(--font-mono); color: var(--muted); white-space: nowrap; }
+
+  /* Im Zelt-Abschnitt trägt der Zeltkopf Score und Zustand; die Kopfzeile
+     darunter behält die Erklärung („3 Werte daneben …") und die Handlungen. */
+  .ls-head.is-eingebettet { gap: 10px; }
+  .ls-head.is-eingebettet .ls-head-title { flex: 1 1 100%; }
+  .ls-head.is-eingebettet .ls-head-parts { margin-top: 0; }
 }

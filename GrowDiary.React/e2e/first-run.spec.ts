@@ -50,6 +50,7 @@ test.describe('Erstlauf ohne Daten', () => {
     const start = page.locator('[data-audit="live-first-run"] a[href$="/start"]')
     await expect(start).toBeVisible()
     await start.click()
-    await expect(page).toHaveURL(/\/start$/)
+    // `/start` leitet seit dem Einrichtungs-Hub auf `/einrichtung` weiter (GettingStartedPage ist gelöscht).
+    await expect(page).toHaveURL(/\/einrichtung$/)
   })
 })

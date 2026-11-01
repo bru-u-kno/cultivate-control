@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import type { MetricPayload } from '../../types'
 import { urteilFuerMetrik } from './metric-tile-model'
 
@@ -50,22 +50,36 @@ export type Einklappen = {
 }
 
 /**
+ * Ein Stand für die ganze Seite. Bei mehreren aufgeklappten Zelten sitzt je
+ * Zelt ein Bildschirm auf der Seite — hätte jeder seine eigene Kopie aus dem
+ * Browser geladen, hätte ein Zuklappen im einen das Zuklappen im anderen beim
+ * Speichern überschrieben, und die Zelte hätten sich nach dem Neuladen
+ * widersprochen. So lesen und schreiben alle denselben Satz.
+ */
+let geteilt: Set<string> | null = null
+const hoerer = new Set<() => void>()
+const holen = (): Set<string> => (geteilt ??= ladeEingeklappt())
+const abonnieren = (rueckruf: () => void) => {
+  hoerer.add(rueckruf)
+  return () => { hoerer.delete(rueckruf) }
+}
+
+/**
  * Im Anpassen-Modus ist alles offen: wer Kacheln umsortiert, muss jeden
  * Bereich als Ziel sehen. Gespeichert bleibt der Zustand trotzdem — nach
  * „Fertig" ist eingeklappt, was vorher eingeklappt war.
  */
 export function useEingeklappt(alleOffen: boolean): Einklappen {
-  const [menge, setMenge] = useState<Set<string>>(ladeEingeklappt)
+  const menge = useSyncExternalStore(abonnieren, holen, holen)
   const umschalten = useCallback((id: string) => {
     // Im Anpassen-Modus wäre ein Umschalten unsichtbar — es wirkte erst nach
     // „Fertig". Die Oberfläche bietet dort keinen Knopf an; das hier hält es,
     // falls doch einer durchrutscht.
     if (alleOffen) return
-    setMenge((vorher) => {
-      const naechste = umschaltenEingeklappt(vorher, id)
-      speichereEingeklappt(naechste)
-      return naechste
-    })
+    const naechste = umschaltenEingeklappt(holen(), id)
+    geteilt = naechste
+    speichereEingeklappt(naechste)
+    hoerer.forEach((rueckruf) => rueckruf())
   }, [alleOffen])
   return { istZu: (id) => !alleOffen && menge.has(id), umschalten }
 }

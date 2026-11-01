@@ -7,7 +7,7 @@ import { kachelUmschalten, kachelVerlaufId, type OffeneKachel } from './kachel-z
 import { PhasenErinnerung } from '../grows/PhasenErinnerung'
 import { V1Sheet } from '../../components/V1Sheet'
 import {
-  KOPF_KNOEPFE, MAX_ANGEHEFTET, ladeKopfKnoepfe, speichereKopfKnoepfe, umschalten,
+  KOPF_KNOEPFE, MAX_ANGEHEFTET, useKopfKnoepfe,
   type KopfKnopf,
 } from './kopf-knoepfe'
 import { MetricTile } from './MetricTile'
@@ -78,8 +78,13 @@ export type LiveScreenProps = {
   flipIsPlanned: boolean
   daysToFlip: number | null
   plantLine: string | null
-  /** Alle Zelte zur Auswahl; erst ab zwei erscheint der Umschalter. */
-  tents: TentDto[]
+  /**
+   * Als Inhalt eines Zelt-Abschnitts (mehrere Zelte): ohne eigenen Score-Ring,
+   * Eyebrow, Überschrift und „Sensoren live" — der Zeltkopf trägt den Score,
+   * die Seite die Zählung und die Systemwarnung. Ohne Angabe die Seite eines
+   * einzelnen Zelts, wie sie war.
+   */
+  eingebettet?: boolean
   /** Nur gesetzt, wenn die Überwachung SELBST ein Problem meldet (Watchdog). */
   systemWarning: { headline: string; detail: string } | null
   /** Die 24-h-Kurve je Messwert; fehlt sie, zeigt die Kachel ihr Zielband. */
@@ -94,7 +99,6 @@ export type LiveScreenProps = {
   chiller: KuehlerLivePayload | null
   /** Gesetzt, sobald der Nutzer eine eigene Anordnung hat oder gerade anpasst. */
   dashboard: DashboardPanel | null
-  onTent: (tentId: number) => void
   onRefresh: () => void
 }
 
@@ -116,7 +120,7 @@ export type DashboardPanel = {
 export function LiveScreen({
   tent, grow, score, scoreParts, climate, hydro, alleMetriken, sensorsLive,
   lastMeasurement, stageLine, weekLine, risks, tasks, timeline, timelineDates, plantLine,
-  flipIsPlanned, daysToFlip, tents, systemWarning, trends, chiller, dashboard, onTent, onRefresh,
+  flipIsPlanned, daysToFlip, eingebettet = false, systemWarning, trends, chiller, dashboard, onRefresh,
 }: LiveScreenProps) {
   const topRisk = risks[0] ?? null
   // Die eigene Anordnung zeichnet nur, wer eine hat oder gerade eine baut.
@@ -133,11 +137,11 @@ export function LiveScreen({
   const [offeneMetrik, setOffeneMetrik] = useState<OffeneKachel | null>(null)
 
   /* Fork AI: „⋯" neben dem Messen-Knopf. Die selten gebrauchten Handlungen
-     (Addback, Anpassen, Zeltwechsel) liegen darunter, damit die Kopfzeile auf
+     (Addback, Anpassen) liegen darunter, damit die Kopfzeile auf
      dem Telefon einzeilig bleibt statt drei vollbreite Knöpfe zu tragen. */
   const [weitereOffen, setWeitereOffen] = useState(false)
   const [knoepfeBearbeiten, setKnoepfeBearbeiten] = useState(false)
-  const [angeheftet, setAngeheftet] = useState<KopfKnopf[]>(ladeKopfKnoepfe)
+  const [angeheftet, anheften] = useKopfKnoepfe()
   const navigate = useNavigate()
   // Fork AI: Bereiche, Kacheln und Karten lassen sich einklappen. Im
   // Anpassen-Modus ist alles offen, damit jeder Bereich als Ziel sichtbar ist.
@@ -164,27 +168,24 @@ export function LiveScreen({
     else dashboard?.onToggleEditing()
   }
 
-  const anheften = (id: KopfKnopf) => {
-    const naechste = umschalten(angeheftet, id)
-    setAngeheftet(naechste)
-    speichereKopfKnoepfe(naechste)
-  }
-
+  const Huelle = eingebettet ? 'div' : 'main'
   return (
-    <main className="ls" data-audit="live-screen">
+    <Huelle className={eingebettet ? 'ls-zb-inhalt' : 'ls'} data-audit={eingebettet ? 'live-zelt-inhalt' : 'live-screen'}>
       {/* ---------- Kopfzeile ---------- */}
-      <header className="ls-head">
-        <ScoreRing value={score.value} tone={score.tone} />
+      <header className={classNames('ls-head', eingebettet && 'is-eingebettet')}>
+        {!eingebettet && <ScoreRing value={score.value} tone={score.tone} />}
 
         <div className="ls-head-title">
-          <div className="ls-eyebrow">Jetzt / Live · Grow-Score</div>
-          <h1 className={`ls-score-label is-${score.tone}`}>{score.label}</h1>
+          {!eingebettet && <div className="ls-eyebrow">Jetzt / Live · Grow-Score</div>}
+          {!eingebettet && <h1 className={`ls-score-label is-${score.tone}`}>{score.label}</h1>}
           <div className="ls-head-parts">{scoreParts}</div>
         </div>
 
-        <span className="ls-pill">
-          <i />{sensorsLive} Sensoren live
-        </span>
+        {!eingebettet && (
+          <span className="ls-pill">
+            <i />{sensorsLive} Sensoren live
+          </span>
+        )}
 
         <div className="ls-head-bar">
           <span className="ls-head-meta">
@@ -298,26 +299,13 @@ export function LiveScreen({
             </button>
           </>
         )}
-        {tents.length > 1 && (
-          <label className="ls-sheet-zelt">
-            Zelt
-            <select
-              className="ls-tent-select"
-              aria-label="Zelt"
-              value={tent?.id ?? ''}
-              onChange={(event) => { onTent(Number(event.target.value)); blattSchliessen() }}
-            >
-              {tents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-        )}
       </V1Sheet>
 
       {/* ---------- Systemwarnung ---------- */}
       {/* Wenn die Überwachung selbst schweigt, sind alle Kacheln darunter
           womöglich alte Zahlen — das muss ÜBER den Messwerten stehen, nicht
           in einer Benachrichtigung, die erst abends jemand liest. */}
-      {systemWarning && (
+      {!eingebettet && systemWarning && (
         <Link className="ls-syswarn" to="/handy?tab=push" data-audit="live-system-warning">
           <span className="ls-label">Systemüberwachung</span>
           <span className="ls-syswarn-text"><strong>{systemWarning.headline}</strong> — {systemWarning.detail}</span>
@@ -500,7 +488,7 @@ export function LiveScreen({
           )}
         </section>
       )}
-    </main>
+    </Huelle>
   )
 }
 

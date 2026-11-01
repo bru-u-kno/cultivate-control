@@ -101,7 +101,7 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
     expect(arten).not.toContain('home-assistant/unsubscribe-properties')
   })
 
-  test('Grenzwert-Meldung öffnet Live mit dem Zelt der Meldung, auch bei schon offenem Live', async ({ page, request }) => {
+  test('Grenzwert-Meldung klappt auf Live das Zelt der Meldung auf, auch bei schon offenem Live', async ({ page, request }) => {
     darfUeberspringen(!(await backendAntwortet(request)), 'Kein Backend unter GROW_OS_URL — ohne Demobestand gibt es keine Zelte zum Wählen.')
     // Grow 1 gehört dem White-Widow-Zelt, und vier andere Dateien benennen ihn
     // zeitweise um (formularfelder-kommen-an: „Probe 0"). Ohne das Schloss steht
@@ -112,34 +112,26 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
       // keine Überschreitung. Jetzt: /live/<zelt>, und Live wählt dieses Zelt.
       const frame = await huelle(page, `/app/${SLUG}/aufgaben`)
       await expect.poll(() => appPfad(frame)).toBe('/aufgaben')
-      const gewaehltesZelt = async () => {
-        // Die Zeltwahl steht im Blatt hinter „⋯"; ihr Wert ist das gewählte Zelt.
-        await frame.locator('[data-audit="live-more"]').click()
-        const wert = await frame.locator('select.ls-tent-select').inputValue()
-        await frame.locator('body').press('Escape')
-        await expect(frame.locator('select.ls-tent-select')).toHaveCount(0)
-        return wert
-      }
+      // Seit cc.303 hat jedes Zelt auf Live seinen Abschnitt: der Link klappt das Zelt der
+      // Meldung auf (und springt hin), statt ein gewähltes Zelt umzustellen.
+      const kopf = (zeltId: number) => frame.locator(`[data-audit="live-zelt"][data-zelt-id="${zeltId}"] [data-audit="zelt-kopf"]`)
+      const meta = (zeltId: number) => frame.locator(`[data-audit="live-zelt"][data-zelt-id="${zeltId}"] .ls-head-meta`)
 
       await tippe(page, `/app/${SLUG}/live/4`)
       await expect.poll(() => appPfad(frame)).toBe('/')
-      await expect(frame.locator('.ls-head-meta')).toContainText('Gorilla Glue')
-      expect(await gewaehltesZelt()).toBe('4')
+      await expect(kopf(4)).toHaveAttribute('aria-expanded', 'true')
+      await expect(meta(4)).toContainText('Gorilla Glue')
 
       // Zweiter Tipp, Live ist schon offen: anderes Zelt.
-      await tippe(page, `/app/${SLUG}/live/1`)
-      await expect(frame.locator('.ls-head-meta')).toContainText('White Widow')
-      expect(await gewaehltesZelt()).toBe('1')
+      await tippe(page, `/app/${SLUG}/live/2`)
+      await expect(kopf(2)).toHaveAttribute('aria-expanded', 'true')
 
-      // Selbst umschalten, weiterblättern, zurück: die eigene Wahl bleibt —
-      // der Link setzt sein Zelt nur einmal, nicht bei jeder Rückkehr.
-      // (Link-Zelt 4, selbst Zelt 1 — Zelt 1 ist auch die Standardwahl, die Live
-      // beim Neuaufbau ohnehin trifft; falsch wäre nur, wieder bei 4 zu landen.)
+      // Selbst zuklappen, weiterblättern, zurück: die eigene Wahl bleibt —
+      // der Link öffnet sein Zelt nur einmal, nicht bei jeder Rückkehr.
       await tippe(page, `/app/${SLUG}/live/4`)
-      await expect(frame.locator('.ls-head-meta')).toContainText('Gorilla Glue')
-      await frame.locator('[data-audit="live-more"]').click()
-      await frame.locator('select.ls-tent-select').selectOption('1')
-      await expect(frame.locator('.ls-head-meta')).toContainText('White Widow')
+      await expect(kopf(4)).toHaveAttribute('aria-expanded', 'true')
+      await kopf(4).click()
+      await expect(kopf(4)).toHaveAttribute('aria-expanded', 'false')
       await frame.evaluate(() => {
         history.pushState(null, '', '/grows')
         dispatchEvent(new PopStateEvent('popstate'))
@@ -147,13 +139,12 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
       await expect.poll(() => appPfad(frame)).toBe('/grows')
       await frame.evaluate(() => history.back())
       await expect.poll(() => appPfad(frame)).toBe('/')
-      await expect(frame.locator('.ls-head-meta')).toContainText('White Widow')
-      await page.waitForTimeout(500)
-      await expect(frame.locator('.ls-head-meta')).not.toContainText('Gorilla Glue')
+      await expect(kopf(4)).toHaveAttribute('aria-expanded', 'false')
+      await expect(meta(1)).toContainText('White Widow')
 
-      // Ein Zelt, das es nicht gibt: Live mit der normalen Wahl, kein leerer Schirm.
+      // Ein Zelt, das es nicht gibt: Live mit dem Standardzelt, kein leerer Schirm.
       await tippe(page, `/app/${SLUG}/live/999`)
-      await expect(frame.locator('.ls-head-meta')).toContainText('White Widow')
+      await expect(meta(1)).toContainText('White Widow')
 
       // Test-Push und Tagesbericht: /live ohne Zelt, aus einer anderen Seite heraus.
       await blaettere(frame, '/grows')

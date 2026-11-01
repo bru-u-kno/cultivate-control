@@ -9,6 +9,8 @@
  * beim Update, nichts, was der Entwickler des Originals mitziehen müsste.
  */
 
+import { useCallback, useSyncExternalStore } from 'react'
+
 const KEY = 'growos.live.kopfknoepfe'
 
 export type KopfKnopf = 'messen' | 'addback' | 'grow' | 'anpassen'
@@ -62,4 +64,28 @@ export function umschalten(aktuell: KopfKnopf[], id: KopfKnopf): KopfKnopf[] {
   if (aktuell.includes(id)) return aktuell.filter((eintrag) => eintrag !== id)
   const platz = [...aktuell, id]
   return platz.slice(Math.max(0, platz.length - MAX_ANGEHEFTET))
+}
+
+/**
+ * Dieselben angehefteten Knöpfe für jeden Bildschirm der Seite. Bei mehreren
+ * aufgeklappten Zelten gibt es mehrere; ein Anheften im Blatt des einen muss
+ * im anderen sofort stehen, nicht erst nach dem Neuladen.
+ */
+let geteilt: KopfKnopf[] | null = null
+const hoerer = new Set<() => void>()
+const holen = (): KopfKnopf[] => (geteilt ??= ladeKopfKnoepfe())
+const abonnieren = (rueckruf: () => void) => {
+  hoerer.add(rueckruf)
+  return () => { hoerer.delete(rueckruf) }
+}
+
+export function useKopfKnoepfe(): [KopfKnopf[], (id: KopfKnopf) => void] {
+  const angeheftet = useSyncExternalStore(abonnieren, holen, holen)
+  const anheften = useCallback((id: KopfKnopf) => {
+    const naechste = umschalten(holen(), id)
+    geteilt = naechste
+    speichereKopfKnoepfe(naechste)
+    hoerer.forEach((rueckruf) => rueckruf())
+  }, [])
+  return [angeheftet, anheften]
 }

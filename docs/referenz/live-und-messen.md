@@ -18,7 +18,9 @@
 
 ## Was es tut
 
-**Live.** Zwei feste Bänder, „Klima" und „Hydroponik · Nährlösung". Jede Kachel zeigt Zahl, Skala und Zielband; die Ziele kommen aus der Kette Grow → Hydro-System → Anbaustil (`SetpointProfileResolver`), überschrieben vom Feedchart, zuletzt vom eigenen Grenzwert. Klick auf eine Kachel klappt die 24-h-Kurve **unter** der Zeile auf — nur, wenn es mehr als einen Punkt gibt.
+**Live bei mehreren Zelten (cc.303).** Ab zwei Zelten hat jedes einen Abschnitt (`LiveZelt`): Kopf mit Pfeil links, Score-Ring, Name, Zustandswort und Phase; zugeklappt zusätzlich die Kernwerte Luft/RLF/VPD und, wenn das Zelt Hydro-Werte meldet, pH/EC/Wasser — gefärbt nach `urteilFuerMetrik`, also wie die Kachel. Aufgeklappt folgt der Inhalt des Zelts ohne zweiten Score. Welche Zelte offen sind, steht je Gerät im Browser (`growos.live.zelteOffen`, `zelt-offen.ts`); ohne Eintrag ist das Zelt mit dem laufenden Grow offen. Ein Link aus einer Meldung (`/live/<zelt>`) klappt sein Zelt auf. Mit nur einem Zelt bleibt die Seite ohne Kopf. Ein Zelt ohne Nährlösung zeigt kein Hydro-Band.
+
+**Live je Zelt.** Zwei feste Bänder, „Klima" und „Hydroponik · Nährlösung". Jede Kachel zeigt Zahl, Skala und Zielband; die Ziele kommen aus der Kette Grow → Hydro-System → Anbaustil (`SetpointProfileResolver`), überschrieben vom Feedchart, zuletzt vom eigenen Grenzwert. Klick auf eine Kachel klappt die 24-h-Kurve **unter** der Zeile auf — nur, wenn es mehr als einen Punkt gibt.
 
 Fehlt ein Sensor, fällt die Kachel auf die letzte Messung zurück, **je Kennzahl einzeln**. Darunter steht „Hand · vor 2 Std" oder „Automatik · vor 2 Std"; ab 36 h wird daraus „nachmessen?" bzw. „Automatik prüfen?". „▦ Anpassen" öffnet eigene Bereiche und Kacheln (Messwert, HA-Entität, Verlauf), je Zelt gespeichert.
 
@@ -79,7 +81,9 @@ Alle Frontend-Pfade unter `GrowDiary.React/src/`, alle Backend-Pfade unter `Grow
 
 | Aufgabe | Datei |
 |---|---|
-| Daten holen, Anpassen-Entwurf, 30-s-Takt | `pages/LiveDashboardPage.tsx` |
+| Daten holen, 30-s-Takt, Zelt-Abschnitte | `pages/LiveDashboardPage.tsx` |
+| Ein Zelt: Kopf, Inhalt, Anpassen-Entwurf | `features/live/LiveZelt.tsx`, `ZeltKopf.tsx` |
+| Ableitungen je Zelt, Kopfwerte, Merkzettel | `features/live/zelt-ansicht.ts`, `zelt-kopf.ts`, `zelt-offen.ts` |
 | Bildschirm zeichnen (Kopf, Bänder, Kühler, „Heute fällig", Zeitachse) | `features/live/LiveScreen.tsx` |
 | Score, Herkunft/Alter, Banddefinition | `features/live/live-model.ts` |
 | Kachel-Geometrie, Zielband, Nachkommastellen | `features/live/metric-tile-model.ts` |

@@ -5,6 +5,20 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.303
+
+**Live: jedes Zelt hat seinen eigenen Abschnitt — mit Score, Kernwerten und allem, was zu ihm gehört.**
+
+- **Anlass:** Die Live-Seite zeigte immer nur ein gewähltes Zelt; wer mehrere hat, musste erst das Zelt umschalten, und die Kacheln darunter hingen sichtbar an keinem Zelt. Das Trockenzelt war nur über das Zeltblatt hinter „⋯“ erreichbar.
+- **Neu: ein Abschnitt je Zelt.** Ab zwei Zelten steht auf Live für jedes Zelt ein Kopf: Pfeil links (wie bei allen Klappen der Seite), Score-Ring, Zeltname und Zustandswort („Stabil“, „Beobachten“, „Kritisch“), darunter die Phase („Blüte Tag 36 · Blütewoche 6 von 8–9“ bzw. „Trocknung · Tag 3 · Hauptphase“). Aufgeklappt folgt alles, was zu genau diesem Zelt gehört: Klima, Nährlösung, Risiken, Aufgaben, Kamera, Grow und Phasen. Der Zeltumschalter im Blatt „Weitere Handlungen“ entfällt.
+- **Zugeklappt siehst du die Kernwerte:** Luft, RLF und VPD stehen im Kopf, bei einem Zelt mit Hydro-Werten darunter eine zweite Zeile mit pH, EC und Wassertemperatur. Die Farbe folgt demselben Urteil wie die Kachel: grün im Zielband, gelb daneben, rot an der Grenze, weiß ohne Zielband. Der Kopf kann der Kachel darunter so nicht widersprechen.
+- **Ein Score je Zelt, nur im Kopf:** Der Score rechnet wie bisher aus den Zielbändern des Zelts, auch fürs Trockenzelt (dort aus den Zielen des Trocknungsplans). Aufgeklappt gibt es keinen zweiten Ring.
+- **Die App merkt es sich je Gerät:** Welche Zelte aufgeklappt sind, bleibt nach dem Neuladen stehen und gilt nur für das Gerät, an dem du es eingestellt hast. Ohne Merkzettel ist das Zelt mit dem laufenden Grow offen, die übrigen sind zu. Ein Link aus einer Meldung klappt sein Zelt auf und springt hin.
+- **Nur, was es gibt:** Ein Zelt ohne Nährlösung (zum Beispiel ein Trockenzelt oder ein Erdezelt) zeigt kein leeres Band „Hydroponik · Nährlösung“ mehr — auch dann, wenn es dein einziges Zelt ist. Läuft dort ein Hydro-Grow, bleiben die Platzhalter stehen, weil ein fehlender Wert dann bedeutet, dass etwas fehlt. Im Anpassen-Modus entsteht dadurch auch kein leerer Bereich.
+- **Ein einziges Zelt:** Sonst bleibt die Seite, wie sie war — ohne Zeltkopf, mit dem Score-Ring oben.
+- **Mehrere Zelte gleichzeitig offen:** Eingeklappte Bereiche, Kacheln und Karten sowie die angehefteten Kopfknöpfe gelten für alle Zelte gemeinsam am Gerät. Vorher hätten sich zwei offene Zelte beim Speichern gegenseitig überschrieben.
+- **Nachgeprüft:** Fünf neue Prüfungen am Demobestand mit vier Zelten (Score einmal je Zelt, Pfeil links, zweimal auf- und zuklappen, Merken nach dem Neuladen, kein Überstand bei 369 px) und Tests für Merkzettel, Kopfwerte und Zeltansicht; gezeigt, dass der Test zur Nährlösung ohne die Änderung rot wird.
+
 ## 2.0.0-cc.301
 
 **Pläne zuweisen: der Düngeplan an Grows, der Trocknungsplan an Trockenzelte — von der Seite Plan aus.**
