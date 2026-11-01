@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { backendAntwortet, darfUeberspringen } from './pflicht'
 import { gibSchloss, nimmSchloss } from './schloss'
 
 /**
@@ -9,7 +10,10 @@ import { gibSchloss, nimmSchloss } from './schloss'
 test.describe.configure({ mode: 'serial' })
 
 test.describe('Lichtplan', () => {
-  test.beforeEach(async () => { await nimmSchloss() })
+  test.beforeEach(async ({ request }) => {
+    darfUeberspringen(!(await backendAntwortet(request)), 'Kein Backend — der Lichtplan braucht die laufende App mit Demobestand.')
+    await nimmSchloss()
+  })
   test.afterEach(() => { gibSchloss() })
 
   // Leer anfangen und leer aufhören: der Bestand ist geteilt.
