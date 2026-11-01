@@ -15,6 +15,11 @@ function haHatEigenesZiel(): boolean {
   }
 }
 
+/** Nur im Home-Assistant-iframe: in einem eigenen Tab steht die Adresse in der Adresszeile, ein Neuladen bleibt dort. */
+function eingebettet(): boolean {
+  return window.parent !== window
+}
+
 export function useLetzteSeite(): void {
   const { pathname, search, hash } = useLocation()
   const navigate = useNavigate()
@@ -25,6 +30,7 @@ export function useLetzteSeite(): void {
   if (haZiel.current === null) haZiel.current = haHatEigenesZiel()
 
   useEffect(() => {
+    if (!eingebettet()) return
     if (start.current) {
       start.current = false
       const ziel = haZiel.current ? null : wiederherstellungsZiel(pathname, search, hash)
@@ -38,6 +44,7 @@ export function useLetzteSeite(): void {
   // Gezählt wird echte Bedienung, nicht Sichtbarkeit — beim Neuladen selbst feuern „hidden“ und „pagehide“, und ein
   // Neuladen nach Stunden im Hintergrund würde sich sonst als „gerade benutzt“ ausgeben.
   useEffect(() => {
+    if (!eingebettet()) return
     let zuletzt = 0
     const beruehren = () => {
       const jetzt = Date.now()
