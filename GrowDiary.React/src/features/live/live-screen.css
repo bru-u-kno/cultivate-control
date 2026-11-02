@@ -803,4 +803,16 @@
   .ls-head.is-eingebettet { gap: 10px; }
   .ls-head.is-eingebettet .ls-head-title { flex: 1 1 100%; }
   .ls-head.is-eingebettet .ls-head-parts { margin-top: 0; }
+
+  /* Der Zeltname ist eine Überschrift (Screenreader springen von Zelt zu Zelt),
+     sieht aber aus wie vorher: der Knopf darin trägt die ganze Gestaltung. */
+  .ls-zb-ueberschrift { margin: 0; font: inherit; }
+
+  /* Gesperrt, solange „Anpassen“ läuft: gelb gestrichelt, Schloss statt Pfeil. */
+  .ls-zb-kopf.is-gesperrt {
+    cursor: not-allowed; border-style: dashed; border-color: var(--warn); background: var(--warn-wash);
+  }
+  .ls-zb-kopf.is-gesperrt .ls-fold-pfeil,
+  .ls-zb-kopf.is-gesperrt:hover .ls-fold-pfeil { color: var(--warn-text); border-color: var(--warn); }
+  .ls-zb-sperre { color: var(--warn-text); font-weight: 500; }
 }

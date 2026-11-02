@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import type { TentDto } from '../../types'
 import { classNames } from '../../utils'
@@ -25,6 +25,8 @@ export function LiveZelt({ tent, ansicht, offen, onUmschalten, onRefresh }: {
   onRefresh: () => void
 }) {
   const inhaltId = `live-zelt-inhalt-${tent.id}`
+  // Läuft im Zelt „Anpassen“, bleibt es offen: ein Zuklappen risse den Entwurf mit.
+  const [anpassen, setAnpassen] = useState(false)
   return (
     <section
       className={classNames('ls-zb', !offen && 'zu')}
@@ -41,10 +43,11 @@ export function LiveZelt({ tent, ansicht, offen, onUmschalten, onRefresh }: {
         unterzeile={zeltUnterzeile(ansicht.stageLine, ansicht.weekLine, ansicht.metriken)}
         klima={kopfWerte(ansicht.metriken, KLIMA_KOPF)}
         hydro={kopfWerte(ansicht.metriken, HYDRO_KOPF)}
+        gesperrt={offen && anpassen}
       />
       {offen && (
         <div id={inhaltId}>
-          <LiveZeltInhalt tent={tent} onRefresh={onRefresh} ansicht={ansicht} eingebettet />
+          <LiveZeltInhalt tent={tent} onRefresh={onRefresh} ansicht={ansicht} eingebettet onAnpassen={setAnpassen} />
         </div>
       )}
     </section>
@@ -57,18 +60,25 @@ export function LiveZelt({ tent, ansicht, offen, onUmschalten, onRefresh }: {
  * zugeklapptes Zelt lädt nichts nach, sein Kopf kommt aus den Live-Werten, die
  * die Seite ohnehin für alle Zelte holt.
  */
-export function LiveZeltInhalt({ tent, onRefresh, ansicht, eingebettet = false, systemWarning = null }: {
+export function LiveZeltInhalt({ tent, onRefresh, ansicht, eingebettet = false, systemWarning = null, onAnpassen }: {
   tent: TentDto
   onRefresh: () => void
   ansicht: ZeltAnsicht
   eingebettet?: boolean
   systemWarning?: { headline: string; detail: string } | null
+  /** Meldet dem Zeltkopf, ob „Anpassen“ läuft — er sperrt sich dann gegen das Zuklappen. */
+  onAnpassen?: (laeuft: boolean) => void
 }) {
   // Anpassen-Modus: der Entwurf lebt hier, gespeichert wird erst auf Knopfdruck.
   // Je Zelt ein eigener Inhalt — Entwurf und Modus gehören damit von selbst zu
   // genau diesem Zelt.
   const [draft, setDraft] = useState<DashboardLayout | null>(null)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditingRoh] = useState(false)
+  // Immer über diese Funktion: der Zeltkopf muss jede Änderung erfahren, auch nach Speichern.
+  const setEditing = (laeuft: boolean) => { setEditingRoh(laeuft); onAnpassen?.(laeuft) }
+  // Verschwindet der Inhalt, ohne dass „Fertig“ gedrückt wurde, gibt es keinen Entwurf mehr —
+  // dann darf der Kopf nicht gesperrt bleiben.
+  useEffect(() => () => onAnpassen?.(false), [onAnpassen])
   const [savingLayout, setSavingLayout] = useState(false)
   const [layoutWarning, setLayoutWarning] = useState<string | null>(null)
 

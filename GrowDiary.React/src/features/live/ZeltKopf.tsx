@@ -11,7 +11,7 @@ import type { buildScore } from './live-model'
  *
  * Der Score steht NUR hier. Der aufgeklappte Inhalt trägt keinen zweiten Ring.
  */
-export function ZeltKopf({ name, offen, onUmschalten, inhaltId, score, unterzeile, klima, hydro }: {
+export function ZeltKopf({ name, offen, onUmschalten, inhaltId, score, unterzeile, klima, hydro, gesperrt = false }: {
   name: string
   offen: boolean
   onUmschalten: () => void
@@ -21,26 +21,61 @@ export function ZeltKopf({ name, offen, onUmschalten, inhaltId, score, unterzeil
   unterzeile: string | null
   klima: KopfWert[]
   hydro: KopfWert[]
+  /**
+   * Solange im Zelt „Anpassen“ läuft, lässt sich das Zelt nicht zuklappen: ein
+   * zugeklapptes Zelt wirft seinen ungespeicherten Entwurf weg, und das stumm.
+   */
+  gesperrt?: boolean
 }) {
+  const beschreibungId = `${inhaltId}-beschreibung`
+  // Der Knopfname bleibt kurz; Phase und Kernwerte kommen als Beschreibung dazu,
+  // sonst läse ein Screenreader den ganzen Kopf als einen langen Namen vor.
+  const scoreText = score.value == null ? score.label : `Score ${score.value}, ${score.label}`
+  const knopfName = gesperrt ? `${name}, ${scoreText}, gesperrt, solange Anpassen läuft` : `${name}, ${scoreText}`
+  const beschreibung = [
+    unterzeile,
+    ...(!offen ? [...klima, ...hydro].map((wert) => `${wert.label} ${wert.wert}${wert.einheit ? ` ${wert.einheit}` : ''}`) : []),
+  ].filter(Boolean).join(', ')
   return (
-    <button
-      type="button"
-      className={`ls-zb-kopf is-${score.tone}`}
-      aria-expanded={offen}
-      aria-controls={offen ? inhaltId : undefined}
-      onClick={onUmschalten}
-      data-audit="zelt-kopf"
-    >
-      <span className="ls-zb-zeile">
-        <span className="ls-fold-pfeil" aria-hidden="true">{offen ? '▾' : '▸'}</span>
-        <ZeltRing value={score.value} tone={score.tone} />
-        <strong>{name}</strong>
-        <span className="ls-zb-chip" data-audit="zelt-zustand">{score.label}</span>
-      </span>
-      {unterzeile && <span className="ls-zb-sub">{unterzeile}</span>}
-      {!offen && klima.length > 0 && <WerteZeile werte={klima} />}
-      {!offen && hydro.length > 0 && <WerteZeile werte={hydro} haarlinie />}
-    </button>
+    <h2 className="ls-zb-ueberschrift">
+      <button
+        type="button"
+        className={`ls-zb-kopf is-${score.tone}${gesperrt ? ' is-gesperrt' : ''}`}
+        aria-expanded={offen}
+        aria-controls={offen ? inhaltId : undefined}
+        aria-disabled={gesperrt || undefined}
+        aria-label={knopfName}
+        aria-describedby={beschreibung ? beschreibungId : undefined}
+        onClick={gesperrt ? undefined : onUmschalten}
+        data-audit="zelt-kopf"
+      >
+        <span className="ls-zb-zeile">
+          <span className="ls-fold-pfeil" aria-hidden="true">{gesperrt ? <Schloss /> : offen ? '▾' : '▸'}</span>
+          <ZeltRing value={score.value} tone={score.tone} />
+          <strong>{name}</strong>
+          <span className="ls-zb-chip" data-audit="zelt-zustand">{score.label}</span>
+        </span>
+        {gesperrt
+          ? (
+            <span className="ls-zb-sub ls-zb-sperre" data-audit="zelt-gesperrt">
+              Gesperrt, solange „Anpassen“ läuft. Erst „Speichern“ — oder mit „Fertig“ verwerfen —, dann lässt sich das Zelt zuklappen.
+            </span>
+          )
+          : unterzeile && <span className="ls-zb-sub">{unterzeile}</span>}
+        {!offen && klima.length > 0 && <WerteZeile werte={klima} />}
+        {!offen && hydro.length > 0 && <WerteZeile werte={hydro} haarlinie />}
+        {beschreibung && <span id={beschreibungId} hidden>{beschreibung}</span>}
+      </button>
+    </h2>
+  )
+}
+
+function Schloss() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="7" width="10" height="7" rx="1.5" />
+      <path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" />
+    </svg>
   )
 }
 

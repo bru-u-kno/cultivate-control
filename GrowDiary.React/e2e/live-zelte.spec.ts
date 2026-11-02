@@ -92,3 +92,47 @@ test('zwei offene Zelte teilen den Einklapp-Zustand — keines überschreibt das
   await expect(nachher.first().locator('.ls-cam .ls-fold-titel')).toHaveAttribute('aria-expanded', 'false')
   await expect(nachher.first().locator('[data-audit="live-tasks"] .ls-fold-titel')).toHaveAttribute('aria-expanded', 'false')
 })
+
+test('Anpassen sperrt den Zeltkopf: zuklappen geht erst nach „Fertig“, zweimal', async ({ page }) => {
+  await page.goto('/')
+  const abschnitt = page.locator('[data-audit="live-zelt"]').first()
+  const kopf = abschnitt.locator('[data-audit="zelt-kopf"]')
+  await expect(kopf).toHaveAttribute('aria-expanded', 'true')
+  for (let i = 0; i < 2; i++) {
+    await abschnitt.locator('[data-audit="live-more"]').click()
+    await page.locator('[data-audit="dashboard-customise"]').click()
+    // Gesperrt: Schloss statt Pfeil, Hinweis statt Phase, Tippen ändert nichts.
+    await expect(kopf).toHaveAttribute('aria-disabled', 'true')
+    await expect(kopf).toHaveAttribute('aria-label', /gesperrt/)
+    await expect(abschnitt.locator('[data-audit="zelt-gesperrt"]')).toContainText('Anpassen')
+    await expect(kopf.locator('.ls-fold-pfeil svg')).toBeVisible()
+    // Erzwungen: Playwright hält ein aria-disabled-Element für nicht anklickbar, ein Finger tippt trotzdem.
+    await kopf.click({ force: true })
+    await expect(kopf).toHaveAttribute('aria-expanded', 'true')
+    await expect(abschnitt.getByRole('button', { name: 'Fertig' })).toBeVisible()
+    // „Fertig“ gibt den Kopf wieder frei, beim zweiten Durchgang „Zurücksetzen“ (löscht nur die eigene Anordnung,
+    // im Demobestand gibt es keine — nichts, was andere Tests berührt).
+    await abschnitt.getByRole('button', { name: i === 0 ? 'Fertig' : 'Zurücksetzen' }).click()
+    await expect(kopf).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(abschnitt.locator('[data-audit="zelt-gesperrt"]')).toHaveCount(0)
+  }
+  await kopf.click()
+  await expect(kopf).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('Screenreader: der Zeltname ist eine Überschrift, der Knopfname bleibt kurz, die Kernwerte kommen als Beschreibung', async ({ page }) => {
+  await page.goto('/')
+  const zu = page.locator('[data-audit="live-zelt"]').nth(1)
+  await expect(zu.getByRole('heading', { level: 2 })).toHaveCount(1)
+  const kopf = zu.locator('[data-audit="zelt-kopf"]')
+  await expect(kopf).toHaveAttribute('aria-expanded', 'false')
+  // Name: „Zeltname, Score N, Zustand“ — ohne Phase und Messwerte.
+  const name = await kopf.getAttribute('aria-label')
+  expect(name).toMatch(/^.+, (Score \d+, )?(Stabil|Beobachten|Kritisch|Nicht bewertet|Einrichten)$/)
+  expect(name).not.toMatch(/°C|kPa|RLF/)
+  // Beschreibung: die Kernwerte des zugeklappten Kopfes.
+  const beschreibungId = await kopf.getAttribute('aria-describedby')
+  expect(beschreibungId).toBeTruthy()
+  const text = await page.locator(`[id="${beschreibungId}"]`).textContent()
+  expect(text).toMatch(/Luft [\d,.]+/)
+})
