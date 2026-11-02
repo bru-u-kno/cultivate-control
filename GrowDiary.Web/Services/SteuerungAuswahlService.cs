@@ -78,7 +78,7 @@ public sealed class SteuerungAuswahlService
             .Where(g => !string.IsNullOrWhiteSpace(g.EntityId))
             .Select(g => g.Modul)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return Alle.Where(a => a.Module.Any(zugeordnet.Contains)).Select(a => a.Kennung).ToList();
+        return Alle.Where(a => ModuleVon(a).Any(zugeordnet.Contains)).Select(a => a.Kennung).ToList();
     }
 
     /// <summary>
@@ -95,6 +95,18 @@ public sealed class SteuerungAuswahlService
         return [];
     }
 
+    /// <summary>
+    /// Die Module einer Steuerung, wie sie jetzt gelten. Die CO₂-Begasung läuft je Zelt (A-031): zu ihr gehören das Modul des
+    /// Bestand-Zeltes und das Modul jedes weiteren Zeltes mit CO₂ (<see cref="Co2Zelte.Module"/>) — der Bereitstellen-Ablauf legt
+    /// dann für jedes Zelt einen eigenen Satz Helfer, Rechenwerte und Automationen an. Ohne ein Zelt mit CO₂ bleibt es beim Modul <c>co2</c>.
+    /// </summary>
+    public static IReadOnlyList<string> ModuleVon(Art art)
+    {
+        if (!string.Equals(art.Kennung, Co2Modul.Basis, StringComparison.Ordinal)) return art.Module;
+        var zelte = Co2Zelte.Module;
+        return zelte.Count == 0 ? art.Module : zelte;
+    }
+
     /// <summary>Ob die Übersichts-Kennung (etwa „abluft") zu einer gewählten Steuerung gehört.</summary>
     public static bool Sichtbar(string uebersichtKennung, IReadOnlyCollection<string> gewaehlt)
         => Alle.Any(a => gewaehlt.Contains(a.Kennung) && a.Uebersicht.Contains(uebersichtKennung, StringComparer.Ordinal));
@@ -104,7 +116,7 @@ public sealed class SteuerungAuswahlService
     /// Automationen) — in der Reihenfolge, in der sie angelegt werden. Die Lampe hat keine: bei ihr genügt die Zuordnung.
     /// </summary>
     public static IReadOnlyList<string> Bausteinmodule(Art art)
-        => art.Module.Where(m => SteuerungBauteile.FuerModul(m).Count > 0).ToList();
+        => ModuleVon(art).Where(m => SteuerungBauteile.FuerModul(m).Count > 0).ToList();
 
     /// <summary>
     /// Gehört ein zweiter Entfeuchter zur Auswahl „Entfeuchter"? Nur, wenn der Nutzer es gesagt hat
@@ -122,11 +134,14 @@ public sealed class SteuerungAuswahlService
     private IEnumerable<string> ZaehlendeModule(Art art)
     {
         var zusatz = ZusatzGilt();
-        return art.Module.Where(m => zusatz || !string.Equals(m, SteuerungGeraeteRollen.ZusatzModul, StringComparison.OrdinalIgnoreCase));
+        return ModuleVon(art).Where(m => zusatz || !string.Equals(m, SteuerungGeraeteRollen.ZusatzModul, StringComparison.OrdinalIgnoreCase));
     }
 
-    private IReadOnlyList<GeraeteRolle> Pflichtliste(Art art)
-        => ZaehlendeModule(art).SelectMany(SteuerungGeraeteRollen.FuerModul).Where(r => r.Pflicht).ToList();
+    // Je Modul des Zeltes zählt jede Pflicht-Rolle einzeln: die Zuordnung steht unter „co2-z2/…“, nicht unter „co2/…“.
+    private IReadOnlyList<(string Modul, GeraeteRolle Rolle)> Pflichtliste(Art art)
+        => ZaehlendeModule(art)
+            .SelectMany(m => SteuerungGeraeteRollen.FuerModul(m).Where(r => r.Pflicht).Select(r => (m, r)))
+            .ToList();
 
     private HashSet<string> ZugeordneteRollen()
         => _steuerung.GetGeraete()
@@ -134,7 +149,7 @@ public sealed class SteuerungAuswahlService
             .Select(g => $"{g.Modul}/{g.Rolle}".ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);
 
-    private static string RollenSchluessel(GeraeteRolle r) => $"{r.Modul}/{r.Schluessel}".ToLowerInvariant();
+    private static string RollenSchluessel((string Modul, GeraeteRolle Rolle) p) => $"{p.Modul}/{p.Rolle.Schluessel}".ToLowerInvariant();
 
     /// <summary>Wie viele Pflicht-Rollen der Steuerung zugeordnet sind (nur gespeicherte Zuordnungen).</summary>
     public (int Zugeordnet, int Gesamt) Pflichtrollen(Art art)
@@ -148,7 +163,16 @@ public sealed class SteuerungAuswahlService
     public IReadOnlyList<string> FehlendePflichtrollen(Art art)
     {
         var gespeichert = ZugeordneteRollen();
-        return Pflichtliste(art).Where(r => !gespeichert.Contains(RollenSchluessel(r))).Select(r => r.Label).ToList();
+        return Pflichtliste(art).Where(p => !gespeichert.Contains(RollenSchluessel(p))).Select(p => ZeltAnhang(p.Modul, p.Rolle.Label)).ToList();
+    }
+
+    // Bei mehr als einem CO₂-Zelt steht das Zelt in der Meldung, sonst wüsste niemand, welches Gerät fehlt.
+    private static string ZeltAnhang(string modul, string label)
+    {
+        var stand = Co2Zelte.Aktuell;
+        if (!Co2Modul.IstCo2(modul) || stand.ZeltIds.Count < 2) return label;
+        var zelt = Co2Modul.ZeltId(modul) ?? stand.BestandZeltId;
+        return zelt is { } id ? $"{label} (Zelt {id})" : label;
     }
 
     private HashSet<string>? Gespeicherte()

@@ -7,6 +7,7 @@ namespace GrowDiary.Web.Tests.Services;
 /// <summary>
 /// Fork AI (A-016, Etappe 2): Welche Steuerungen der Nutzer hat — echte Datenbank, kein Mock.
 /// </summary>
+[Collection(Co2ZelteRegisterCollection.Name)]
 public sealed class SteuerungAuswahlTests : IDisposable
 {
     private readonly string _temp;
@@ -219,5 +220,53 @@ public sealed class SteuerungAuswahlTests : IDisposable
         Assert.Equal(["co2"], SteuerungAuswahlService.Bausteinmodule(SteuerungAuswahlService.Finden("co2")!));
         // Die Lampe hat Rollen, aber keine Bausteine — bei ihr genügt die Zuordnung.
         Assert.Empty(SteuerungAuswahlService.Bausteinmodule(SteuerungAuswahlService.Finden("licht")!));
+    }
+
+    [Fact]
+    public void DieCo2BegasungUmfasstJedesZeltMitCo2UndLegtFuerJedesBausteineAn()
+    {
+        var vorher = Co2Zelte.Aktuell;
+        try
+        {
+            var art = SteuerungAuswahlService.Finden("co2")!;
+
+            Co2Zelte.Festlegen(null, []);
+            Assert.Equal(["co2"], SteuerungAuswahlService.ModuleVon(art)); // noch kein Zelt: wie bisher
+
+            Co2Zelte.Festlegen(1, [1, 3]);
+            Assert.Equal(["co2", "co2-z3"], SteuerungAuswahlService.ModuleVon(art));
+            Assert.Equal(["co2", "co2-z3"], SteuerungAuswahlService.Bausteinmodule(art));
+            // Andere Steuerungen bleiben, wie sie sind.
+            Assert.Equal(["zuluft"], SteuerungAuswahlService.ModuleVon(SteuerungAuswahlService.Finden("zuluft")!));
+        }
+        finally { Co2Zelte.Festlegen(vorher.BestandZeltId, vorher.ZeltIds); }
+    }
+
+    [Fact]
+    public void DiePflichtgeraeteZaehlenJeZeltUndDieMeldungNenntDasZelt()
+    {
+        var vorher = Co2Zelte.Aktuell;
+        try
+        {
+            Co2Zelte.Festlegen(1, [1, 3]);
+            var art = SteuerungAuswahlService.Finden("co2")!;
+            var proZelt = SteuerungGeraeteRollen.FuerModul("co2").Count(r => r.Pflicht);
+            Assert.True(proZelt > 0);
+
+            Assert.Equal((0, 2 * proZelt), _auswahl.Pflichtrollen(art));
+
+            // Eine Zuordnung am zweiten Zelt zählt nur dort — und nicht für das Bestand-Zelt.
+            var rolle = SteuerungGeraeteRollen.FuerModul("co2").First(r => r.Pflicht);
+            _steuerung.SetGeraet("co2-z3", rolle.Schluessel, "sensor.eigene_flasche");
+            Assert.Equal((1, 2 * proZelt), _auswahl.Pflichtrollen(art));
+            var fehlt = _auswahl.FehlendePflichtrollen(art);
+            Assert.Contains($"{rolle.Label} (Zelt 1)", fehlt);
+            Assert.DoesNotContain($"{rolle.Label} (Zelt 3)", fehlt);
+
+            // Ein Zelt mit CO₂ allein: keine Zelt-Angabe in der Meldung.
+            Co2Zelte.Festlegen(1, [1]);
+            Assert.All(_auswahl.FehlendePflichtrollen(art), f => Assert.DoesNotContain("(Zelt", f));
+        }
+        finally { Co2Zelte.Festlegen(vorher.BestandZeltId, vorher.ZeltIds); }
     }
 }

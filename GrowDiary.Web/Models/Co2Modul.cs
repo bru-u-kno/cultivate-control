@@ -32,6 +32,11 @@ public static class Co2Modul
         @"(?<=\b(?:input_number|input_boolean|input_datetime|counter|sensor|binary_sensor|automation|script)\.)co2_",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly System.Text.Json.JsonSerializerOptions Unescaped = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     /// <summary>Das Modul eines Zeltes: das Bestand-Zelt <see cref="Basis"/>, jedes andere <c>co2-z{id}</c>.</summary>
     /// <param name="zeltId">Das Zelt.</param>
     /// <param name="bestandZeltId">Das Zelt, dem die vorhandenen Objekte gehören — oder <c>null</c>, wenn es noch keins gibt.</param>
@@ -90,7 +95,9 @@ public static class Co2Modul
     public static JsonObject Vorlage(JsonObject vorlage, int? zeltId)
     {
         if (zeltId is null) return vorlage;
-        var kopie = JsonNode.Parse(Text(vorlage.ToJsonString(), zeltId)) as JsonObject
+        // Ohne Escapes serialisieren: ToJsonString() schreibt ' als \u0027, und dann steht vor „input_number.co2_…“ in
+        // states('input_number.co2_…') eine „7“ statt einer Wortgrenze — die Kennung bliebe die des Bestand-Zeltes.
+        var kopie = JsonNode.Parse(Text(vorlage.ToJsonString(Unescaped), zeltId)) as JsonObject
             ?? throw new InvalidOperationException("Die Vorlage ist nach dem Umstellen kein Objekt mehr.");
         if (kopie["alias"] is JsonValue alias && alias.TryGetValue<string>(out var text) && text.StartsWith("CO2 ", StringComparison.Ordinal))
         {

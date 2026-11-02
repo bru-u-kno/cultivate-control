@@ -95,4 +95,43 @@ public sealed class Co2ModulTests
         Assert.DoesNotContain("co2_zielwert'", z.Replace("co2_z2_zielwert", ""));
         Assert.Equal(vorlage, Co2Modul.Text(vorlage, null));        // Bestand unverändert
     }
+
+    private static readonly System.Text.Json.JsonSerializerOptions Lesbar = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    [Fact]
+    public void Vorlage_StelltAuchKennungenInAnfuehrungszeichenUm()
+    {
+        // In Vorlagen stehen Kennungen in states('…'). ToJsonString() schreibt ' als ' — die Umstellung muss trotzdem greifen.
+        var vorlage = System.Text.Json.Nodes.JsonNode.Parse(
+            "{\"alias\":\"CO2 Dosierung\",\"variables\":{\"rest\":\"{{ states('input_number.co2_flasche_rest') | float(0) }}\"},\"entity_id\":\"sensor.co2_impuls_bedarf\"}")!.AsObject();
+
+        var text = Co2Modul.Vorlage(vorlage, 2).ToJsonString(Lesbar);
+
+        Assert.Contains("states('input_number.co2_z2_flasche_rest')", text);
+        Assert.Contains("sensor.co2_z2_impuls_bedarf", text);
+        Assert.Contains("CO2 Z2 Dosierung", text);
+        Assert.DoesNotContain("co2_flasche_rest", text.Replace("co2_z2_flasche_rest", ""));
+    }
+
+    [Fact]
+    public void AlleMitgeliefertenVorlagen_GehoerenFuerEinZeltRestlosDiesemZelt()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !Directory.Exists(Path.Combine(dir, "GrowDiary.Web", "Vorlagen"))) dir = Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        var dateien = Directory.GetFiles(Path.Combine(dir!, "GrowDiary.Web", "Vorlagen", "co2"), "*.json");
+        Assert.NotEmpty(dateien);
+        var fremd = new System.Text.RegularExpressions.Regex(
+            @"\b(?:input_number|input_boolean|input_datetime|counter|sensor|binary_sensor|automation|script)\.co2_(?!z2_)[a-z0-9_]+");
+
+        foreach (var datei in dateien)
+        {
+            var vorlage = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(datei))!.AsObject();
+            var text = Co2Modul.Vorlage(vorlage, 2).ToJsonString(Lesbar);
+            Assert.True(!fremd.IsMatch(text), $"{Path.GetFileName(datei)}: Kennung des Bestand-Zeltes übrig: {fremd.Match(text).Value}");
+        }
+    }
 }

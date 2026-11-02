@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.312
+
+**CO₂ je Zelt, Teil 3: Der Einrichtungs-Assistent legt für jedes Zelt mit CO₂ einen eigenen Satz an, und die Dosier-Automation des zweiten Zeltes liest jetzt wirklich nur sein eigenes Zelt.**
+
+- **Anlass:** Mit cc.308 und cc.310 kann jedes Zelt mit „CO₂-Begasung“ seine eigene Steuerung und Flasche haben. Beim Einrichten kannte der Assistent aber nur das erste Zelt: Helfer, Rechenwerte und Automationen für weitere Zelte mussten von Hand angestoßen werden. Das ist jetzt Teil von „Alles Gewählte bereitstellen“.
+- **Was sich ändert:** Die Auswahl „CO₂-Begasung“ umfasst alle Zelte mit CO₂. Zuordnen, Zählen der Pflichtgeräte und Bereitstellen laufen je Zelt; fehlt ein Gerät, steht das Zelt in der Meldung („Licht-Status (Zelt 2)“). Mit nur einem CO₂-Zelt sieht alles aus wie vorher.
+- **Gefundener Fehler, behoben:** Beim ersten Test mit zwei CO₂-Zelten in einer frischen Home-Assistant-Anlage zeigte die Dosier-Automation des zweiten Zeltes noch auf sieben Helfer des ersten (Flaschenrest, Wartezeit, Zeltvolumen, Impuls-Bedarf und weitere). Der Grund: Beim Umstellen der Namen wurde jedes Hochkomma in `states('…')` zu `'`, und die Kennung dahinter blieb unverändert. Das hätte das zweite Ventil mit den Werten des ersten Zeltes dosiert. Jetzt werden die Kennungen auch dort umgestellt; ein Test prüft alle mitgelieferten CO₂-Vorlagen für ein zweites Zelt auf übrig gebliebene Kennungen des ersten. Das erste Zelt war nie betroffen.
+- **Gemessen am Test-Home-Assistant mit zwei CO₂-Zelten:** 44 Helfer, 12 Rechenwerte und 6 Automationen (je Zelt Dosierung, Wächter, Licht-aus-Sicherung); keine Kennung doppelt, jede Automation nennt nur Geräte ihres Zeltes, die Startwerte beider Zelte sind gleich, die CO₂-Seite lädt je Zelt mit Zeltwechsel.
+
 ## 2.0.0-cc.311
 
 **Das Prüfprotokoll bleibt klein: Seitenaufrufe stehen nicht mehr darin, Altes verschwindet nach 90 Tagen.**

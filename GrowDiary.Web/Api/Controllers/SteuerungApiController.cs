@@ -234,7 +234,7 @@ public sealed class SteuerungApiController : ApiControllerBase
         var eintraege = SteuerungAuswahlService.Alle.Select(a =>
         {
             var (zugeordnet, gesamt) = auswahl.Pflichtrollen(a);
-            return new SteuerungAuswahlEintragDto(a.Kennung, a.Titel, a.Beschreibung, gewaehlt.Contains(a.Kennung), zugeordnet, gesamt, SteuerungAuswahlService.Bausteinmodule(a), a.Module, auswahl.FehlendePflichtrollen(a));
+            return new SteuerungAuswahlEintragDto(a.Kennung, a.Titel, a.Beschreibung, gewaehlt.Contains(a.Kennung), zugeordnet, gesamt, SteuerungAuswahlService.Bausteinmodule(a), SteuerungAuswahlService.ModuleVon(a), auswahl.FehlendePflichtrollen(a));
         }).ToList();
         return new SteuerungAuswahlDto(auswahl.Gespeichert(), eintraege);
     }
