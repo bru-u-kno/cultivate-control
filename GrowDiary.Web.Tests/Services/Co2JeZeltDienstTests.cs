@@ -221,6 +221,17 @@ public sealed class Co2JeZeltDienstTests : IDisposable
     }
 
     [Fact]
+    public void KostenArtikel_AllerZelte_SindDieFlaschenJedesZeltes()
+    {
+        var repo = new SteuerungRepository(_pfade);
+        repo.SetEinstellungen("co2", new Co2Einstellungen { KostenArtikelId = 11 });
+        repo.SetEinstellungen($"co2-z{_zelt2}", new Co2Einstellungen { KostenArtikelId = 22 });
+
+        Assert.Equal([11, 22], Bestand().KostenArtikelAllerZelte().OrderBy(i => i));
+        Assert.Equal([11, 22], Bestand().Fuer(_zelt2).KostenArtikelAllerZelte().OrderBy(i => i));
+    }
+
+    [Fact]
     public async Task Worker_BewirtschaftetJedesZeltMitEinstellungen_UndNurSeineHelfer()
     {
         var repo = new SteuerungRepository(_pfade);

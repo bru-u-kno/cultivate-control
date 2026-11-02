@@ -550,13 +550,14 @@ public sealed class KostenApiController : ApiControllerBase
         // (Prüfer 18.10.2026) — deshalb bleibt die Oberfläche hier, wie sie war (offener Punkt).
         var ueberSchluessel = KiZugriffKontext.Aus(HttpContext) is not null;
         if (ueberSchluessel && zeitpunkt > DateTime.UtcNow.AddMinutes(5)) return BadRequestError("zeitpunkt_future", "Der Zeitpunkt liegt in der Zukunft.");
-        var co2Artikel = ueberSchluessel ? co2.Einstellungen.KostenArtikelId : null;
+        IReadOnlySet<int> co2Artikel = ueberSchluessel ? co2.KostenArtikelAllerZelte() : new HashSet<int>();
 
         // Erst alles pruefen, dann alles schreiben.
         foreach (var zeile in request.Zeilen)
         {
-            if (co2Artikel is { } ca && zeile.ArtikelId == ca)
+            if (co2Artikel.Contains(zeile.ArtikelId))
             {
+                var ca = zeile.ArtikelId;
                 return BadRequestError("co2_bucht_selbst",
                     $"Den Verbrauch von Artikel {ca} bucht die CO₂-Steuerung selbst — eine Buchung von Hand stünde doppelt in den Kosten.");
             }

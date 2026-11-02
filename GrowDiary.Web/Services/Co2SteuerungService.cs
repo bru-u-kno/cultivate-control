@@ -151,6 +151,20 @@ public sealed class Co2SteuerungService : IStartwertDienst
     private IReadOnlyDictionary<string, double> FuehrungDurchPlan()
         => _zeltId is null ? _wochenplan.GefuehrteHelfer() : new Dictionary<string, double>();
 
+    /// <summary>
+    /// Die Verbrauchsartikel (CO₂-Flaschen), die die CO₂-Steuerung <b>aller</b> Zelte selbst bucht. Eine Buchung von Hand auf einen davon
+    /// stünde doppelt in den Kosten. Jedes Zelt hat seine eigene Flasche, es können aber mehrere denselben Artikel führen.
+    /// </summary>
+    public IReadOnlySet<int> KostenArtikelAllerZelte()
+    {
+        var ids = new HashSet<int>();
+        foreach (var modul in new[] { Modul }.Concat(Co2Zelte.Module))
+        {
+            if (_repo.GetEinstellungen<Co2Einstellungen>(modul)?.KostenArtikelId is { } id) ids.Add(id);
+        }
+        return ids;
+    }
+
     /// <summary>Das Register der CO₂-Zelte neu setzen — nach jeder Änderung an den Zelten (Flag „mit CO₂-Begasung“, anlegen, archivieren, löschen).</summary>
     public void RegisterAktualisieren() => Co2ZeltWahl.Aktualisieren(_tents, _repo, _logger);
 

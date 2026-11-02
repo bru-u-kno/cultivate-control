@@ -80,7 +80,7 @@ public sealed class Co2ZeltWahlTests : IDisposable
         Flag(_erstes, true);
         Co2ZeltWahl.Aktualisieren(_zelte, _repo);
         var zweites = _zelte.CreateTent(new Tent { Name = "Zweites", HasCo2Enrichment = true }).Id;
-        Flag(_erstes, false);   // Bru nimmt dem alten Zelt das Flag …
+        Flag(_erstes, false);   // der Nutzer nimmt dem alten Zelt das Flag …
 
         var stand = Co2ZeltWahl.Aktualisieren(_zelte, _repo);
 
