@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace GrowDiary.Web.Models;
@@ -81,4 +82,20 @@ public static class Co2Modul
     /// </summary>
     public static string Text(string vorlage, int? zeltId)
         => zeltId is null ? vorlage : KennungMuster.Replace(vorlage, $"co2_z{zeltId}_");
+
+    /// <summary>
+    /// Eine Automations-Vorlage für ein Zelt: Kennungen im Text und der Alias („CO2 Wächter“ → „CO2 Z2 Wächter“) werden umgestellt,
+    /// Rollen-Platzhalter bleiben. Ohne Zelt kommt dieselbe Vorlage zurück. Die Eingabe wird nicht verändert.
+    /// </summary>
+    public static JsonObject Vorlage(JsonObject vorlage, int? zeltId)
+    {
+        if (zeltId is null) return vorlage;
+        var kopie = JsonNode.Parse(Text(vorlage.ToJsonString(), zeltId)) as JsonObject
+            ?? throw new InvalidOperationException("Die Vorlage ist nach dem Umstellen kein Objekt mehr.");
+        if (kopie["alias"] is JsonValue alias && alias.TryGetValue<string>(out var text) && text.StartsWith("CO2 ", StringComparison.Ordinal))
+        {
+            kopie["alias"] = Name(text, zeltId);
+        }
+        return kopie;
+    }
 }

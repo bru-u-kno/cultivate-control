@@ -297,11 +297,11 @@ public static class SteuerungGeraeteRollen
 
 
     public static IReadOnlyList<GeraeteRolle> FuerModul(string modul)
-        => Alle.Where(rolle => string.Equals(rolle.Modul, modul, StringComparison.OrdinalIgnoreCase)).ToList();
+        => Alle.Where(rolle => string.Equals(rolle.Modul, Co2Modul.BasisModul(modul), StringComparison.OrdinalIgnoreCase)).ToList();
 
     public static GeraeteRolle? Finden(string modul, string schluessel)
         => Alle.FirstOrDefault(rolle
-            => string.Equals(rolle.Modul, modul, StringComparison.OrdinalIgnoreCase)
+            => string.Equals(rolle.Modul, Co2Modul.BasisModul(modul), StringComparison.OrdinalIgnoreCase)
             && string.Equals(rolle.Schluessel, schluessel, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Module, die überhaupt Rollen haben — speist die Chip-Leiste der Geräteseite.</summary>
