@@ -105,6 +105,8 @@ public static class GrenzModus
 public sealed class Co2Tag
 {
     public int Id { get; set; }
+    /// <summary>Das Zelt, zu dem der Tag gehört — <c>null</c> für das Bestand-Zelt (Tabelle <c>ForkCo2Tage</c>).</summary>
+    public int? ZeltId { get; set; }
     /// <summary>Kalendertag in Ortszeit, yyyy-MM-dd.</summary>
     public string Datum { get; set; } = string.Empty;
     public int? GrowId { get; set; }

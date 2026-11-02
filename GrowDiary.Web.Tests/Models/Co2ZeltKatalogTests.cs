@@ -8,6 +8,7 @@ namespace GrowDiary.Web.Tests.Models;
 /// Der Katalog, die Rollen und die Vorlagen der CO₂-Steuerung eines weiteren Zeltes: abgeleitet aus dem Bestand, ohne dass sich
 /// am Bestand-Zelt etwas ändert.
 /// </summary>
+[Collection(GrowDiary.Web.Tests.Services.Co2ZelteRegisterCollection.Name)]
 public sealed class Co2ZeltKatalogTests : IDisposable
 {
     private readonly Co2Zelte.Stand _vorher = Co2Zelte.Aktuell;

@@ -113,6 +113,53 @@ public sealed class Co2SteuerungService : IStartwertDienst
     private readonly SteuerungMittelwertService _mittel;
     private readonly ILogger<Co2SteuerungService> _logger;
 
+    // CO₂ je Zelt: der Dienst aus der Abhängigkeits-Einspritzung gehört dem Bestand-Zelt (_zeltId == null, Modul „co2“);
+    // für jedes weitere Zelt liefert Fuer() eine Kopie mit dessen Zelt und Modul.
+    private int? _zeltId;
+    private string _modul = Modul;
+
+    /// <summary>Das Zelt dieses Dienstes — <c>null</c> beim Bestand-Zelt.</summary>
+    public int? ZeltId => _zeltId;
+
+    /// <summary>Das Modul dieses Dienstes: <c>co2</c> oder <c>co2-z{id}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Der Dienst eines Zeltes. Das Bestand-Zelt (und ein Zelt ohne eigenes Register) bekommt diesen Dienst selbst.</summary>
+    public Co2SteuerungService Fuer(int zeltId)
+    {
+        if (Co2Zelte.Aktuell.BestandZeltId is { } b && b == zeltId) return Bestand();
+        var kopie = (Co2SteuerungService)MemberwiseClone();
+        kopie._zeltId = zeltId;
+        kopie._modul = Co2Modul.Fuer(zeltId, Co2Zelte.Aktuell.BestandZeltId);
+        return kopie;
+    }
+
+    /// <summary>Der Dienst des Bestand-Zeltes.</summary>
+    public Co2SteuerungService Bestand()
+    {
+        if (_zeltId is null) return this;
+        var kopie = (Co2SteuerungService)MemberwiseClone();
+        kopie._zeltId = null;
+        kopie._modul = Modul;
+        return kopie;
+    }
+
+    /// <summary>
+    /// Welche Helfer der Wochenplan führt. Er kennt nur die Helfer des Bestand-Zeltes; ein weiteres Zelt wird
+    /// (noch) nicht vom Wochenplan geführt, seine Werte gelten, wie gespeichert.
+    /// </summary>
+    private IReadOnlyDictionary<string, double> FuehrungDurchPlan()
+        => _zeltId is null ? _wochenplan.GefuehrteHelfer() : new Dictionary<string, double>();
+
+    /// <summary>Die Kennung eines CO₂-Objekts dieses Zeltes (Bestand: unverändert).</summary>
+    private string E(string bestandKennung) => Co2Modul.Id(bestandKennung, _zeltId);
+
+    /// <summary>Die Dosier-Automation dieses Zeltes: beim Bestand die Katalog-Kennung des Namensraums, sonst die neutrale des Zeltes.</summary>
+    private string AutomatikId => AutomatikKennung(_zeltId);
+
+    private static string AutomatikKennung(int? zeltId)
+        => zeltId is null ? Entitaeten.Automatik : Co2Modul.Id("automation.co2_dosierung", zeltId);
+
     public Co2SteuerungService(
         SteuerungRepository repo,
         KostenRepository kosten,
@@ -152,7 +199,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
     {
         get
         {
-            var e = _repo.GetEinstellungen<Co2Einstellungen>(Modul) ?? new Co2Einstellungen();
+            var e = _repo.GetEinstellungen<Co2Einstellungen>(_modul) ?? new Co2Einstellungen();
             e.ZeltvolumenM3 = WirksamesZeltvolumen(e.ZeltvolumenM3).Volumen;
             return e;
         }
@@ -171,9 +218,14 @@ public sealed class Co2SteuerungService : IStartwertDienst
     {
         var spanne = SteuerungBauteile.Spanne(Entitaeten.Zeltvolumen);
         var (min, max) = (spanne.Min, spanne.Max);
-        var mitCo2 = _tents.GetTents().Where(t => t.Status == TentStatus.Active && t.HasCo2Enrichment).ToList();
+        // Zelt des Dienstes; beim Bestand das Bestand-Zelt des Registers. Fehlt es dort (noch nicht gesetzt), gilt die alte Regel:
+        // genau EIN aktives Zelt mit CO₂.
+        var zeltId = _zeltId ?? Co2Zelte.Aktuell.BestandZeltId;
+        var mitCo2 = zeltId is { } id
+            ? _tents.GetTents().Where(t => t.Id == id && t.Status == TentStatus.Active).ToList()
+            : _tents.GetTents().Where(t => t.Status == TentStatus.Active && t.HasCo2Enrichment).ToList();
         string? grund;
-        if (mitCo2.Count == 0) grund = "Kein Zelt ist als „mit CO₂-Begasung“ eingetragen.";
+        if (mitCo2.Count == 0) grund = zeltId is null ? "Kein Zelt ist als „mit CO₂-Begasung“ eingetragen." : "Das Zelt gibt es nicht oder es ist archiviert.";
         else if (mitCo2.Count > 1) grund = "Mehrere Zelte haben CO₂-Begasung.";
         else
         {
@@ -194,8 +246,8 @@ public sealed class Co2SteuerungService : IStartwertDienst
         var fehler = Pruefen(e);
         if (fehler.Count > 0) return (null, fehler, false);
 
-        var vorher = _repo.GetEinstellungen<Co2Einstellungen>(Modul);
-        _repo.SetEinstellungen(Modul, e);
+        var vorher = _repo.GetEinstellungen<Co2Einstellungen>(_modul);
+        _repo.SetEinstellungen(_modul, e);
         var erreicht = await NachHomeAssistantSchreibenAsync(e, ct, AutomatikSchalten(vorher, e));
 
         // Das Mittelungsfenster ist eine Option des Filter-Helfers, kein
@@ -204,7 +256,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         // wirklich geändert hat, nie im stündlichen Lauf.
         if (e.RhMittelMinuten is { } minuten && minuten != vorher?.RhMittelMinuten)
         {
-            var fensterGesetzt = await _mittel.FensterSetzenAsync(Entitaeten.RhMittel, minuten, ct);
+            var fensterGesetzt = await _mittel.FensterSetzenAsync(E(Entitaeten.RhMittel), minuten, ct);
             if (!fensterGesetzt)
             {
                 // Gespeichert bleibt, was in Home Assistant wirklich gilt. Vorher
@@ -212,7 +264,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
                 // sah „unverändert" und versuchte es nie wieder, während die Seite
                 // ein Fenster zeigte, das es nicht gab.
                 e.RhMittelMinuten = vorher?.RhMittelMinuten;
-                _repo.SetEinstellungen(Modul, e);
+                _repo.SetEinstellungen(_modul, e);
             }
             erreicht &= fensterGesetzt;
         }
@@ -232,7 +284,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
     {
         var e = Einstellungen;
         if (!WirksamesZeltvolumen(e.ZeltvolumenM3).Quelle.AusMassen) return true;
-        return await NachHomeAssistantSchreibenAsync(e, ct, mitAutomatik: false, nur: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Entitaeten.Zeltvolumen });
+        return await NachHomeAssistantSchreibenAsync(e, ct, mitAutomatik: false, nur: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { E(Entitaeten.Zeltvolumen) });
     }
 
     // Wertebereiche der Helfer in Home Assistant. Ein Wert ausserhalb nimmt
@@ -355,8 +407,9 @@ public sealed class Co2SteuerungService : IStartwertDienst
     /// <summary>Der laufende Grow (der älteste mit Status Running) und seine Phase heute.</summary>
     public (GrowRun? Grow, GrowStage? Stage) LaufenderGrow()
     {
+        // Beim Bestand gilt wie bisher der älteste laufende Grow; ein weiteres Zelt folgt dem Grow IN seinem Zelt.
         var grow = _grows.GetActiveGrows()
-            .Where(g => g.Status == GrowStatus.Running)
+            .Where(g => g.Status == GrowStatus.Running && (_zeltId is null || g.TentId == _zeltId))
             .OrderBy(g => g.StartDate)
             .FirstOrDefault();
         return grow is null ? (null, null) : (grow, GrowStageResolver.Resolve(grow, DateTime.Today));
@@ -504,16 +557,16 @@ public sealed class Co2SteuerungService : IStartwertDienst
     /// (<see cref="AutomatikKennungen"/>). Ohne Angabe die Katalog-Kennung.
     /// </param>
     public static IReadOnlyList<(string Domain, string Dienst, string Entity)> Schalterliste(
-        Co2Einstellungen e, bool mitAutomatik, IReadOnlyList<string>? automatiken = null)
+        Co2Einstellungen e, bool mitAutomatik, IReadOnlyList<string>? automatiken = null, int? zeltId = null)
     {
         var liste = new List<(string, string, string)>
         {
-            ("input_boolean", e.Autokalibrierung ? "turn_on" : "turn_off", Entitaeten.Autokalibrierung),
-            ("input_boolean", e.AbluftDrosseln ? "turn_on" : "turn_off", Entitaeten.AbluftDrosseln),
+            ("input_boolean", e.Autokalibrierung ? "turn_on" : "turn_off", Co2Modul.Id(Entitaeten.Autokalibrierung, zeltId)),
+            ("input_boolean", e.AbluftDrosseln ? "turn_on" : "turn_off", Co2Modul.Id(Entitaeten.AbluftDrosseln, zeltId)),
         };
         if (mitAutomatik)
         {
-            foreach (var automatik in automatiken ?? [Entitaeten.Automatik])
+            foreach (var automatik in automatiken ?? [AutomatikKennung(zeltId)])
             {
                 liste.Add(("automation", e.AutomatikAktiv ? "turn_on" : "turn_off", automatik));
             }
@@ -532,10 +585,12 @@ public sealed class Co2SteuerungService : IStartwertDienst
     /// wie bisher. Mit Liste nur, was es wirklich gibt; leer, wenn es keine
     /// Dosierung gibt.
     /// </returns>
-    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle)
+    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle, int? zeltId = null)
     {
-        if (alle.Count == 0) return [Entitaeten.Automatik];
-        var dosierung = SteuerungBauteile.FuerModul(Modul).Single(b => b.EntityId == Entitaeten.Automatik);
+        var kennung = AutomatikKennung(zeltId);
+        if (alle.Count == 0) return [kennung];
+        var modul = zeltId is { } z ? Co2Modul.Fuer(z, Co2Zelte.Aktuell.BestandZeltId) : Modul;
+        var dosierung = SteuerungBauteile.FuerModul(modul).Single(b => b.EntityId == kennung);
         return SteuerungBauteile.AutomationFinden(dosierung, alle);
     }
 
@@ -555,9 +610,9 @@ public sealed class Co2SteuerungService : IStartwertDienst
         if (nur is not null) mitAutomatik = false;
 
         var (warm, mittel, kuehl) = WirksameZiele(e, PlanZielPpm());
-        var gefuehrt = _wochenplan.GefuehrteHelfer();
-        var rhWirksam = gefuehrt.TryGetValue(Entitaeten.RhObergrenze, out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
-        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC), nur);
+        var gefuehrt = FuehrungDurchPlan();
+        var rhWirksam = gefuehrt.TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
+        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC, _zeltId), nur);
 
         var alles = true;
         foreach (var (entity, wert) in zahlen)
@@ -574,14 +629,14 @@ public sealed class Co2SteuerungService : IStartwertDienst
         IReadOnlyList<string>? automatiken = null;
         if (mitAutomatik)
         {
-            automatiken = AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct));
+            automatiken = AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct), _zeltId);
             if (automatiken.Count == 0)
             {
                 _logger.LogWarning("CO₂-Automatik: In Home Assistant gibt es keine Dosier-Automation — nichts geschaltet.");
                 alles = false;
             }
         }
-        foreach (var (domain, dienst, entity) in Schalterliste(e, mitAutomatik, automatiken).Where(s => nur is null || nur.Contains(s.Entity)))
+        foreach (var (domain, dienst, entity) in Schalterliste(e, mitAutomatik, automatiken, _zeltId).Where(s => nur is null || nur.Contains(s.Entity)))
         {
             alles &= await _ha.CallEntityServiceAsync(settings, domain, dienst, entity, ct);
         }
@@ -605,7 +660,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
     /// in Home Assistant steht.</para>
     public static IReadOnlyList<(string Entity, double Wert)> Schreibliste(
         Co2Einstellungen e, int warm, int mittel, int kuehl, IEnumerable<string> vomWochenplanGefuehrt,
-        double? rhObergrenzeWirksam = null, double? planLuftTagC = null)
+        double? rhObergrenzeWirksam = null, double? planLuftTagC = null, int? zeltId = null)
     {
         var gefuehrt = new HashSet<string>(vomWochenplanGefuehrt, StringComparer.OrdinalIgnoreCase);
         var optional = new List<(string Entity, double Wert)>();
@@ -634,11 +689,11 @@ public sealed class Co2SteuerungService : IStartwertDienst
         // Werte; aus dem Plan abgeleitete kann sie nicht sehen.
         return zahlen.Concat(optional)
             .Where(z => !gefuehrt.Contains(z.Entity))
-            .Select(z => (z.Entity, SteuerungBauteile.AufSpanne(z.Entity, z.Wert)))
+            .Select(z => (Entity: Co2Modul.Id(z.Entity, zeltId), Wert: SteuerungBauteile.AufSpanne(z.Entity, z.Wert)))
             .ToList();
     }
 
-    string IStartwertDienst.StartModul => Modul;
+    string IStartwertDienst.StartModul => _modul;
 
     // CO₂ übernimmt beim ersten Lesen nichts aus Home Assistant: gespeichert oder Standardwerte.
     Task<object> IStartwertDienst.StandFesthaltenAsync(CancellationToken ct) => Task.FromResult<object>(Einstellungen);
@@ -647,11 +702,11 @@ public sealed class Co2SteuerungService : IStartwertDienst
     {
         var e = (Co2Einstellungen)stand;
         var (warm, mittel, kuehl) = WirksameZiele(e, PlanZielPpm());
-        var gefuehrt = _wochenplan.GefuehrteHelfer();
-        var rhWirksam = gefuehrt.TryGetValue(Entitaeten.RhObergrenze, out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
-        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC), neuAngelegt).Count;
-        var schalter = Schalterliste(e, mitAutomatik: false).Count(s => neuAngelegt.Contains(s.Entity));
-        var zusatz = ZusatzStartwerte(neuAngelegt);
+        var gefuehrt = FuehrungDurchPlan();
+        var rhWirksam = gefuehrt.TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
+        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC, _zeltId), neuAngelegt).Count;
+        var schalter = Schalterliste(e, mitAutomatik: false, zeltId: _zeltId).Count(s => neuAngelegt.Contains(s.Entity));
+        var zusatz = ZusatzStartwerte(neuAngelegt, _zeltId);
         var anzahl = zahlen + schalter + zusatz.Count;
         if (anzahl == 0) return (0, true);
 
@@ -667,9 +722,9 @@ public sealed class Co2SteuerungService : IStartwertDienst
     /// Wert ist kalibriert und bleibt. Die übrigen drei Helfer ohne Einstellung (<c>co2_g_s_letzte_messung</c>, <c>co2_flasche_rest</c>,
     /// <c>co2_rh_notbremse</c>) bekommen bewusst keinen: ein Startwert wäre geraten.
     /// </summary>
-    public static IReadOnlyList<(string Entity, double Wert)> ZusatzStartwerte(IReadOnlySet<string> neuAngelegt)
-        => neuAngelegt.Contains(Entitaeten.GrammProSekunde)
-            ? [(Entitaeten.GrammProSekunde, Entitaeten.GrammProSekundeStart)]
+    public static IReadOnlyList<(string Entity, double Wert)> ZusatzStartwerte(IReadOnlySet<string> neuAngelegt, int? zeltId = null)
+        => neuAngelegt.Contains(Co2Modul.Id(Entitaeten.GrammProSekunde, zeltId))
+            ? [(Co2Modul.Id(Entitaeten.GrammProSekunde, zeltId), Entitaeten.GrammProSekundeStart)]
             : [];
 
     private async Task<bool> ZusatzStartwerteSchreibenAsync(IReadOnlyList<(string Entity, double Wert)> liste, CancellationToken ct)
@@ -713,18 +768,18 @@ public sealed class Co2SteuerungService : IStartwertDienst
         // Fork AI (forkai.21): Geräte kommen aus der Zuordnung, nicht aus dem Code.
         // Eine Rolle ohne Gerät liefert null — dann steht in der Kachel ein „–",
         // statt dass eine fremde Entität einspringt.
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         double? ZahlRolle(string rolle) => geraete.TryGetValue(rolle, out var id) && id is not null ? Zahl(id) : null;
         bool? AnRolle(string rolle) => geraete.TryGetValue(rolle, out var id) && id is not null ? An(id) : null;
 
         // Fork AI (forkai.115): Führt der Wochenplan die Feuchte-Obergrenze, gilt
         // dessen Wert — der gespeicherte der CO₂-Seite wird dann nicht geschrieben.
-        double? rhAusPlan = _wochenplan.GefuehrteHelfer().TryGetValue(Entitaeten.RhObergrenze, out var rhPlan) ? rhPlan : null;
-        var rhWirksam = Zahl(Entitaeten.RhObergrenze) ?? rhAusPlan ?? e.RhObergrenzeProzent;
+        double? rhAusPlan = _wochenplan.GefuehrteHelfer().TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : null;
+        var rhWirksam = Zahl(E(Entitaeten.RhObergrenze)) ?? rhAusPlan ?? e.RhObergrenzeProzent;
 
         var planLuft = _wochenplan.PlanLuft();
         var co2 = ZahlRolle("co2_sensor");
-        var ziel = Zahl(Entitaeten.ZielEffektiv);
+        var ziel = Zahl(E(Entitaeten.ZielEffektiv));
         return new Co2Live(
             HaErreichbar: entities.Count > 0,
             Co2Ppm: co2,
@@ -735,39 +790,39 @@ public sealed class Co2SteuerungService : IStartwertDienst
             ZielWarm: warm, ZielMittel: mittel, ZielKuehl: kuehl,
             HysteresePpm: e.HysteresePpm,
             NachschubUnterPpm: ziel is { } z2 ? (int)z2 - e.HysteresePpm : null,
-            Bedarf: An(Entitaeten.Bedarf),
-            KlimaOk: An(Entitaeten.KlimaOk),
+            Bedarf: An(E(Entitaeten.Bedarf)),
+            KlimaOk: An(E(Entitaeten.KlimaOk)),
             VentilOffen: AnRolle("port_zustand"),
             AutomatikAn: AutomatikKennungen(entities).Select(An).OfType<bool>().ToList() is { Count: > 0 } an
                 ? an.Any(x => x)
                 : null,
             LichtAn: AnRolle("licht"),
             T6Stufe: ZahlRolle("abluft_stufe") is { } t6 ? (int)t6 : null,
-            TiefAktiv: An(Entitaeten.StufeTiefSinnvoll),
+            TiefAktiv: An(E(Entitaeten.StufeTiefSinnvoll)),
             TiefBisTempC: e.T6TiefMaxTempC - 0.5,
             TiefBisRhProzent: rhWirksam - e.KlimaHystereseProzent - 1,
             CanopyC: ZahlRolle("canopy"),
             RhProzent: ZahlRolle("rh"),
             Vpd: ZahlRolle("vpd"),
-            ImpulseHeute: Zahl(Entitaeten.Impulse) is { } n ? (int)n : null,
-            GrammProSekunde: Zahl(Entitaeten.GrammProSekunde),
-            LetzteMessungGps: Zahl(Entitaeten.LetzteMessung),
-            FlascheRestKg: Zahl(Entitaeten.FlascheRest),
-            ImpulsBedarfSekunden: Zahl(Entitaeten.ImpulsBedarf) is { } ib ? (int)ib : null,
-            LetzterImpuls: Text(Entitaeten.LetzterImpuls),
+            ImpulseHeute: Zahl(E(Entitaeten.Impulse)) is { } n ? (int)n : null,
+            GrammProSekunde: Zahl(E(Entitaeten.GrammProSekunde)),
+            LetzteMessungGps: Zahl(E(Entitaeten.LetzteMessung)),
+            FlascheRestKg: Zahl(E(Entitaeten.FlascheRest)),
+            ImpulsBedarfSekunden: Zahl(E(Entitaeten.ImpulsBedarf)) is { } ib ? (int)ib : null,
+            LetzterImpuls: Text(E(Entitaeten.LetzterImpuls)),
             RhObergrenzeProzent: rhWirksam,
             RhObergrenzeAusPlan: rhAusPlan)
         {
-            RhMittelProzent = Zahl(Entitaeten.RhMittel),
+            RhMittelProzent = Zahl(E(Entitaeten.RhMittel)),
             FreiAbProzent = rhWirksam - e.KlimaHystereseProzent,
-            NotbremseProzent = WirksameNotbremse(e, rhWirksam) ?? Zahl(Entitaeten.RhNotbremse),
+            NotbremseProzent = WirksameNotbremse(e, rhWirksam) ?? Zahl(E(Entitaeten.RhNotbremse)),
             CanopyObergrenzeC = WirksameCanopyObergrenze(e, planLuft?.LuftTagC),
             PlanLuftTagC = planLuft?.LuftTagC,
             PlanWoche = planLuft?.Woche,
-            HaKlimaToleranzMinuten = Zahl(Entitaeten.KlimaToleranz),
-            HaRhNotbremseProzent = Zahl(Entitaeten.RhNotbremse),
-            HaT6StufeKlima = Zahl(Entitaeten.T6Klima),
-            RhMittelVorhanden = nachId.ContainsKey(Entitaeten.RhMittel),
+            HaKlimaToleranzMinuten = Zahl(E(Entitaeten.KlimaToleranz)),
+            HaRhNotbremseProzent = Zahl(E(Entitaeten.RhNotbremse)),
+            HaT6StufeKlima = Zahl(E(Entitaeten.T6Klima)),
+            RhMittelVorhanden = nachId.ContainsKey(E(Entitaeten.RhMittel)),
         };
     }
 
@@ -788,14 +843,14 @@ public sealed class Co2SteuerungService : IStartwertDienst
         if (!live.HaErreichbar) return null;
 
         var heute = HeuteKey();
-        var tag = _repo.GetCo2Tag(heute);
+        var tag = _repo.GetCo2Tag(heute, _zeltId);
 
         if (live.LichtAn == true)
         {
             // Fork AI (02.10.2026): Der Tag gehört zum Lichtzyklus, nicht zum
             // Kalenderdatum (siehe ZyklusFortsetzen).
             int? impulseStart = null;
-            if (_repo.GetOffenerCo2Tag() is { Abgeschlossen: false } laufend && laufend.Datum != heute)
+            if (_repo.GetOffenerCo2Tag(_zeltId) is { Abgeschlossen: false } laufend && laufend.Datum != heute)
             {
                 if (ZyklusFortsetzen(laufend, heute, live.ImpulseHeute))
                 {
@@ -818,6 +873,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
                 var (grow, _) = LaufenderGrow();
                 tag = new Co2Tag
                 {
+                    ZeltId = _zeltId,
                     Datum = heute,
                     GrowId = grow?.Id,
                     ImpulseStart = impulseStart,
@@ -846,7 +902,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
 
         // Licht aus: den jüngsten offenen Tag abschließen — auch, wenn das
         // Add-on den Abend verschlafen hat und erst am nächsten Morgen wieder da ist.
-        var offen = _repo.GetOffenerCo2Tag();
+        var offen = _repo.GetOffenerCo2Tag(_zeltId);
         if (offen is not null && !offen.Abgeschlossen)
         {
             if (offen.Datum == heute) Zwischenstand(offen, live);
@@ -1038,7 +1094,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         return string.Join(" · ", teile);
     }
 
-    public List<Co2Tag> LetzteTage(int anzahl) => _repo.GetCo2Tage(anzahl);
+    public List<Co2Tag> LetzteTage(int anzahl) => _repo.GetCo2Tage(anzahl, _zeltId);
 }
 
 /// <summary>Das Livebild, wie es die Seite oben zeigt.</summary>
