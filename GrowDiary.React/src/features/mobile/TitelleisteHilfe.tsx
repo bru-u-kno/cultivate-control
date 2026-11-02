@@ -72,7 +72,7 @@ export function TitelleisteHilfe({ slug, panel }: { slug: string | null; panel: 
         <pre className="mo-yaml" data-audit="titelleiste-yaml">{yamlBlock(slug)}</pre>
         <div className="mo-url">
           <V1Button variant="primary" onClick={() => void kopieren()}>{kopiert ? 'Kopiert' : 'In die Zwischenablage kopieren'}</V1Button>
-          <span className="v1-muted">Die Kennung <code>{slug}</code> ist die dieser Installation. Der Name des Panels ({VORGESCHLAGENER_PANEL}) ist frei wählbar.</span>
+          <span className="v1-muted">Die Kennung <code>{slug}</code> ist die dieser Installation. Der Name des Panels ({VORGESCHLAGENER_PANEL}) ist zugleich die Adresse in Home Assistant. Du kannst ihn ändern; erlaubt sind nur Kleinbuchstaben, Ziffern und Unterstriche, kein Bindestrich.</span>
         </div>
         {fehler && <V1Alert tone="warn" message="Die Zwischenablage war nicht erreichbar — markier den Block und kopier ihn von Hand." />}
       </div>
