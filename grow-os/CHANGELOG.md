@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.308
+## 2.0.0-cc.309
 
 **CO₂ je Zelt, Teil 1: Jedes Zelt mit CO₂-Begasung bekommt im Hintergrund seine eigene Steuerung. An deiner bestehenden Anlage ändert sich nichts.**
 
