@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.306
+
+**Handy › „Ohne HA-Titelleiste“: Der vorgeschlagene Panel-Name wird von Home Assistant jetzt angenommen.**
+
+- **Anlass:** Die Anleitung unter Handy › App einrichten (und `FORK.md`) schlug als Panel-Namen `cultivate-control` vor und nannte ihn „frei wählbar“. Wer den Block so in die `configuration.yaml` kopierte, bekam von Home Assistant eine abgelehnte Konfiguration.
+- **Ursache:** Die Integration „Ingress“ nimmt als Schlüssel nur Slugs an: Kleinbuchstaben, Ziffern und Unterstrich. Ein Bindestrich ist nicht erlaubt; Home Assistant meldet „invalid slug cultivate-control (try cultivate_control)“. Geprüft gegen die Konfigurationsprüfung von Home Assistant: `cultivate_control` wird angenommen, `cultivate-control` nicht.
+- **Jetzt:** Der vorgeschlagene Name heißt `cultivate_control`, die Adresse des Panels danach `/cultivate_control`. Der Hinweis unter dem Block sagt, dass der Name zugleich die Adresse ist und welche Zeichen erlaubt sind. Ein Test sorgt dafür, dass der Vorschlag immer ein gültiger Slug bleibt.
+- **Wer schon eingerichtet hat:** Ein bestehendes Panel mit anderem Namen funktioniert weiter. Die App erkennt es am Add-on, nicht am Namen.
+
 ## 2.0.0-cc.305
 
 **Zeltmaße an einer Stelle: Volumen, Grundfläche und Luftwechsel werden aus Breite × Tiefe × Höhe gerechnet — und die CO₂-Steuerung rechnet mit demselben Volumen.**

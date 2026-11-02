@@ -197,7 +197,7 @@ und trägt in `configuration.yaml` ein:
 
 ```yaml
 ingress:
-  growos:
+  cultivate_control:             # Name = Adresse (/cultivate_control); nur a–z, 0–9, Unterstrich, kein Bindestrich
     work_mode: hassio
     url: 00d580e3_cultivate_control   # eigener Add-on-Slug, siehe Add-on-Seite in HA
     ui_mode: normal                 # 'normal' = ohne HA-Kopfleiste

@@ -34,6 +34,10 @@ describe('Hilfe „Ohne HA-Titelleiste“', () => {
     ])
   })
 
+  it('schlägt einen Panel-Namen vor, den Home Assistant als Schlüssel annimmt (nur a–z, 0–9, Unterstrich)', () => {
+    expect(VORGESCHLAGENER_PANEL).toMatch(/^[a-z0-9_]+$/)
+  })
+
   it('nimmt einen eigenen Panel-Namen, ohne die Kennung zu verändern', () => {
     const block = yamlBlock('abc12345_cultivate_control', 'growos')
     expect(block).toContain('  growos:\n')

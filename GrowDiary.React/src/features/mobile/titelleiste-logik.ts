@@ -32,8 +32,12 @@ export function waehleKarte(lage: Lage): Karte {
   return lage.kopfleiste ? 'einrichten' : 'keine'
 }
 
-/** Der Name, den die Anleitung für das neue Panel vorschlägt (Adresse und Eintrag in der Seitenleiste). */
-export const VORGESCHLAGENER_PANEL = 'cultivate-control'
+/**
+ * Der Name, den die Anleitung für das neue Panel vorschlägt (Adresse und Eintrag in der Seitenleiste).
+ * Die Integration „Ingress“ nimmt als Schlüssel nur Slugs an: Kleinbuchstaben, Ziffern und Unterstrich. Mit Bindestrich
+ * (`cultivate-control`) lehnt Home Assistant die Konfiguration ab: „invalid slug … try cultivate_control“.
+ */
+export const VORGESCHLAGENER_PANEL = 'cultivate_control'
 
 /**
  * Der Block für die `configuration.yaml`, mit der Kennung dieser Installation.
