@@ -31,7 +31,8 @@ public sealed class Co2SyncWorker : BackgroundService
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<Co2SyncWorker> _logger;
-    private DateTime _naechsterSollwertlauf = DateTime.MinValue;
+    // Je Zelt ein eigener Takt der Sollwertläufe; der Schlüssel 0 ist das Bestand-Zelt (wie bisher ohne Zeltbezug).
+    private readonly Dictionary<int, DateTime> _naechsterSollwertlauf = new();
 
     /// <summary>Die Uhr — im Test eine, die man vorstellen kann.</summary>
     public Func<DateTime> JetztUtc { get; init; } = () => DateTime.UtcNow;
@@ -67,28 +68,49 @@ public sealed class Co2SyncWorker : BackgroundService
         }
     }
 
-    /// <summary>Ein Durchlauf: Takt, und stündlich der Abgleich der Sollwerte. Öffentlich für den Test der Verdrahtung.</summary>
+    /// <summary>Ein Durchlauf: Takt, und stündlich der Abgleich der Sollwerte — für das Bestand-Zelt und jedes weitere Zelt mit CO₂. Öffentlich für den Test der Verdrahtung.</summary>
     public async Task EinmalAsync(CancellationToken ct)
     {
         using var scope = _serviceProvider.CreateScope();
         var dienst = scope.ServiceProvider.GetRequiredService<Co2SteuerungService>();
         var repo = scope.ServiceProvider.GetRequiredService<Infrastructure.SteuerungRepository>();
 
-        await dienst.TaktAsync(ct);
+        // Das Bestand-Zelt immer, wie bisher — auch ohne Register und ohne gespeicherte Einstellungen.
+        await EinmalFuerAsync(dienst.Bestand(), repo, nurMitEinstellungen: false, ct);
 
-        var gespeichert = repo.GetEinstellungen<Models.Co2Einstellungen>(Co2SteuerungService.Modul);
+        var bestand = Co2Zelte.Aktuell.BestandZeltId;
+        foreach (var zelt in Co2Zelte.Aktuell.ZeltIds.Where(z => z != bestand))
+        {
+            // Ein Zelt darf das andere nicht aufhalten: ein Fehler hier endet für dieses Zelt, nicht für den Lauf.
+            try { await EinmalFuerAsync(dienst.Fuer(zelt), repo, nurMitEinstellungen: true, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "CO₂-Steuerung (Zelt {Zelt}): Durchlauf fehlgeschlagen.", zelt);
+            }
+        }
+    }
+
+    private async Task EinmalFuerAsync(Co2SteuerungService dienst, Infrastructure.SteuerungRepository repo, bool nurMitEinstellungen, CancellationToken ct)
+    {
+        var gespeichert = repo.GetEinstellungen<Models.Co2Einstellungen>(dienst.ModulName);
+        // Ein weiteres Zelt wird erst bewirtschaftet, wenn jemand seine Einstellungen gespeichert hat.
+        if (nurMitEinstellungen && gespeichert is null) return;
+
+        await dienst.TaktAsync(ct);
         if (gespeichert is null) return;
 
+        var schluessel = dienst.ZeltId ?? 0;
         var jetzt = JetztUtc();
-        if (jetzt >= _naechsterSollwertlauf)
+        if (jetzt >= _naechsterSollwertlauf.GetValueOrDefault(schluessel, DateTime.MinValue))
         {
             // Erst einmal den Wiederholtakt vormerken: wirft der Lauf, wird
             // trotzdem bald wieder versucht — und nicht in jedem Takt.
-            _naechsterSollwertlauf = jetzt + Wiederholtakt;
+            _naechsterSollwertlauf[schluessel] = jetzt + Wiederholtakt;
             // Ohne die Automation selbst: wer sie in HA ausgeschaltet hat, meint das so.
             var ok = await dienst.StuendlichAbgleichenAsync(gespeichert, ct);
-            if (ok) _naechsterSollwertlauf = jetzt + Sollwerttakt;
-            _logger.LogInformation("CO₂-Sollwerte nach Home Assistant geschrieben: {Ergebnis}.",
+            if (ok) _naechsterSollwertlauf[schluessel] = jetzt + Sollwerttakt;
+            _logger.LogInformation("CO₂-Sollwerte{Zelt} nach Home Assistant geschrieben: {Ergebnis}.",
+                dienst.ZeltId is { } z ? $" (Zelt {z})" : "",
                 ok ? "vollständig" : $"unvollständig — neuer Versuch in {(int)Wiederholtakt.TotalMinutes} min");
         }
     }

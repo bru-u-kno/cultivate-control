@@ -89,7 +89,7 @@ public sealed class HelferBereichService
         foreach (var (entityId, wert) in gewollt)
         {
             if (!vorhanden.TryGetValue(entityId, out var h)) continue;
-            var katalog = SteuerungBauteile.Alle.FirstOrDefault(b => string.Equals(b.EntityId, entityId, StringComparison.OrdinalIgnoreCase));
+            var katalog = SteuerungBauteile.FindenNachId(entityId);
             if (Weiten(h.Min, h.Max, wert, katalog?.Min, katalog?.Max) is { } neu) weiten.Add((h, neu, entityId));
         }
 

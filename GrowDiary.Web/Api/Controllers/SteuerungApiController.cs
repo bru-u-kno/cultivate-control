@@ -241,46 +241,77 @@ public sealed class SteuerungApiController : ApiControllerBase
 
     // ------------------------------------------------------------------ CO₂
 
+    /// <summary>
+    /// Der CO₂-Dienst eines Zeltes: ohne Angabe der des Bestand-Zeltes (wie bisher), sonst der des gewählten Zeltes — das muss ein Zelt mit
+    /// CO₂-Steuerung sein.
+    /// </summary>
+    private Co2SteuerungService? Co2Dienst(int? zeltId)
+    {
+        if (zeltId is not { } z) return _co2.Bestand();
+        var aktuell = Co2Zelte.Aktuell;
+        return aktuell.BestandZeltId == z || aktuell.ZeltIds.Contains(z) ? _co2.Fuer(z) : null;
+    }
+
     [HttpGet("co2")]
     [ProducesResponseType(typeof(Co2SeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Co2SeiteDto>> Co2(CancellationToken ct)
+    public async Task<ActionResult<Co2SeiteDto>> Co2([FromQuery] int? zeltId, CancellationToken ct)
     {
-        var live = await _co2.LiveAsync(ct);
-        var tage = _co2.LetzteTage(14);
+        var co2 = Co2Dienst(zeltId);
+        if (co2 is null) return NotFoundError("co2_zelt_unbekannt", $"Zelt {zeltId} hat keine CO₂-Steuerung.");
+
+        var live = await co2.LiveAsync(ct);
+        var tage = co2.LetzteTage(14);
         var artikel = _kosten.GetArtikel(nurAktive: true)
             .Select(a => new KostenArtikelKurzDto(a.Id, a.Name, a.Einheit))
             .ToList();
-        var (grow, stage) = _co2.LaufenderGrow();
-        var geraete = _geraete.EntitiesFuerModul(Co2SteuerungService.Modul);
+        var (grow, stage) = co2.LaufenderGrow();
+        var geraete = _geraete.EntitiesFuerModul(co2.ModulName);
+        var einstellungen = co2.Einstellungen;
         return Ok(new Co2SeiteDto(
-            Co2SteuerungService.MitWertenAusHomeAssistant(_co2.Einstellungen, live),
+            Co2SteuerungService.MitWertenAusHomeAssistant(einstellungen, live),
             live,
             tage.Select(ToDto).ToList(),
             artikel,
             grow?.Name,
             stage is { } st ? Phasenname.Fuer(st) : null,
-            _co2.PlanZielPpm(),
-            _co2.PlanHerkunft())
+            co2.PlanZielPpm(),
+            co2.PlanHerkunft())
         {
             GeraeteZugeordnet = geraete.Values.Count(entity => !string.IsNullOrWhiteSpace(entity)),
             GeraeteGesamt = geraete.Count,
-            ZeltvolumenQuelle = _co2.WirksamesZeltvolumen(_co2.Einstellungen.ZeltvolumenM3).Quelle,
+            ZeltvolumenQuelle = co2.WirksamesZeltvolumen(einstellungen.ZeltvolumenM3).Quelle,
+            ZeltId = co2.ZeltId ?? Co2Zelte.Aktuell.BestandZeltId,
+            Zelte = Co2ZeltListe(),
         });
+    }
+
+    /// <summary>Die Zelte mit CO₂-Steuerung, das Bestand-Zelt zuerst — für den Zeltwechsel der Seite.</summary>
+    private IReadOnlyList<Co2ZeltKurzDto> Co2ZeltListe()
+    {
+        var namen = _grows.GetTents(includeArchived: true).ToDictionary(t => t.Id, t => t.Name);
+        var aktuell = Co2Zelte.Aktuell;
+        return aktuell.ZeltIds
+            .OrderBy(i => i == aktuell.BestandZeltId ? 0 : 1).ThenBy(i => i)
+            .Select(i => new Co2ZeltKurzDto(i, namen.GetValueOrDefault(i, $"Zelt {i}"), Co2Zelte.ModulFuer(i)))
+            .ToList();
     }
 
     [HttpPut("co2")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(Co2SeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Co2SeiteDto>> Co2Speichern([FromBody] Co2Einstellungen request, CancellationToken ct)
+    public async Task<ActionResult<Co2SeiteDto>> Co2Speichern([FromBody] Co2Einstellungen request, [FromQuery] int? zeltId, CancellationToken ct)
     {
         if (request is null) return BadRequestError("co2_invalid", "Es wurde nichts übergeben.");
-        var (gespeichert, fehler, erreicht) = await _co2.SpeichernAsync(request, ct);
+        var co2 = Co2Dienst(zeltId);
+        if (co2 is null) return NotFoundError("co2_zelt_unbekannt", $"Zelt {zeltId} hat keine CO₂-Steuerung.");
+
+        var (gespeichert, fehler, erreicht) = await co2.SpeichernAsync(request, ct);
         if (gespeichert is null)
         {
             foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
-        var seite = await Co2(ct);
+        var seite = await Co2(zeltId, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is Co2SeiteDto dto)
         {
             return Ok(dto with { HaAngenommen = erreicht });
@@ -875,7 +906,8 @@ public sealed class SteuerungApiController : ApiControllerBase
         string? Wert(string? id) => id is not null && nachId.TryGetValue(id, out var s) ? s.State : null;
 
         var module = new List<SteuerungGeraeteModulDto>();
-        foreach (var modul in SteuerungGeraeteRollen.Module)
+        // Die Zelt-Module der CO₂-Steuerung (co2-z{id}) stehen hinter den festen Modulen — das Bestand-Zelt bleibt „co2“.
+        foreach (var modul in SteuerungGeraeteRollen.Module.Concat(Co2Zelte.Module.Where(m => m != Co2Modul.Basis)))
         {
             var gespeichert = _geraete.Gespeichert(modul);
             var aufgeloest = _geraete.EntitiesFuerModul(modul);
@@ -892,7 +924,7 @@ public sealed class SteuerungApiController : ApiControllerBase
                     rolle.Pflicht, rolle.Domains, rolle.Vorgabe, roh, ziel, Wert(ziel),
                     ziel is not null && nachId.ContainsKey(ziel));
             }).ToList();
-            module.Add(new SteuerungGeraeteModulDto(modul, ModulTitel(modul), zeilen));
+            module.Add(new SteuerungGeraeteModulDto(modul, Co2Modul.ZeltId(modul) is { } zeltId ? $"{ModulTitel(Co2Modul.Basis)} · {ZeltName(zeltId)}" : ModulTitel(modul), zeilen));
         }
 
         var eigene = _geraete.EigeneGeraete()
@@ -907,7 +939,7 @@ public sealed class SteuerungApiController : ApiControllerBase
     public async Task<ActionResult<SteuerungGeraeteSeiteDto>> GeraeteSpeichern(string modul, [FromBody] SteuerungGeraeteRequest request, CancellationToken ct)
     {
         if (request?.Zuordnungen is null) return BadRequestError("geraete_invalid", "Es wurde nichts übergeben.");
-        if (!SteuerungGeraeteRollen.Module.Contains(modul, StringComparer.OrdinalIgnoreCase))
+        if (!SteuerungGeraeteRollen.Module.Contains(modul, StringComparer.OrdinalIgnoreCase) && !Co2Zelte.Module.Contains(modul, StringComparer.Ordinal))
             return BadRequestError("modul_unbekannt", $"Die Steuerung „{modul}\" hat keine Geräte-Rollen.");
 
         var fehler = _geraete.Speichern(modul, request.Zuordnungen);
@@ -941,6 +973,9 @@ public sealed class SteuerungApiController : ApiControllerBase
             return BadRequestError("geraet_in_benutzung", fehler);
         return await Geraete(ct);
     }
+
+    private string ZeltName(int zeltId)
+        => _grows.GetTents(includeArchived: true).FirstOrDefault(t => t.Id == zeltId)?.Name ?? $"Zelt {zeltId}";
 
     internal static string ModulTitel(string modul) => modul switch
     {
@@ -1019,6 +1054,12 @@ public sealed record Co2SeiteDto(
 
     /// <summary>Woher das Zeltvolumen kommt: aus den Maßen des Zeltes mit CO₂ oder von Hand (dann mit Grund).</summary>
     public Co2ZeltvolumenQuelle? ZeltvolumenQuelle { get; init; }
+
+    /// <summary>Das Zelt, dessen CO₂-Steuerung die Seite zeigt (null, solange noch kein Zelt CO₂-Begasung hat).</summary>
+    public int? ZeltId { get; init; }
+
+    /// <summary>Alle Zelte mit CO₂-Steuerung, das Bestand-Zelt zuerst — für den Zeltwechsel.</summary>
+    public IReadOnlyList<Co2ZeltKurzDto> Zelte { get; init; } = [];
 
     /// <summary>
     /// Fork AI (forkai.21): Wie viele Rollen dieser Steuerung eine Entität haben.
@@ -1101,3 +1142,6 @@ public sealed record EigenesGeraetDto(string Name, string EntityId, string? Live
 public sealed record EigenesGeraetRequest(string? Name, string? EntityId, string? AlterName);
 public sealed record SteuerungGeraeteRequest(Dictionary<string, string?> Zuordnungen);
 public sealed record SteuerungGeraeteSeiteDto(bool HaErreichbar, IReadOnlyList<SteuerungGeraeteModulDto> Module, IReadOnlyList<EigenesGeraetDto> Eigene);
+
+/// <summary>Ein Zelt mit CO₂-Steuerung für den Zeltwechsel: Zelt-Id, Name, Modul (<c>co2</c> oder <c>co2-z{id}</c>).</summary>
+public sealed record Co2ZeltKurzDto(int Id, string Name, string Modul);

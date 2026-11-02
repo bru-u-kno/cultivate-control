@@ -107,6 +107,30 @@ public sealed class SteuerungRepository : RepositoryBase
                     CreatedAtUtc TEXT NOT NULL,
                     AbgeschlossenUtc TEXT NULL
                 );
+                -- CO₂ je Zelt: die Tage weiterer Zelte. Die Tabelle oben (Datum UNIQUE) gehört dem Bestand-Zelt und bleibt
+                -- unberührt; ALTER TABLE kann die Einschränkung nicht lösen, ein Umbau der Tabelle mit Bestandsdaten wäre
+                -- an einer laufenden Gasregelung unnötig riskant.
+                CREATE TABLE IF NOT EXISTS ForkCo2TageZelt (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ZeltId INTEGER NOT NULL,
+                    Datum TEXT NOT NULL,
+                    GrowId INTEGER NULL,
+                    Impulse INTEGER NOT NULL DEFAULT 0,
+                    ImpulseStart INTEGER NULL,
+                    VentilSekunden REAL NOT NULL DEFAULT 0,
+                    Gramm REAL NOT NULL DEFAULT 0,
+                    ZielErreichtUm TEXT NULL,
+                    FlascheStartKg REAL NOT NULL DEFAULT 0,
+                    FlascheEndeKg REAL NULL,
+                    GrammVorher REAL NOT NULL DEFAULT 0,
+                    Flaschenwechsel INTEGER NOT NULL DEFAULT 0,
+                    Abgeschlossen INTEGER NOT NULL DEFAULT 0,
+                    JournalEntryId INTEGER NULL,
+                    VerbrauchId INTEGER NULL,
+                    CreatedAtUtc TEXT NOT NULL,
+                    AbgeschlossenUtc TEXT NULL,
+                    UNIQUE (ZeltId, Datum)
+                );
                 """;
             command.ExecuteNonQuery();
 
@@ -239,48 +263,73 @@ public sealed class SteuerungRepository : RepositoryBase
 
     // ---------------------------------------------------------------- CO₂-Tage
 
-    public Co2Tag? GetCo2Tag(string datum)
+    /// <summary>Tabelle und Zeltfilter: das Bestand-Zelt (<c>null</c>) liegt in <c>ForkCo2Tage</c>, jedes andere in <c>ForkCo2TageZelt</c>.</summary>
+    private static (string Tabelle, string Filter) Co2Tabelle(int? zeltId)
+        => zeltId is null ? ("ForkCo2Tage", "") : ("ForkCo2TageZelt", " AND ZeltId = $zelt");
+
+    private static void ZeltBinden(SqliteCommand command, int? zeltId)
     {
-        using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM ForkCo2Tage WHERE Datum = $datum;";
-        command.Parameters.AddWithValue("$datum", datum);
-        using var reader = command.ExecuteReader();
-        return reader.Read() ? MapTag(reader) : null;
+        if (zeltId is { } z) command.Parameters.AddWithValue("$zelt", z);
     }
 
-    public List<Co2Tag> GetCo2Tage(int anzahl)
+    private static Co2Tag MitZelt(Co2Tag tag, int? zeltId)
     {
+        tag.ZeltId = zeltId;
+        return tag;
+    }
+
+    public Co2Tag? GetCo2Tag(string datum, int? zeltId = null)
+    {
+        var (tabelle, filter) = Co2Tabelle(zeltId);
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM ForkCo2Tage ORDER BY Datum DESC LIMIT $n;";
+        command.CommandText = $"SELECT * FROM {tabelle} WHERE Datum = $datum{filter};";
+        command.Parameters.AddWithValue("$datum", datum);
+        ZeltBinden(command, zeltId);
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? MitZelt(MapTag(reader), zeltId) : null;
+    }
+
+    public List<Co2Tag> GetCo2Tage(int anzahl, int? zeltId = null)
+    {
+        var (tabelle, filter) = Co2Tabelle(zeltId);
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT * FROM {tabelle} WHERE 1 = 1{filter} ORDER BY Datum DESC LIMIT $n;";
         command.Parameters.AddWithValue("$n", anzahl);
+        ZeltBinden(command, zeltId);
         using var reader = command.ExecuteReader();
         var list = new List<Co2Tag>();
-        while (reader.Read()) list.Add(MapTag(reader));
+        while (reader.Read()) list.Add(MitZelt(MapTag(reader), zeltId));
         return list;
     }
 
     /// <summary>Der jüngste offene Tag — der, den ein Abschluss noch einholen muss.</summary>
-    public Co2Tag? GetOffenerCo2Tag()
+    public Co2Tag? GetOffenerCo2Tag(int? zeltId = null)
     {
+        var (tabelle, filter) = Co2Tabelle(zeltId);
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM ForkCo2Tage WHERE Abgeschlossen = 0 ORDER BY Datum DESC LIMIT 1;";
+        command.CommandText = $"SELECT * FROM {tabelle} WHERE Abgeschlossen = 0{filter} ORDER BY Datum DESC LIMIT 1;";
+        ZeltBinden(command, zeltId);
         using var reader = command.ExecuteReader();
-        return reader.Read() ? MapTag(reader) : null;
+        return reader.Read() ? MitZelt(MapTag(reader), zeltId) : null;
     }
 
     public int CreateCo2Tag(Co2Tag tag)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            INSERT INTO ForkCo2Tage (Datum, GrowId, Impulse, ImpulseStart, VentilSekunden, Gramm, ZielErreichtUm, FlascheStartKg, FlascheEndeKg, GrammVorher, Flaschenwechsel, Abgeschlossen, JournalEntryId, VerbrauchId, CreatedAtUtc, AbgeschlossenUtc)
-            VALUES ($datum, $growId, $impulse, $impulseStart, $ventil, $gramm, $ziel, $start, $ende, $grammVorher, $wechsel, $abg, $journal, $verbrauch, $created, $abgUtc);
+        var (tabelle, _) = Co2Tabelle(tag.ZeltId);
+        var zeltSpalte = tag.ZeltId is null ? "" : "ZeltId, ";
+        var zeltWert = tag.ZeltId is null ? "" : "$zelt, ";
+        command.CommandText = $"""
+            INSERT INTO {tabelle} ({zeltSpalte}Datum, GrowId, Impulse, ImpulseStart, VentilSekunden, Gramm, ZielErreichtUm, FlascheStartKg, FlascheEndeKg, GrammVorher, Flaschenwechsel, Abgeschlossen, JournalEntryId, VerbrauchId, CreatedAtUtc, AbgeschlossenUtc)
+            VALUES ({zeltWert}$datum, $growId, $impulse, $impulseStart, $ventil, $gramm, $ziel, $start, $ende, $grammVorher, $wechsel, $abg, $journal, $verbrauch, $created, $abgUtc);
             SELECT last_insert_rowid();
             """;
         Bind(command, tag);
+        ZeltBinden(command, tag.ZeltId);
         command.Parameters.AddWithValue("$created", ToStorageUtc(DateTime.UtcNow));
         return Convert.ToInt32((long)command.ExecuteScalar()!);
     }
@@ -289,8 +338,9 @@ public sealed class SteuerungRepository : RepositoryBase
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            UPDATE ForkCo2Tage SET
+        var (tabelle, _) = Co2Tabelle(tag.ZeltId);
+        command.CommandText = $"""
+            UPDATE {tabelle} SET
                 GrowId = $growId, Impulse = $impulse, ImpulseStart = $impulseStart, VentilSekunden = $ventil, Gramm = $gramm,
                 ZielErreichtUm = $ziel, FlascheStartKg = $start, FlascheEndeKg = $ende,
                 GrammVorher = $grammVorher, Flaschenwechsel = $wechsel,

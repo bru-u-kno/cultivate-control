@@ -1,3 +1,5 @@
+using GrowDiary.Web.Services;
+
 namespace GrowDiary.Web.Models;
 
 /// <summary>
@@ -849,7 +851,35 @@ public static class SteuerungBauteile
 
     /// <summary>Die Bauteile einer Steuerung.</summary>
     public static IReadOnlyList<Bauteil> FuerModul(string modul)
-        => Alle.Where(b => string.Equals(b.Modul, modul, StringComparison.OrdinalIgnoreCase)).ToList();
+        => Co2Modul.ZeltId(modul) is { } zelt
+            ? FuerCo2Zelt(modul, zelt)
+            : Alle.Where(b => string.Equals(b.Modul, modul, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<Bauteil>> ZeltListen = new();
+
+    /// <summary>
+    /// Der Katalog der CO₂-Steuerung eines weiteren Zeltes: die neutrale Grundliste, Kennung, Name und Rechenvorschrift
+    /// auf das Zelt umgestellt (<see cref="Co2Modul"/>). Das Bestand-Zelt bleibt beim Modul „co2“ und seinen Kennungen.
+    /// </summary>
+    private static IReadOnlyList<Bauteil> FuerCo2Zelt(string modul, int zelt)
+        => ZeltListen.GetOrAdd(modul, _ => Basis
+            .Where(b => string.Equals(b.Modul, Co2, StringComparison.Ordinal))
+            .Select(b => b with
+            {
+                Modul = modul,
+                EntityId = Co2Modul.Id(b.EntityId, zelt),
+                Name = Co2Modul.Name(b.Name, zelt),
+                Vorlage = b.Vorlage is null ? null : Co2Modul.Text(b.Vorlage, zelt),
+                Verfuegbarkeit = b.Verfuegbarkeit is null ? null : Co2Modul.Text(b.Verfuegbarkeit, zelt),
+            }).ToList());
+
+    /// <summary>Ein Bauteil über seine Entitäts-Kennung — auch in den Katalogen der CO₂-Zelte.</summary>
+    public static Bauteil? FindenNachId(string entityId)
+        => Alle.FirstOrDefault(b => string.Equals(b.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
+           ?? Co2Zelte.Aktuell.ZeltIds
+               .Where(z => z != Co2Zelte.Aktuell.BestandZeltId)
+               .SelectMany(z => FuerCo2Zelt(Co2Modul.Fuer(z, Co2Zelte.Aktuell.BestandZeltId), z))
+               .FirstOrDefault(b => string.Equals(b.EntityId, entityId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Die Bauteile, die bei den zugeordneten Rollen überhaupt Sinn ergeben.

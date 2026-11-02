@@ -71,7 +71,7 @@ public static class Co2Rechenwerte
     /// <summary>Die aktuelle Formel des Katalogs, mit den zugeordneten Geräten eingesetzt.</summary>
     public static string? Aktuelle(string entityId, IReadOnlyDictionary<string, string> zuordnung)
     {
-        var bauteil = SteuerungBauteile.Alle.SingleOrDefault(b => b.EntityId == entityId);
+        var bauteil = SteuerungBauteile.FindenNachId(entityId);
         return bauteil?.Vorlage is null ? null : SteuerungBauteile.VorlageFuellen(bauteil.Vorlage, zuordnung);
     }
 
@@ -99,7 +99,7 @@ public static class Co2Rechenwerte
     public static string? FuehlerInFormel(string entityId, string formel)
     {
         var vorlagen = Aeltere.Where(f => f.EntityId == entityId).Select(f => f.Vorlage)
-            .Append(SteuerungBauteile.Alle.SingleOrDefault(b => b.EntityId == entityId)?.Vorlage)
+            .Append(SteuerungBauteile.FindenNachId(entityId)?.Vorlage)
             .OfType<string>();
 
         foreach (var vorlage in vorlagen)

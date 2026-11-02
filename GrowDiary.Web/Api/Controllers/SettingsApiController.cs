@@ -111,6 +111,7 @@ public sealed class SettingsApiController : ApiControllerBase
         }
 
         var created = _repository.CreateTent(request.ToModel());
+        Co2RegisterAktualisieren();
         if (request.Sensors is not null)
         {
             _repository.ReplaceTentSensors(created.Id, request.ToSensors(created.Id));
@@ -219,6 +220,7 @@ public sealed class SettingsApiController : ApiControllerBase
             Response.Headers["X-GrowOs-Warning"] = warnung;
         }
 
+        Co2RegisterAktualisieren();
         await CO2VolumenNachziehenAsync(existing, saved, cancellationToken);
 
         return Ok(saved.ToDto());
@@ -228,6 +230,13 @@ public sealed class SettingsApiController : ApiControllerBase
     /// Ändern sich Maße oder CO₂-Flag eines Zeltes, bestimmt das Volumen die Impulsdauer der CO₂-Steuerung — der HA-Helfer
     /// wird sofort nachgezogen. Ein Fehler hier darf das Speichern des Zeltes nicht kippen; der Stundenlauf holt es nach.
     /// </summary>
+    /// <summary>Hat sich an den Zelten etwas geändert, das die CO₂-Steuerung je Zelt betrifft, das Register neu setzen.</summary>
+    private void Co2RegisterAktualisieren()
+    {
+        try { _co2?.RegisterAktualisieren(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Das Register der CO₂-Zelte konnte nicht aktualisiert werden."); }
+    }
+
     private async Task CO2VolumenNachziehenAsync(Tent vorher, Tent nachher, CancellationToken ct)
     {
         if (_co2 is null) return;
@@ -398,6 +407,7 @@ public sealed class SettingsApiController : ApiControllerBase
         }
 
         _repository.ArchiveTent(id);
+        Co2RegisterAktualisieren();
         return Ok(_repository.GetTent(id)!.ToDto());
     }
 
@@ -426,6 +436,7 @@ public sealed class SettingsApiController : ApiControllerBase
         }
 
         _repository.DeleteTentWithCleanup(id);
+        Co2RegisterAktualisieren();
         return NoContent();
     }
 

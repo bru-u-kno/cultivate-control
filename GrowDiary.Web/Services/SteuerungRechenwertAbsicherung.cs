@@ -91,7 +91,7 @@ public sealed class SteuerungRechenwertAbsicherung
         HttpClient client, HomeAssistantSocket? socket, string entityId,
         IReadOnlyDictionary<string, string> zuordnung, CancellationToken ct)
     {
-        var name = SteuerungBauteile.Alle.Single(b => b.EntityId == entityId).Name;
+        var name = (SteuerungBauteile.FindenNachId(entityId) ?? throw new InvalidOperationException($"{entityId} steht in keinem Katalog.")).Name;
         Rechenwert NichtLesbar(string grund) => new(entityId, name, "NichtLesbar", null, null, null, null, grund);
 
         if (socket is null) return NichtLesbar("Die Formel ließ sich nicht lesen: Home Assistant nimmt die WebSocket-Anmeldung nicht an.");
@@ -129,7 +129,7 @@ public sealed class SteuerungRechenwertAbsicherung
         HttpClient client, HomeAssistantSocket socket, HomeAssistantSettings settings,
         string entityId, IReadOnlyDictionary<string, string> zuordnung, CancellationToken ct)
     {
-        var name = SteuerungBauteile.Alle.Single(b => b.EntityId == entityId).Name;
+        var name = (SteuerungBauteile.FindenNachId(entityId) ?? throw new InvalidOperationException($"{entityId} steht in keinem Katalog.")).Name;
         Ergebnis Fehler(string grund) => new(entityId, name, false, grund);
 
         // Ab hier läuft es zu Ende — auch wenn der Bediener die Seite verlässt.

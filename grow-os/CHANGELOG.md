@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.308
+## 2.0.0-cc.309
 
 **Live: Der Zeltkopf sperrt sich, solange „Anpassen“ läuft — und lässt sich besser vorlesen.**
 
@@ -13,6 +13,19 @@
 - **Sperre:** Solange in einem Zelt „Anpassen“ läuft, bleibt dieses Zelt offen. Sein Kopf zeigt ein Schloss statt des Pfeils, ist gelb gestrichelt umrandet, und statt der Phase steht der Grund: „Gesperrt, solange „Anpassen“ läuft. Erst „Speichern“ — oder mit „Fertig“ verwerfen —, dann lässt sich das Zelt zuklappen.“ Nach „Speichern“, „Fertig“ oder „Zurücksetzen“ ist der Kopf wieder frei. Die Sperre gilt nur für das Zelt, das du gerade anpasst; andere Zelte klappen weiter auf und zu.
 - **Besser vorlesbar:** Jeder Zeltname ist jetzt eine Überschrift, durch die man mit dem Screenreader von Zelt zu Zelt springt. Der Knopf heißt kurz „Zeltname, Score 70, Beobachten“; Phase und — zugeklappt — die Kernwerte folgen als Beschreibung. Am Aussehen ändert sich nichts.
 - **Nachgeprüft:** Zwei neue Prüfungen am Demobestand mit vier Zelten (Sperre zweimal, frei über „Fertig“; Überschrift, kurzer Knopfname und Beschreibung); gezeigt, dass die Sperrprüfung ohne die Sperre rot wird.
+
+## 2.0.0-cc.308
+
+**CO₂ je Zelt, Teil 1: Jedes Zelt mit CO₂-Begasung bekommt im Hintergrund seine eigene Steuerung. An deiner bestehenden Anlage ändert sich nichts.**
+
+- **Anlass:** Die CO₂-Steuerung war ein einziger Satz von Einstellungen, Helfern, Automationen und Tageswerten ohne Bezug zu einem Zelt, mit einer einzigen Flasche. Wer zwei oder drei Zelte mit CO₂ hat, jedes mit eigener Flasche, konnte das nicht abbilden. Das ist der erste von drei Schritten (danach Oberfläche, danach Einrichtung bei der Installation).
+- **Bestehende Anlage unverändert:** Das erste Zelt mit „CO₂-Begasung“ behält alle bisherigen Einstellungen, Helfer, Automationen und Tageswerte mit ihren Namen. Nichts wird umbenannt, doppelt angelegt oder überschrieben. Welches Zelt das ist, wird einmal festgelegt und danach nie mehr verschoben, auch nicht, wenn du ihm die CO₂-Begasung später abnimmst.
+- **Ein weiteres Zelt mit CO₂ bekommt einen eigenen Satz:** eigene Einstellungen, eigene Helfer (`co2_z{Zeltnummer}_…`, zum Beispiel `input_number.co2_z2_zielwert`), eigene Automationen, eigene Gerätezuordnung, eigene Flasche (Artikel und Restmenge) und eigene Tageswerte. Der stündliche Abgleich bedient jedes Zelt, dessen Einstellungen gespeichert sind; ein Fehler in einem Zelt hält das andere nicht auf.
+- **Zeltvolumen je Zelt:** Jedes Zelt rechnet mit seinen eigenen Maßen (Breite × Tiefe × Höhe), auch wenn mehrere Zelte CO₂ haben.
+- **Plan und Grow je Zelt:** Ein weiteres Zelt folgt dem Plan des Grows in seinem Zelt. Das erste Zelt bleibt beim bisherigen Verhalten.
+- **Schnittstelle:** `GET` und `PUT /api/steuerung/co2` nehmen `zeltId` an (ohne Angabe: das erste Zelt mit CO₂), und die Antwort nennt alle Zelte mit CO₂. Die Geräte-Zuordnung zeigt jedes weitere Zelt als eigenen Block.
+- **Keine Doppelbuchung:** Die Sperre gegen eine Handbuchung auf den CO₂-Artikel gilt jetzt für die Flaschen aller Zelte.
+- **Noch nicht:** Die Oberfläche zeigt weiter das erste Zelt (Zeltwechsel und Flasche je Zelt folgen als nächster Schritt). Wochenplan-Führung, Probelauf und Einrichtungs-Assistent gelten vorerst nur für das erste Zelt mit CO₂.
 
 ## 2.0.0-cc.307
 

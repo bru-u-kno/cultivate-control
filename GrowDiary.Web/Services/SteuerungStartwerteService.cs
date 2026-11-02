@@ -38,7 +38,7 @@ public sealed class SteuerungStartwerteService
     ];
 
     /// <summary>Hat diese Steuerung einen Weg für Startwerte? (Alle mit Zahl-Helfern; die Lampe hat keine.)</summary>
-    public static bool Kann(string modul) => Module.Contains(modul, StringComparer.OrdinalIgnoreCase);
+    public static bool Kann(string modul) => Module.Contains(modul, StringComparer.OrdinalIgnoreCase) || Co2Modul.ZeltId(modul) is not null;
 
     /// <summary>Die fehlenden Helfer anlegen und den neuen ihren Startwert geben; die Bilanz sagt, wie viele es waren.</summary>
     public Task<SteuerungHelferService.Bilanz> AnlegenAsync(
@@ -68,6 +68,12 @@ public sealed class SteuerungStartwerteService
     public static IStartwertDienst? Waehlen(string modul, IReadOnlyDictionary<string, IStartwertDienst> dienste)
     {
         if (!Kann(modul)) return null;
+        // CO₂ je Zelt: ein Zelt-Modul hat keinen eigenen Eintrag, es ist der Dienst des Bestands mit dem Zelt als Kontext.
+        if (Co2Modul.ZeltId(modul) is { } zelt && dienste.TryGetValue(Co2Modul.Basis, out var basis) && basis is Co2SteuerungService co2)
+        {
+            return co2.Fuer(zelt);
+        }
+
         return dienste.TryGetValue(modul, out var dienst)
             ? dienst
             : throw new InvalidOperationException($"Für die Steuerung „{modul}“ ist ein Startwert-Weg vorgesehen, aber kein Dienst registriert (Program.cs).");
