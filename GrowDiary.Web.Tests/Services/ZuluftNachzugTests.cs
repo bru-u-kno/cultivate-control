@@ -297,4 +297,20 @@ public sealed class ZuluftNachzugTests
         // Der Name muss die Kennung ergeben, sonst entsteht der Helfer bei jedem Lauf neu.
         Assert.Equal("zuluft_abschalt_abstand", helfer.Name.ToLowerInvariant().Replace(' ', '_'));
     }
+
+    [Fact]
+    public void Geglaettete_Differenz_ist_ein_Fork_Bauteil_mit_zehn_Minuten_und_ohne_Platzhalter()
+    {
+        var b = Assert.Single(SteuerungBauteile.FuerRaum(KennungsRaum.Bestand),
+            x => x.EntityId == ZuluftSteuerungService.Entitaeten.DifferenzGeglaettet);
+
+        Assert.Equal(BauteilArt.Mittelwert, b.Art);
+        Assert.Equal(10, b.MittelMinuten);
+        Assert.False(b.Pflicht);
+        // Quelle ist die rohe Differenz des Forks selbst: kein Gerät, das der Nutzer zuordnen müsste.
+        Assert.Equal(ZuluftSteuerungService.Entitaeten.Differenz, b.Vorlage);
+        Assert.Equal(b.Vorlage, SteuerungBauteile.VorlageFuellen(b.Vorlage!, new Dictionary<string, string>()));
+        // Der Name ergibt die Kennung, unter der der Katalog ihn wiederfindet (ä wird a).
+        Assert.Equal("Zuluft Differenz geglattet", b.Name);
+    }
 }
