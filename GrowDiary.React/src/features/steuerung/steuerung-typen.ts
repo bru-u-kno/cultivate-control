@@ -288,7 +288,6 @@ export type LichtEinstellungen = {
   schreibAbstandMs: number
   verifySekunden: number
   maxWiederholungen: number
-  helferSpiegeln: boolean
 }
 
 export type LichtLive = {

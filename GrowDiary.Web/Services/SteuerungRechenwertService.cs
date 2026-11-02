@@ -185,7 +185,7 @@ public sealed class SteuerungRechenwertService
             // Fork AI (forkai.150): Der Mittelwert ist ein Filter-Helfer mit eigenem
             // Dialog. Seine „Vorschrift" ist der Fühler, über den gemittelt wird.
             var (erfolg, fehler) = b.Art == BauteilArt.Mittelwert
-                ? await SteuerungMittelwertService.AnlegenAsync(client, b.Name, vorschrift, StandardMittelMinuten, ct)
+                ? await SteuerungMittelwertService.AnlegenAsync(client, b.Name, vorschrift, b.MittelMinuten ?? StandardMittelMinuten, ct)
                 : await AnlegenAsync(client, b, vorschrift, verfuegbarkeit, ct);
             einzeln.Add(new Ergebnis(b.EntityId, b.Name, erfolg, fehler));
 

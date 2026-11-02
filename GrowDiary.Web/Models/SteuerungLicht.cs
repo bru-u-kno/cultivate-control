@@ -43,16 +43,6 @@ public sealed class LichtEinstellungen
 
     /// <summary>Wie oft ein nicht übernommener Befehl wiederholt wird.</summary>
     public int MaxWiederholungen { get; set; } = 2;
-
-    /// <summary>
-    /// Die vier <c>input_datetime.led_top_zeitplan_*</c>-Helfer mitschreiben.
-    /// </summary>
-    /// <remarks>
-    /// Aus als Vorgabe: die Helfer gehörten zur alten Dashboard-Karte, die es
-    /// nicht mehr gibt. Wer sie noch für eigene Automationen führt, schaltet
-    /// das Mitschreiben unter „Erweitert" wieder ein.
-    /// </remarks>
-    public bool HelferSpiegeln { get; set; }
 }
 
 /// <summary>Ein offener Schreibvorgang: was gewollt war, seit wann, wie oft schon versucht.</summary>

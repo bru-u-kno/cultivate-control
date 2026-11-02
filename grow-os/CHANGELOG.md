@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.306
+## 2.0.0-cc.307
 
 **Handy › „Ohne HA-Titelleiste“: Der vorgeschlagene Panel-Name wird von Home Assistant jetzt angenommen.**
 
@@ -13,6 +13,14 @@
 - **Ursache:** Die Integration „Ingress“ nimmt als Schlüssel nur Slugs an: Kleinbuchstaben, Ziffern und Unterstrich. Ein Bindestrich ist nicht erlaubt; Home Assistant meldet „invalid slug cultivate-control (try cultivate_control)“. Geprüft gegen die Konfigurationsprüfung von Home Assistant: `cultivate_control` wird angenommen, `cultivate-control` nicht.
 - **Jetzt:** Der vorgeschlagene Name heißt `cultivate_control`, die Adresse des Panels danach `/cultivate_control`. Der Hinweis unter dem Block sagt, dass der Name zugleich die Adresse ist und welche Zeichen erlaubt sind. Ein Test sorgt dafür, dass der Vorschlag immer ein gültiger Slug bleibt.
 - **Wer schon eingerichtet hat:** Ein bestehendes Panel mit anderem Namen funktioniert weiter. Die App erkennt es am Add-on, nicht am Namen.
+
+## 2.0.0-cc.306
+
+**Steuerungen ohne feste Geräte-Kennungen: Die geglättete Zuluft-Differenz legt der Fork jetzt selbst an, und das Mitschreiben der alten Licht-Helfer ist weg.**
+
+- **Anlass:** Eine Durchsicht aller Steuerungen auf feste Entitäten ergab zwei Stellen, die nur in einer einzelnen Anlage funktionierten. Andere Anwender konnten sie nicht einrichten.
+- **Zuluft: geglättete Differenz wird angelegt.** Der Zuluft-Bedarf rechnet mit dem Zehn-Minuten-Mittel der Differenz zwischen Kellerluft und Außenluft, weil die rohe Differenz in einer Minute um 0,5 g/m³ springen kann und der Lüfter sonst bei jedem Sprung schaltet. Diesen Mittelwert musste bisher jeder selbst als Helfer bauen. Jetzt legt der Fork ihn bei „Fehlende anlegen“ als Mittelwert-Helfer (`sensor.zuluft_differenz_geglattet`, 10 Minuten) selbst an. Ein vorhandener Helfer unter demselben Namen bleibt unberührt, es entsteht kein zweiter. Fehlt er ganz, rechnet die Zuluft wie bisher mit der rohen Differenz weiter.
+- **Licht: Schalter „Zeiten für eigene Automationen in Home Assistant bereitstellen“ entfernt.** Er schrieb die Zeitpläne in vier feste Helfer (`led_top_zeitplan_*`), die zu einer längst abgeschafften Dashboard-Karte gehörten und nirgends mehr gebraucht werden. Der Schalter war ab Werk aus. Das Speichern der Lichtzeiten ändert sich dadurch nicht.
 
 ## 2.0.0-cc.305
 
