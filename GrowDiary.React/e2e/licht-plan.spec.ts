@@ -41,6 +41,10 @@ test.describe('Lichtplan', () => {
     await page.getByLabel('Messpunkt 1 Lichtwert').fill('610')
     await page.getByRole('button', { name: 'Kalibrierung speichern' }).click()
     await expect(page.getByRole('button', { name: 'Kalibrierung speichern' })).toHaveCount(0)
+    // Das Speichern setzt das Formular danach mit den Serverwerten zurück. Wer schon wieder tippt, wird überschrieben —
+    // der Knopf käme nie wieder (belegt: erster Lauf nach frischem Start). Erst abwarten, dann ändern.
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByLabel('Messpunkt 1 Lichtwert')).toHaveValue('610')
 
     // Zweites Mal speichern: ändern, speichern, noch einmal ändern, speichern.
     await page.getByLabel('Messpunkt 1 Lichtwert').fill('620')
