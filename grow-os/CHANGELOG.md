@@ -12,7 +12,7 @@
 - **Anlass:** Wer in einem Zelt „Anpassen“ nutzte und dabei auf den Zeltkopf tippte, klappte das Zelt zu. Der Entwurf, an dem man gerade arbeitete, ging dabei ohne Warnung verloren.
 - **Sperre:** Solange in einem Zelt „Anpassen“ läuft, bleibt dieses Zelt offen. Sein Kopf zeigt ein Schloss statt des Pfeils, ist gelb gestrichelt umrandet, und statt der Phase steht der Grund: „Gesperrt, solange „Anpassen“ läuft. Erst „Speichern“ — oder mit „Fertig“ verwerfen —, dann lässt sich das Zelt zuklappen.“ Nach „Speichern“, „Fertig“ oder „Zurücksetzen“ ist der Kopf wieder frei. Die Sperre gilt nur für das Zelt, das du gerade anpasst; andere Zelte klappen weiter auf und zu.
 - **Besser vorlesbar:** Jeder Zeltname ist jetzt eine Überschrift, durch die man mit dem Screenreader von Zelt zu Zelt springt. Der Knopf heißt kurz „Zeltname, Score 70, Beobachten“; Phase und — zugeklappt — die Kernwerte folgen als Beschreibung. Am Aussehen ändert sich nichts.
-- **Nachgeprüft:** Zwei neue Prüfungen am Demobestand mit vier Zelten (Sperre zweimal, einmal frei über „Fertig“ und einmal über „Zurücksetzen“; Überschrift, kurzer Knopfname und Beschreibung); gezeigt, dass die Sperrprüfung ohne die Sperre rot wird.
+- **Nachgeprüft:** Zwei neue Prüfungen am Demobestand mit vier Zelten (Sperre zweimal, frei über „Fertig“; Überschrift, kurzer Knopfname und Beschreibung); gezeigt, dass die Sperrprüfung ohne die Sperre rot wird.
 
 ## 2.0.0-cc.307
 

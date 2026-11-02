@@ -110,9 +110,9 @@ test('Anpassen sperrt den Zeltkopf: zuklappen geht erst nach „Fertig“, zweim
     await kopf.click({ force: true })
     await expect(kopf).toHaveAttribute('aria-expanded', 'true')
     await expect(abschnitt.getByRole('button', { name: 'Fertig' })).toBeVisible()
-    // „Fertig“ gibt den Kopf wieder frei, beim zweiten Durchgang „Zurücksetzen“ (löscht nur die eigene Anordnung,
-    // im Demobestand gibt es keine — nichts, was andere Tests berührt).
-    await abschnitt.getByRole('button', { name: i === 0 ? 'Fertig' : 'Zurücksetzen' }).click()
+    // „Fertig“ gibt den Kopf wieder frei und verwirft den Entwurf. „Speichern“ und „Zurücksetzen“ schreiben in den
+    // gemeinsamen Demobestand (Anordnung des Zelts) und würden andere Prüfungen stören — hier bewusst nicht benutzt.
+    await abschnitt.getByRole('button', { name: 'Fertig' }).click()
     await expect(kopf).not.toHaveAttribute('aria-disabled', 'true')
     await expect(abschnitt.locator('[data-audit="zelt-gesperrt"]')).toHaveCount(0)
   }
