@@ -120,6 +120,71 @@ public sealed class SystemAuditRepository
         return items;
     }
 
+    /// <summary>Quelle des KI-Zugriffs-Protokolls — es wird länger aufbewahrt als der Rest.</summary>
+    public const string QuelleKiZugriff = "ki-zugriff";
+
+    /// <summary>
+    /// Löscht die bis 02.11.2026 geschriebenen Lese-Zeilen der Zugriffs-Middleware
+    /// (<c>remote-admin-access-allowed</c> mit <c>GET</c>/<c>HEAD</c>/<c>OPTIONS</c>) —
+    /// rund 3.000 am Tag, ohne jeden Aussagewert —, ausgenommen die Lesewege aus
+    /// <see cref="AdminAccessPolicy.SensibleLesewege"/>. Gibt die Zahl gelöschter Zeilen zurück.
+    /// </summary>
+    public int LoescheErlaubteLesezugriffe()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        var behalten = string.Join(" AND ", AdminAccessPolicy.SensibleLesewege.Select((_, i) => $"Summary NOT LIKE $weg{i}"));
+        command.CommandText = $@"
+            DELETE FROM SystemAuditEvents
+            WHERE Action = 'remote-admin-access-allowed'
+              AND (Summary LIKE 'GET %' OR Summary LIKE 'HEAD %' OR Summary LIKE 'OPTIONS %')
+              AND (Summary LIKE '% /api/system/backup/media-size%' OR ({behalten}));";
+        for (var i = 0; i < AdminAccessPolicy.SensibleLesewege.Length; i++)
+        {
+            command.Parameters.AddWithValue($"$weg{i}", "% " + AdminAccessPolicy.SensibleLesewege[i] + "%");
+        }
+        return command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Löscht Einträge, die älter als <paramref name="grenzeUtc"/> sind; die des
+    /// KI-Zugriffs-Protokolls erst ab <paramref name="kiGrenzeUtc"/>.
+    /// </summary>
+    public int LoescheAelterAls(DateTime grenzeUtc, DateTime kiGrenzeUtc)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+            DELETE FROM SystemAuditEvents
+            WHERE (Source <> $ki AND CreatedAtUtc < $grenze)
+               OR (Source = $ki AND CreatedAtUtc < $kiGrenze);";
+        command.Parameters.AddWithValue("$ki", QuelleKiZugriff);
+        command.Parameters.AddWithValue("$grenze", grenzeUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$kiGrenze", kiGrenzeUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+        return command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Gibt den Platz gelöschter Zeilen an das Dateisystem zurück (<c>VACUUM</c>).
+    /// Ohne das bliebe die Datei so groß wie vorher. Ein Lauf dauert bei 90 MB
+    /// wenige Sekunden und sperrt in der Zeit das Schreiben.
+    /// </summary>
+    public void Verdichten()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;";
+        command.ExecuteNonQuery();
+    }
+
+    public int Zaehle()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM SystemAuditEvents;";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
     private static SystemAuditEvent Map(SqliteDataReader reader)
         => new()
         {

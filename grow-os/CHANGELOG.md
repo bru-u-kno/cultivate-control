@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.310
+
+**Das Prüfprotokoll bleibt klein: Seitenaufrufe stehen nicht mehr darin, Altes verschwindet nach 90 Tagen.**
+
+- **Anlass:** Die Datenbank war 87 MB groß, davon rund 81 MB im Prüfprotokoll. 182.180 von 182.400 Zeilen waren nichts als „Seite gelesen“ (etwa `GET /api/settings/zelte`), rund 3.000 am Tag, und es gab keine Aufbewahrungsfrist. Die Datei wuchs um etwa 25 MB im Monat, jede Sicherung trug das mit, und die wenigen echten Einträge gingen darin unter.
+- **Was jetzt darin steht:** Jede Abweisung und jede Änderung über einen Verwaltungsweg (Einstellungen speichern, Sicherung anlegen oder zurückspielen). Als bloßes Lesen nur noch, was etwas preisgibt: Sicherung herunterladen, Export, Home-Assistant-Zugang und KI-Schlüssel. Ein erlaubter Zugriff, der nicht vom Gerät selbst kommt, läuft immer über Home Assistant oder ein Add-on im eigenen Netz, nie über einen Fremden; die Abweisungen bleiben deshalb unverändert.
+- **Aufbewahrung:** Einträge werden nach 90 Tagen gelöscht, das Protokoll der KI-Zugriffe erst nach einem Jahr. Aufgeräumt wird zwei Minuten nach dem Start und danach einmal am Tag.
+- **Einmaliges Aufräumen beim ersten Start:** Die alten Lese-Zeilen werden gelöscht und die Datei danach verdichtet, damit der Platz wirklich frei wird. Das dauert wenige Sekunden. Sicherungseinträge, KI-Zugriffe, Abweisungen und Änderungen bleiben erhalten.
+- **Woran man es misst:** `grow-diary.db` im Add-on-Ordner `/data`: vorher 87 MB, danach nur noch wenige MB; die Zeilenzahl im Prüfprotokoll fällt von rund 182.000 auf einige hundert.
+
 ## 2.0.0-cc.309
 
 **Live: Der Zeltkopf sperrt sich, solange „Anpassen“ läuft — und lässt sich besser vorlesen.**

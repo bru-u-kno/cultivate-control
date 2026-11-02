@@ -26,7 +26,7 @@ public sealed class ZugriffsProtokollTests
     }
 
     [Fact]
-    public async Task NormaleAnfragenFuellenDasProtokollNicht_VerwaltungSchon()
+    public async Task NormaleAnfragenUndEinstellungenLesenFuellenDasProtokollNicht_SensiblesSchon()
     {
         var client = _app.IngressClient();
 
@@ -37,8 +37,15 @@ public sealed class ZugriffsProtokollTests
         }
         Assert.Equal(vorher, Zeilen("/api/grows"));
 
-        var verwaltungVorher = Zeilen("/api/settings");
+        // Seit 02.11.2026: auch das Lesen der Einstellungen steht nicht mehr darin
+        // (die Oberfläche liest im Takt, 182.180 Zeilen in drei Monaten) ...
+        var einstellungenVorher = Zeilen("/api/settings");
         (await client.GetAsync("/api/settings")).EnsureSuccessStatusCode();
-        Assert.Equal(verwaltungVorher + 1, Zeilen("/api/settings"));
+        Assert.Equal(einstellungenVorher, Zeilen("/api/settings"));
+
+        // ... wohl aber das Lesen eines sensiblen Wegs, hier der Home-Assistant-Zugang.
+        var sensibelVorher = Zeilen("/api/settings/home-assistant");
+        (await client.GetAsync("/api/settings/home-assistant")).EnsureSuccessStatusCode();
+        Assert.Equal(sensibelVorher + 1, Zeilen("/api/settings/home-assistant"));
     }
 }

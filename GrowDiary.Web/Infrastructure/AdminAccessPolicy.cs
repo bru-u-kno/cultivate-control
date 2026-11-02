@@ -245,6 +245,45 @@ public static class AdminAccessPolicy
            && context.Connection.RemoteIpAddress is { } ip
            && IngressProxies.Contains(ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip);
 
+    /// <summary>
+    /// Lesewege, die auch als bloßes <c>GET</c> ins Prüfprotokoll gehören: Sicherungen (eine
+    /// Sicherung ist die ganze Datenbank), Exporte, der Home-Assistant-Zugang und die
+    /// Verwaltung der KI-Schlüssel.
+    /// </summary>
+    public static readonly string[] SensibleLesewege =
+    {
+        "/api/system/backup",
+        "/api/exports",
+        "/api/home-assistant/settings",
+        "/api/settings/home-assistant",
+        "/api/settings/ki-zugriff"
+    };
+
+    /// <summary>Aus dem Wegweiser der Sicherungs-Seite: wird bei jedem Aufruf der Seite gelesen, verrät nichts.</summary>
+    private const string SicherungGroesse = "/api/system/backup/media-size";
+
+    /// <summary>Ist das ein Lesezugriff auf einen Weg, den das Prüfprotokoll festhalten soll?</summary>
+    public static bool IstSensiblerLesezugriff(PathString path)
+        => !path.StartsWithSegments(SicherungGroesse, StringComparison.OrdinalIgnoreCase)
+           && SensibleLesewege.Any(weg => path.StartsWithSegments(weg, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Ins Prüfprotokoll gehört jede Abweisung und jede <b>Änderung</b> über einen
+    /// Verwaltungsweg — ein bloßes Lesen nur auf den <see cref="SensibleLesewege"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>Ein erlaubter, nicht lokaler Zugriff kommt immer über Ingress oder von
+    /// einem Add-on im eigenen Netz, nie von einem Fremden. Die Oberfläche liest
+    /// dabei im Takt (Einstellungen, Zelte): bis 02.11.2026 stand so rund 3.000 Mal
+    /// am Tag eine Zeile <c>GET /api/settings/…</c> im Protokoll — 182.180 von
+    /// 182.400 Zeilen, rund 81 der 87 MB der Datenbank — und die echten Ereignisse
+    /// gingen darin unter.</para>
+    /// </remarks>
+    public static bool ProtokolliereZugriff(string method, PathString path, bool erlaubt)
+        => !erlaubt
+           || !(HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method))
+           || IstSensiblerLesezugriff(path);
+
     public static bool IsLocalRequest(HttpContext context)
     {
         var remoteIp = context.Connection.RemoteIpAddress;

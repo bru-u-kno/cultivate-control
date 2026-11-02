@@ -218,6 +218,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<CalibrationReminderService>();
 builder.Services.AddScoped<StartMeldung>();
 builder.Services.AddHostedService<StartMeldungWorker>();
+builder.Services.AddHostedService<PruefprotokollAufraeumWorker>(); // 02.11.2026: Prüfprotokoll klein halten
 builder.Services.AddScoped<DigestService>();
 builder.Services.AddHostedService<HomeAssistantSnapshotWorker>();
 // Fork AI (forkai.138, F-034): frühere Rollen-Vorgaben einmalig fest übernehmen.
@@ -532,12 +533,14 @@ app.Use(async (context, next) =>
 
         var isLocal = AdminAccessPolicy.IsLocalRequest(context);
         var canAccess = AdminAccessPolicy.CanAccess(context);
-        // Ins Prüfprotokoll: jede Abweisung, und erlaubte Zugriffe nur auf
-        // Verwaltungswege (Sicherung, Einstellungen, Exporte). Seit am
-        // 01.10.2026 ganz /api geschützt ist, stünde sonst jede Anfrage der
-        // Oberfläche darin — die Licht-Seite fragt alle 10 s —, und echte
-        // Ereignisse gingen in den 500 angezeigten Zeilen unter.
-        if (!isLocal && (!canAccess || AdminAccessPolicy.IsAdminPath(context.Request.Path)))
+        // Ins Prüfprotokoll: jede Abweisung, und erlaubte Zugriffe nur als
+        // ÄNDERUNG auf Verwaltungswegen (Einstellungen, Sicherung, Exporte) und
+        // als Lesen nur Sicherung, Exporte, HA-Zugang und KI-Schlüssel. Das übrige
+        // Lesen bleibt draußen: Die Oberfläche liest im Takt, und bis 02.11.2026
+        // stand so jeder Seitenaufruf darin (182.180 Zeilen, 81 MB).
+        if (!isLocal && (!canAccess
+            || (AdminAccessPolicy.IsAdminPath(context.Request.Path)
+                && AdminAccessPolicy.ProtokolliereZugriff(context.Request.Method, context.Request.Path, canAccess))))
         {
             TryLogAdminAccess(context, canAccess);
         }
