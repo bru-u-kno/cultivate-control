@@ -192,6 +192,13 @@ export type Co2ZeltvolumenQuelle = {
   grund: string | null
 }
 
+/** Ein Zelt mit CO₂-Steuerung für den Zeltwechsel (Backend: Co2ZeltKurzDto). `modul` ist `co2` beim ersten Zelt, sonst `co2-z{id}`. */
+export type Co2ZeltKurz = {
+  id: number
+  name: string
+  modul: string
+}
+
 export type Co2Seite = {
   einstellungen: Co2Einstellungen
   live: Co2Live
@@ -202,6 +209,10 @@ export type Co2Seite = {
   planPpm: number | null
   planHerkunft: string | null
   zeltvolumenQuelle?: Co2ZeltvolumenQuelle | null
+  /** Das Zelt, dessen CO₂-Steuerung die Seite zeigt. */
+  zeltId?: number | null
+  /** Alle Zelte mit CO₂-Steuerung, das erste zuerst; mit nur einem Zelt entfällt der Zeltwechsel. */
+  zelte?: Co2ZeltKurz[]
   haAngenommen: boolean | null
   geraeteZugeordnet: number
   geraeteGesamt: number

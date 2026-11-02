@@ -1,7 +1,8 @@
 import { SteuerungWechsel } from '../features/steuerung/SteuerungWechsel'
+import { Co2ZeltWechsel } from '../features/steuerung/Co2ZeltWechsel'
 import { HaStummHinweis } from '../features/steuerung/HaStummHinweis'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiFetch, formatApiError } from '../api'
 import { V1Alert, V1Button, V1Card, V1Empty, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Switch, V1Tabs } from '../components/v1'
 import LichtDetail from '../features/steuerung/LichtDetail'
@@ -253,8 +254,23 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
   const [seite, setSeite] = useState<Co2Seite | null>(null)
   const [entwurf, setEntwurf] = useState<Co2Einstellungen | null>(null)
   const [reiter, setReiter] = useState<Co2Reiter>('ziel')
+  // CO₂ je Zelt: das gewählte Zelt steht in der Adresse (?zelt=), ohne Angabe gilt das erste Zelt mit CO₂.
+  const [suchParameter, setSuchParameter] = useSearchParams()
+  const zeltParam = Number(suchParameter.get('zelt')) || null
+  const zeltAnfrage = zeltParam ? `?zeltId=${zeltParam}` : ''
+  const modulName = seite?.zelte?.find((z) => z.id === seite.zeltId)?.modul ?? 'co2'
+  // Probeschaltung und Absicherung kennen vorerst nur das erste Zelt (Modul „co2“).
+  const istErstesZelt = modulName === 'co2'
+  const zeltWechseln = (id: number) => {
+    const naechste = new URLSearchParams(suchParameter)
+    if (id === seite?.zelte?.[0]?.id) naechste.delete('zelt'); else naechste.set('zelt', String(id))
+    // Die Seite des alten Zeltes sofort verwerfen: bis die des neuen da ist, darf nichts davon gespeichert werden.
+    setSeite(null); setEntwurf(null)
+    setSuchParameter(naechste, { replace: true })
+    setMeldung(null); setFeldFehler({})
+  }
   // Fork AI (forkai.45): Was die Steuerung in Home Assistant braucht — siehe Bestand.tsx.
-  const { bestand, neuLaden: bestandNeuLaden } = useBestand('co2')
+  const { bestand, neuLaden: bestandNeuLaden } = useBestand(modulName)
   const [probe, setProbe] = useState<string | null>(null)
   const [absicherung, setAbsicherung] = useState<AbsicherungsLage | null>(null)
   const [sichertAb, setSichertAb] = useState(false)
@@ -272,7 +288,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<Co2Seite>('/api/steuerung/co2', { signal: controller.signal })
+        const geladen = await apiFetch<Co2Seite>(`/api/steuerung/co2${zeltAnfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) { setSeite(geladen); setEntwurf(geladen.einstellungen); setFehler(null) }
       } catch (caught) {
         if (!controller.signal.aborted) setFehler(formatApiError(caught, 'Die CO₂-Steuerung konnte nicht geladen werden.'))
@@ -282,13 +298,14 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     }
     void laden()
     return () => controller.abort()
-  }, [])
+  }, [zeltAnfrage])
 
   // Fork AI: Die vorhandenen CO₂-Automationen auf Schwachstellen prüfen. Nur
   // lesen — geändert wird erst, wenn der Bediener auf „Absichern“ tippt.
   useEffect(() => {
     const controller = new AbortController()
     const pruefen = async () => {
+      if (!istErstesZelt) { setAbsicherung(null); return }
       try {
         const geladen = await apiFetch<AbsicherungsLage>('/api/steuerung/co2/absicherung', { signal: controller.signal })
         if (!controller.signal.aborted) setAbsicherung(geladen)
@@ -298,7 +315,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     }
     void pruefen()
     return () => controller.abort()
-  }, [])
+  }, [istErstesZelt])
 
   const absichern = async () => {
     setSichertAb(true)
@@ -342,7 +359,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     if (leer) { setFeldFehler(leer); setMeldung(null); setFehler('Bitte die markierten Felder prüfen.'); fehlerZeigen(); return }
     setSpeichert(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<Co2Seite>('/api/steuerung/co2', { method: 'PUT', body: JSON.stringify(entwurf) })
+      const zurueck = await apiFetch<Co2Seite>(`/api/steuerung/co2${zeltAnfrage}`, { method: 'PUT', body: JSON.stringify(entwurf) })
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(zurueck.haAngenommen === false
         ? 'Gespeichert — aber Home Assistant hat nicht alle Sollwerte angenommen. Die Regelung läuft mit den alten Werten weiter.'
@@ -375,6 +392,8 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
 
   const live = seite.live
   const ziele = wirksameZiele(entwurf, seite.planPpm)
+  // Die Flasche dieses Zeltes ist der Verbrauchsartikel, auf den die Tagessumme gebucht wird.
+  const artikelName = seite.artikel.find((a) => a.id === entwurf.kostenArtikelId)?.name ?? null
   // Fork AI: Warum die Abluft gerade tief läuft — die Grenzen kommen aus dem
   // Livebild, weil der Helfer in HA mit genau diesen Werten rechnet.
   const tempOk = live.canopyC != null && live.tiefBisTempC != null ? live.canopyC <= live.tiefBisTempC : null
@@ -384,7 +403,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     : live.klimaOk === false
       ? `Das Klima sperrt gerade — die Abluft läuft auf Stufe ${entwurf.t6StufeKlima ?? '–'}, bis die Feuchte im Mittel und die Canopy wieder unter den Grenzen sind.`
       : live.tiefAktiv == null
-      ? 'Der Helfer binary_sensor.co2_t6_stufe_tief_sinnvoll meldet sich nicht.'
+      ? 'Der Helfer für die tiefe Stufe meldet sich nicht.'
       : live.tiefAktiv && tempOk === true && rhOk === true
         ? 'Beide Bedingungen erfüllt — die Abluft läuft auf der tiefen Stufe.'
         : live.tiefAktiv
@@ -407,10 +426,15 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     <V1Page
       eyebrow="Steuerung"
       title="CO₂-Begasung"
-      subtitle={seite.growName ? `${seite.growName}${seite.phase ? ` · ${seite.phase}` : ''}` : undefined}
+      subtitle={[
+        (seite.zelte?.length ?? 0) > 1 ? seite.zelte?.find((z) => z.id === seite.zeltId)?.name : null,
+        seite.growName ? `${seite.growName}${seite.phase ? ` · ${seite.phase}` : ''}` : null,
+      ].filter(Boolean).join(' · ') || undefined}
       action={geaendert ? <V1Button variant="primary" onClick={speichern} disabled={speichert}>{speichert ? 'Speichert …' : 'Speichern'}</V1Button> : undefined}
       vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}
     >
+
+      <Co2ZeltWechsel zelte={seite.zelte ?? []} aktiv={seite.zeltId ?? null} onWechsel={zeltWechseln} />
 
       {/* Fork AI (forkai.21): Geraete werden auf EINER Seite zugeordnet — hier steht
           nur, wie viele Rollen belegt sind, und der Weg dorthin. Doppelte Pflege
@@ -423,7 +447,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
           </b>{' '}
           zugeordnet
         </span>
-        <V1LinkButton to={rollenPfad()} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
+        <V1LinkButton to={rollenPfad(modulName)} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
       </div>
 
       {fehler && <V1Alert tone="critical" message={fehler} />}
@@ -526,7 +550,10 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
               <span className="st-nurlesen">{live.grammProSekunde != null ? formatNumber(live.grammProSekunde, 3) : '–'} g/s</span>
             </div>
             <div className="st-feldzeile">
-              <span className="st-etikett">Flasche</span>
+              <span className="st-etikett">
+                Flasche
+                {artikelName && <small>{artikelName}</small>}
+              </span>
               <span className="st-nurlesen">{live.flascheRestKg != null ? `${formatNumber(live.flascheRestKg, 2)} kg` : '–'}</span>
             </div>
             <V1Switch label="Autokalibrierung" checked={entwurf.autokalibrierung} onChange={(v) => setz('autokalibrierung', v)} hint="Führt den Durchfluss aus dem gemessenen ppm-Anstieg nach." />
@@ -715,8 +742,8 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
         </V1Section>
       )}
 
-      <BestandAbschnitt modul="co2" schaltet="das Ventil" bestand={bestand} neuLaden={bestandNeuLaden}>
-        <V1Card>
+      <BestandAbschnitt modul={modulName} schaltet="das Ventil" bestand={bestand} neuLaden={bestandNeuLaden}>
+        {istErstesZelt && <V1Card>
           <div className="st-feldzeile">
             <span className="st-etikett">
               Probeschaltung
@@ -728,10 +755,10 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
           </div>
           {probe && <p className="st-hinweis">{probe}</p>}
           <V1Button variant="ghost" onClick={ventilProbieren}>Ventil kurz öffnen</V1Button>
-        </V1Card>
+        </V1Card>}
       </BestandAbschnitt>
 
-      {absicherung?.erreichbar && (
+      {istErstesZelt && absicherung?.erreichbar && (
         <V1Section title="Sicherheit der CO₂-Regelung">
           <V1Card>
             {absicherung.automationen.length === 0 ? (

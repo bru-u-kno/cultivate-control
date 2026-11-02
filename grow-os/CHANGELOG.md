@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.310
+## 2.0.0-cc.311
 
 **Das Prüfprotokoll bleibt klein: Seitenaufrufe stehen nicht mehr darin, Altes verschwindet nach 90 Tagen.**
 
@@ -14,6 +14,17 @@
 - **Aufbewahrung:** Einträge werden nach 90 Tagen gelöscht, das Protokoll der KI-Zugriffe erst nach einem Jahr. Aufgeräumt wird zwei Minuten nach dem Start und danach einmal am Tag.
 - **Einmaliges Aufräumen beim ersten Start:** Die alten Lese-Zeilen werden gelöscht und die Datei danach verdichtet, damit der Platz wirklich frei wird. Das dauert wenige Sekunden. Sicherungseinträge, KI-Zugriffe, Abweisungen und Änderungen bleiben erhalten.
 - **Woran man es misst:** `grow-diary.db` im Add-on-Ordner `/data`: vorher 87 MB, danach nur noch wenige MB; die Zeilenzahl im Prüfprotokoll fällt von rund 182.000 auf einige hundert.
+
+## 2.0.0-cc.310
+
+**CO₂ je Zelt, Teil 2: Die CO₂-Seite hat einen Zeltwechsel, und jedes Zelt zeigt seine eigene Flasche.**
+
+- **Anlass:** Seit Teil 1 hat jedes Zelt mit CO₂-Begasung im Hintergrund seine eigene Steuerung, aber die Seite zeigte nur das erste. Jetzt lässt sich jedes Zelt öffnen.
+- **Zeltwechsel unter der Überschrift:** Er erscheint nur, wenn mehr als ein Zelt eine eigene CO₂-Steuerung hat. Mit einem Zelt sieht die Seite aus wie bisher. Das gewählte Zelt steht in der Adresse (`?zelt=…`), sodass ein Link direkt auf ein Zelt führt. Beim Wechsel wird die Seite des alten Zeltes sofort verworfen, damit nichts davon versehentlich im neuen Zelt gespeichert wird.
+- **Alles gilt je Zelt:** Einstellungen, Live-Werte, Zeltvolumen aus den Maßen dieses Zeltes, Tageswerte, Gerätezuordnung („Rollen bearbeiten“ führt zum Block des gewählten Zeltes) und der Block „Was in Home Assistant fehlt“ samt „Fehlende anlegen“ für die Helfer und Automationen dieses Zeltes.
+- **Eigene Flasche je Zelt:** Die Zeile „Flasche“ nennt den Verbrauchsartikel des Zeltes und die Restmenge. Der Kosten-Artikel unter „Heute“ ist die Flasche dieses Zeltes. Ein Flaschenwechsel wird wie bisher am wieder steigenden Füllstand erkannt und steht in der Tagestabelle des Zeltes als „Flasche gewechselt“.
+- **Vorerst nur beim ersten Zelt:** Die Probeschaltung des Ventils und die Absicherung der vorhandenen Automationen. Bei jedem weiteren Zelt sind beide Blöcke ausgeblendet, statt halb zu funktionieren.
+- **Kleiner:** Der Hinweis „Der Helfer für die tiefe Stufe meldet sich nicht“ nennt keine feste Kennung mehr.
 
 ## 2.0.0-cc.309
 
