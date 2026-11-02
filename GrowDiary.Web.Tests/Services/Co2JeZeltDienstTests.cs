@@ -5,6 +5,7 @@ using GrowDiary.Web.Models;
 using GrowDiary.Web.Services;
 using GrowDiary.Web.Services.Knowledge;
 using GrowDiary.Web.Tests.TestFakes;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GrowDiary.Web.Tests.Services;
@@ -217,6 +218,53 @@ public sealed class Co2JeZeltDienstTests : IDisposable
         Assert.Equal("Grow A", bestand.LaufenderGrow().Grow?.Name);
         Assert.Equal("Grow B", bestand.Fuer(_zelt2).LaufenderGrow().Grow?.Name);
         Assert.NotEqual(a, b);
+    }
+
+    [Fact]
+    public async Task Worker_BewirtschaftetJedesZeltMitEinstellungen_UndNurSeineHelfer()
+    {
+        var repo = new SteuerungRepository(_pfade);
+        repo.SetEinstellungen("co2", new Co2Einstellungen());
+        repo.SetEinstellungen($"co2-z{_zelt2}", new Co2Einstellungen { ZielWarmPpm = 1000 });
+        var dienste = new ServiceCollection().AddScoped(_ => Bestand()).AddScoped(_ => new SteuerungRepository(_pfade)).BuildServiceProvider();
+        var worker = new Co2SyncWorker(dienste, NullLogger<Co2SyncWorker>.Instance);
+
+        await worker.EinmalAsync(CancellationToken.None);
+
+        var ids = GeschriebeneEntitaeten().ToList();
+        Assert.Contains("input_number.co2_zielwert", ids);                          // Bestand-Zelt: wie bisher
+        Assert.Contains($"input_number.co2_z{_zelt2}_zielwert", ids);               // weiteres Zelt: eigener Satz
+        // Jede geschriebene Kennung gehört zu genau einem der beiden Sätze.
+        Assert.All(ids, id => Assert.Equal(id.Contains($"co2_z{_zelt2}_"), id.Contains("co2_z" + _zelt2)));
+    }
+
+    [Fact]
+    public async Task Worker_LaesstEinZeltOhneGespeicherteEinstellungenInRuhe()
+    {
+        new SteuerungRepository(_pfade).SetEinstellungen("co2", new Co2Einstellungen());
+        var dienste = new ServiceCollection().AddScoped(_ => Bestand()).AddScoped(_ => new SteuerungRepository(_pfade)).BuildServiceProvider();
+        var worker = new Co2SyncWorker(dienste, NullLogger<Co2SyncWorker>.Instance);
+
+        await worker.EinmalAsync(CancellationToken.None);
+
+        var ids = GeschriebeneEntitaeten().ToList();
+        Assert.Contains("input_number.co2_zielwert", ids);                          // Selbsttest: der Lauf hat geschrieben
+        Assert.DoesNotContain(ids, id => id.Contains($"co2_z{_zelt2}_"));
+        Assert.Null(new SteuerungRepository(_pfade).GetCo2Tag(DateTime.Now.ToString("yyyy-MM-dd"), _zelt2));
+    }
+
+    [Fact]
+    public void Startwerte_FuerEinZeltModul_LiefernDenDienstDesZeltes()
+    {
+        var bestand = Bestand();
+        var dienste = new Dictionary<string, IStartwertDienst>(StringComparer.OrdinalIgnoreCase) { ["co2"] = bestand };
+
+        var dienst = SteuerungStartwerteService.Waehlen($"co2-z{_zelt2}", dienste);
+
+        Assert.NotNull(dienst);
+        Assert.Equal($"co2-z{_zelt2}", dienst!.StartModul);
+        Assert.Equal("co2", SteuerungStartwerteService.Waehlen("co2", dienste)!.StartModul);
+        Assert.True(SteuerungStartwerteService.Kann($"co2-z{_zelt2}"));
     }
 
     private static string ProjektWurzel()

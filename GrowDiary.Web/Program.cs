@@ -249,6 +249,8 @@ app.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 // Fork AI (forkai.217): In welchem Namensraum heißen die Objekte des Forks in Home Assistant? Einmal entscheiden,
 // bevor ein Dienst eine Kennung benutzt.
 KennungsRaumWahl.BeimStart(app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
+// CO₂ je Zelt: welches Zelt gehört dem vorhandenen CO₂-Objektsatz, und welche Zelte haben eine eigene CO₂-Steuerung?
+Co2ZeltWahl.Aktualisieren(app.Services.GetRequiredService<TentRepository>(), app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
 // Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" und ihre Abweichungs-Risiken sind geschlossen (bis cc.294 setzte der Abschluss beides nicht). Idempotent: beim zweiten Start 0.
 try
 {

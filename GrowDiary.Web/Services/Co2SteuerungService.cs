@@ -151,6 +151,9 @@ public sealed class Co2SteuerungService : IStartwertDienst
     private IReadOnlyDictionary<string, double> FuehrungDurchPlan()
         => _zeltId is null ? _wochenplan.GefuehrteHelfer() : new Dictionary<string, double>();
 
+    /// <summary>Das Register der CO₂-Zelte neu setzen — nach jeder Änderung an den Zelten (Flag „mit CO₂-Begasung“, anlegen, archivieren, löschen).</summary>
+    public void RegisterAktualisieren() => Co2ZeltWahl.Aktualisieren(_tents, _repo, _logger);
+
     /// <summary>Die Kennung eines CO₂-Objekts dieses Zeltes (Bestand: unverändert).</summary>
     private string E(string bestandKennung) => Co2Modul.Id(bestandKennung, _zeltId);
 

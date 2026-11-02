@@ -119,7 +119,7 @@ public sealed class GeraeteUebersichtService
             Merken(pumpe.HaEntityId, $"Dosierpumpe {pumpe.Name}", GeraetQuellen.Dosierung);
         }
 
-        foreach (var modul in SteuerungGeraeteRollen.Module)
+        foreach (var modul in SteuerungGeraeteRollen.Module.Concat(Co2Zelte.Module.Where(m => m != Co2Modul.Basis)))
         {
             foreach (var rolle in SteuerungGeraeteRollen.FuerModul(modul))
             {
