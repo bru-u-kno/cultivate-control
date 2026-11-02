@@ -264,6 +264,7 @@ public sealed class SteuerungApiController : ApiControllerBase
         {
             GeraeteZugeordnet = geraete.Values.Count(entity => !string.IsNullOrWhiteSpace(entity)),
             GeraeteGesamt = geraete.Count,
+            ZeltvolumenQuelle = _co2.WirksamesZeltvolumen(_co2.Einstellungen.ZeltvolumenM3).Quelle,
         });
     }
 
@@ -1015,6 +1016,9 @@ public sealed record Co2SeiteDto(
 {
     /// <summary>Nach dem Speichern: ob Home Assistant alle Sollwerte angenommen hat (null beim Lesen).</summary>
     public bool? HaAngenommen { get; init; }
+
+    /// <summary>Woher das Zeltvolumen kommt: aus den Maßen des Zeltes mit CO₂ oder von Hand (dann mit Grund).</summary>
+    public Co2ZeltvolumenQuelle? ZeltvolumenQuelle { get; init; }
 
     /// <summary>
     /// Fork AI (forkai.21): Wie viele Rollen dieser Steuerung eine Entität haben.

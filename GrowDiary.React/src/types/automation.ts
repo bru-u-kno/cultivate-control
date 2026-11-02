@@ -212,6 +212,10 @@ export interface TentDto {
   activeSetupCount: number
   archivedSetupCount: number
   sensors: TentSensorDto[]
+  /** Aus den Maßen gerechnet (Backend, ZeltMasse) — nicht eingetragen. */
+  volumeM3?: number | null
+  floorAreaM2?: number | null
+  airChangesPerHour?: number | null
 }
 
 export interface UpdateTentSensorRequest {

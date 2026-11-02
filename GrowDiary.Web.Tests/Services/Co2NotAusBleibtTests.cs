@@ -69,7 +69,7 @@ public sealed class Co2NotAusBleibtTests : IDisposable
         wissen.Initialize();
         return new Co2SteuerungService(
             steuerung, new KostenRepository(_pfade), new JournalRepository(_pfade), grows,
-            new HydroSetupRepository(_pfade, new TentRepository(_pfade)), new TargetValueService(wissen), wissen,
+            new HydroSetupRepository(_pfade, new TentRepository(_pfade)), new TentRepository(_pfade), new TargetValueService(wissen), wissen,
             ha, haSettings, new SteuerungGeraeteService(steuerung),
             new WochenplanSyncService(grows, wissen, steuerung, new AlertRuleRepository(_pfade), ha, haSettings,
                 NullLogger<WochenplanSyncService>.Instance),

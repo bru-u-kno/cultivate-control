@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.305
+
+**Zeltmaße an einer Stelle: Volumen, Grundfläche und Luftwechsel werden aus Breite × Tiefe × Höhe gerechnet — und die CO₂-Steuerung rechnet mit demselben Volumen.**
+
+- **Anlass:** Das Zeltvolumen stand an zwei Stellen: einmal als Maße am Zelt, einmal als eigenes Handfeld auf der CO₂-Seite (Standard 5,76 m³). Wer die Maße änderte, änderte das Volumen der CO₂-Impulsdauer nicht mit; der Luftwechsel auf der Zeltseite wurde nur in der Oberfläche gerechnet, im Hintergrund kannte ihn nichts.
+- **Neu: Block „Maße“ auf der Zeltseite.** Größe, Grundfläche und Volumen des gewählten Zelts stehen jetzt zusammen auf der Seite. Du trägst nur die Maße ein (Einstellungen › Zelte); die Werte werden nicht noch einmal abgefragt. Beispiel 120 × 120 × 200 cm: 1,44 m² und 2,88 m³.
+- **Luftwechsel und Fläche je Pflanze** kommen jetzt aus derselben Rechnung im Hintergrund. Luftwechsel = Abluftleistung geteilt durch Volumen, weiter ein Richtwert (Nennleistung, ohne Filter und Rohrlänge). Bei 348 m³/h im Beispielzelt: etwa 121 ×/h.
+- **Abluft ist die Gesamtleistung.** Das Feld heißt jetzt „Abluft gesamt m³/h“, und die Zeile zeigt „1 Lüfter · 348 m³/h“ statt „1 × 348 m³/h“. Gerechnet wurde schon bisher mit dem eingetragenen Wert als Ganzem; die Schreibweise „1 × 348“ ließ ihn nur wie einen Wert je Lüfter aussehen.
+- **CO₂-Seite › Dosierung: kein Handfeld mehr, wenn die Maße das Volumen bestimmen.** Hat genau ein aktives Zelt die CO₂-Begasung und sind Breite, Tiefe und Höhe eingetragen, zeigt die Zeile „Zeltvolumen“ den gerechneten Wert mit Herkunft („Aus den Maßen von …“) und ist nur zu lesen. Ändert sich ein Maß, geht der neue Wert sofort an den Hilfswert in Home Assistant, mit dem die Impulsdauer gerechnet wird, und nicht erst beim nächsten Stundenlauf.
+- **Sonst bleibt das Handfeld, mit Grund.** Gibt es kein Zelt mit CO₂, mehrere, fehlt ein Maß, oder liegt das Volumen außerhalb dessen, was der Hilfswert annimmt (1 bis 20 m³), gilt der gespeicherte Wert wie bisher, und die Seite sagt, warum. Eigene Einstellungen je Zelt für mehrere CO₂-Zelte folgen in einer eigenen Version.
+
 ## 2.0.0-cc.304
 
 **Live › Anpassen: auf dem Handy ragt nichts mehr über den rechten Rand.**

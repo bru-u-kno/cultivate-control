@@ -507,7 +507,17 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
             <Zahl label="Impuls längstens" hinweis="Der Wächter schließt das Ventil ab 90 s zwangsweise." einheit="s" wert={entwurf.impulsMaxSekunden} onChange={(v) => setz('impulsMaxSekunden', v)} fehler={feldFehler.ImpulsMaxSekunden} />
             <Zahl label="Wartezeit nach Impuls" hinweis="Der Sensor hinkt rund zwei Minuten nach." einheit="s" wert={entwurf.wartezeitSekunden} onChange={(v) => setz('wartezeitSekunden', v)} fehler={feldFehler.WartezeitSekunden} />
             <Zahl label="Impulse je Zyklus höchstens" wert={entwurf.maxImpulseJeZyklus} onChange={(v) => setz('maxImpulseJeZyklus', v)} fehler={feldFehler.MaxImpulseJeZyklus} />
-            <Zahl label="Zeltvolumen" einheit="m³" schritt={0.01} wert={entwurf.zeltvolumenM3} onChange={(v) => setz('zeltvolumenM3', v)} fehler={feldFehler.ZeltvolumenM3} />
+            {seite.zeltvolumenQuelle?.ausMassen ? (
+              <div className="st-feldzeile" data-audit="co2-zeltvolumen-aus-massen">
+                <span className="st-etikett">
+                  Zeltvolumen
+                  <small>Aus den Maßen von {seite.zeltvolumenQuelle.zeltName} · {seite.zeltvolumenQuelle.masse}</small>
+                </span>
+                <span className="st-nurlesen">{formatNumber(seite.zeltvolumenQuelle.volumenM3, 2)}{'\u00a0'}m³</span>
+              </div>
+            ) : (
+              <Zahl label="Zeltvolumen" hinweis={seite.zeltvolumenQuelle?.grund ? `${seite.zeltvolumenQuelle.grund} Bis dahin von Hand.` : undefined} einheit="m³" schritt={0.01} wert={entwurf.zeltvolumenM3} onChange={(v) => setz('zeltvolumenM3', v)} fehler={feldFehler.ZeltvolumenM3} />
+            )}
             <div className="st-feldzeile">
               <span className="st-etikett">
                 Durchfluss

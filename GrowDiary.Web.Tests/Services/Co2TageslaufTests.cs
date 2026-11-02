@@ -80,7 +80,7 @@ public sealed class Co2TageslaufTests : IDisposable
         wissen.Initialize();
         return new Co2SteuerungService(
             _steuerung, new KostenRepository(_pfade), new JournalRepository(_pfade), grows,
-            new HydroSetupRepository(_pfade, new TentRepository(_pfade)), new TargetValueService(wissen), wissen,
+            new HydroSetupRepository(_pfade, new TentRepository(_pfade)), new TentRepository(_pfade), new TargetValueService(wissen), wissen,
             ha, haSettings, new SteuerungGeraeteService(_steuerung),
             new WochenplanSyncService(grows, wissen, _steuerung, new AlertRuleRepository(_pfade), ha, haSettings,
                 NullLogger<WochenplanSyncService>.Instance),

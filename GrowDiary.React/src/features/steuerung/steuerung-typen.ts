@@ -183,6 +183,15 @@ export type Co2Tag = {
 
 export type KostenArtikelKurz = { id: number; name: string; einheit: string }
 
+/** Woher das Zeltvolumen der CO₂-Steuerung kommt (Backend: Co2ZeltvolumenQuelle). */
+export type Co2ZeltvolumenQuelle = {
+  ausMassen: boolean
+  volumenM3: number
+  zeltName: string | null
+  masse: string | null
+  grund: string | null
+}
+
 export type Co2Seite = {
   einstellungen: Co2Einstellungen
   live: Co2Live
@@ -192,6 +201,7 @@ export type Co2Seite = {
   phase: string | null
   planPpm: number | null
   planHerkunft: string | null
+  zeltvolumenQuelle?: Co2ZeltvolumenQuelle | null
   haAngenommen: boolean | null
   geraeteZugeordnet: number
   geraeteGesamt: number

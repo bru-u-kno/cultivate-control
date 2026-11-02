@@ -285,7 +285,7 @@ function TentsPage() {
               {!trocknung && <V1Field label="Lichttyp"><input value={draft.lightType} onChange={(event) => setDraft((current) => ({ ...current, lightType: event.target.value }))} placeholder="LED" /></V1Field>}
               {!trocknung && <V1Field label="Watt"><input type="number" value={draft.lightWatt} onChange={(event) => setDraft((current) => ({ ...current, lightWatt: event.target.value }))} /></V1Field>}
               <V1Field label="Abluft Anzahl"><input type="number" value={draft.exhaustFanCount} onChange={(event) => setDraft((current) => ({ ...current, exhaustFanCount: event.target.value }))} /></V1Field>
-              <V1Field label="Abluft m³/h"><input type="number" value={draft.exhaustM3h} onChange={(event) => setDraft((current) => ({ ...current, exhaustM3h: event.target.value }))} /></V1Field>
+              <V1Field label="Abluft gesamt m³/h"><input type="number" value={draft.exhaustM3h} onChange={(event) => setDraft((current) => ({ ...current, exhaustM3h: event.target.value }))} /></V1Field>
               <V1Field label="Umluft Anzahl"><input type="number" value={draft.circulationFanCount} onChange={(event) => setDraft((current) => ({ ...current, circulationFanCount: event.target.value }))} /></V1Field>
               {!trocknung && (
                 <>
@@ -430,9 +430,15 @@ function TentDetail({ tent, live, linkedGrows, linkedHydro, deleteBlocked, delet
             <Row label="Leistung" value={tent.lightWatt ? `${tent.lightWatt} W` : '–'} />
             <Row label="PPFD" value={liveValue(live, 'ppfd')} faint={liveValue(live, 'ppfd') === '–'} />
           </div>}
+          <div className="tn-group" data-audit="tent-masse">
+            <div className="tn-group-label">Maße</div>
+            <Row label="Größe" value={sizeText(tent)} faint={sizeText(tent) === '–'} />
+            <Row label="Grundfläche" value={tent.floorAreaM2 != null ? `${formatDe(tent.floorAreaM2)}\u00a0m²` : '–'} faint={tent.floorAreaM2 == null} />
+            <Row label="Volumen" value={tent.volumeM3 != null ? `${formatDe(tent.volumeM3)}\u00a0m³` : '–'} faint={tent.volumeM3 == null} />
+          </div>
           <div className="tn-group">
             <div className="tn-group-label">Luft</div>
-            <Row label="Abluft" value={tent.exhaustFanCount ? `${tent.exhaustFanCount} × ${tent.exhaustM3h ?? '?'} m³/h` : '–'} />
+            <Row label="Abluft" value={tent.exhaustFanCount ? `${tent.exhaustFanCount} Lüfter · ${tent.exhaustM3h ?? '?'} m³/h` : '–'} />
             <Row label="Umluft" value={tent.circulationFanCount ? `${tent.circulationFanCount} Ventilatoren` : '–'} />
             {!trocknung && <Row label="Luftwechsel" value={airChanges(tent)} />}
           </div>
@@ -641,18 +647,23 @@ function headMeta(tent: TentDto): string {
   return parts.join(' · ')
 }
 
-/** ~ Luftwechsel pro Stunde: Abluftleistung geteilt durch Zeltvolumen. */
+/** Luftwechsel je Stunde — gerechnet im Backend (ZeltMasse), hier nur gezeigt. */
 function airChanges(tent: TentDto): string {
-  if (!tent.exhaustM3h || !tent.widthCm || !tent.depthCm || !tent.tentHeightCm) return '–'
-  const volumeM3 = (tent.widthCm / 100) * (tent.depthCm / 100) * (tent.tentHeightCm / 100)
-  if (volumeM3 <= 0) return '–'
-  return `~ ${Math.round(tent.exhaustM3h / volumeM3)} ×/h`
+  return tent.airChangesPerHour != null ? `~\u00a0${Math.round(tent.airChangesPerHour)}\u00a0×/h` : '–'
 }
 
 function areaPerPlant(tent: TentDto, grow: GrowSummary | null): string {
-  if (!tent.widthCm || !tent.depthCm || !grow?.plantCount) return '–'
-  const perPlant = Math.round((tent.widthCm * tent.depthCm) / grow.plantCount)
+  if (tent.floorAreaM2 == null || !grow?.plantCount) return '–'
+  const perPlant = Math.round((tent.floorAreaM2 * 10000) / grow.plantCount)
   return `${new Intl.NumberFormat('de-DE').format(perPlant)} cm²`
+}
+
+function sizeText(tent: TentDto): string {
+  return tent.widthCm && tent.depthCm && tent.tentHeightCm ? `${tent.widthCm}×${tent.depthCm}×${tent.tentHeightCm}\u00a0cm` : '–'
+}
+
+function formatDe(wert: number): string {
+  return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(wert)
 }
 
 function isTentDependencyError(payload: unknown): payload is TentDependencyError {

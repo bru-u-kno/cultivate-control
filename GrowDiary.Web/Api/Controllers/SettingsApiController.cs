@@ -21,13 +21,16 @@ public sealed class SettingsApiController : ApiControllerBase
     private readonly TentSensorHardwareSyncService _sensorHardwareSync;
     private readonly HomeAssistantService _homeAssistant;
     private readonly ILogger<SettingsApiController> _logger;
+    private readonly Co2SteuerungService? _co2;
 
     public SettingsApiController(
         GrowRepository repository,
         TentSensorHardwareSyncService sensorHardwareSync,
         HomeAssistantService homeAssistant,
-        ILogger<SettingsApiController> logger)
+        ILogger<SettingsApiController> logger,
+        Co2SteuerungService? co2 = null)
     {
+        _co2 = co2;
         _repository = repository;
         _sensorHardwareSync = sensorHardwareSync;
         _homeAssistant = homeAssistant;
@@ -216,7 +219,23 @@ public sealed class SettingsApiController : ApiControllerBase
             Response.Headers["X-GrowOs-Warning"] = warnung;
         }
 
+        await CO2VolumenNachziehenAsync(existing, saved, cancellationToken);
+
         return Ok(saved.ToDto());
+    }
+
+    /// <summary>
+    /// Ändern sich Maße oder CO₂-Flag eines Zeltes, bestimmt das Volumen die Impulsdauer der CO₂-Steuerung — der HA-Helfer
+    /// wird sofort nachgezogen. Ein Fehler hier darf das Speichern des Zeltes nicht kippen; der Stundenlauf holt es nach.
+    /// </summary>
+    private async Task CO2VolumenNachziehenAsync(Tent vorher, Tent nachher, CancellationToken ct)
+    {
+        if (_co2 is null) return;
+        var geaendert = vorher.HasCo2Enrichment != nachher.HasCo2Enrichment
+            || ZeltMasse.VolumenM3(vorher.WidthCm, vorher.DepthCm, vorher.TentHeightCm) != ZeltMasse.VolumenM3(nachher.WidthCm, nachher.DepthCm, nachher.TentHeightCm);
+        if (!geaendert) return;
+        try { await _co2.ZeltvolumenNachziehenAsync(ct); }
+        catch (Exception ex) { _logger.LogWarning(ex, "CO₂-Zeltvolumen konnte nicht nach Home Assistant geschrieben werden — der Stundenlauf holt es nach."); }
     }
 
     /// <summary>

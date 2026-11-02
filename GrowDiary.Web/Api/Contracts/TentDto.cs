@@ -33,7 +33,11 @@ public sealed record TentDto(
     IReadOnlyList<string> Cameras,
     double LeafTempOffsetC,
     string? LeafOffsetSyncService,
-    int LeafOffsetSyncPort
+    int LeafOffsetSyncPort,
+    // Aus den Maßen gerechnet (ZeltMasse) — nicht eingetragen. null, solange Maße oder Abluft fehlen.
+    double? VolumeM3 = null,
+    double? FloorAreaM2 = null,
+    double? AirChangesPerHour = null
 );
 
 public sealed record TentSensorDto(

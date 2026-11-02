@@ -103,6 +103,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
     private readonly JournalRepository _journal;
     private readonly GrowRepository _grows;
     private readonly HydroSetupRepository _hydro;
+    private readonly TentRepository _tents;
     private readonly TargetValueService _targets;
     private readonly KnowledgeBaseLoader _wissen;
     private readonly HomeAssistantService _ha;
@@ -118,6 +119,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         JournalRepository journal,
         GrowRepository grows,
         HydroSetupRepository hydro,
+        TentRepository tents,
         TargetValueService targets,
         KnowledgeBaseLoader wissen,
         HomeAssistantService ha,
@@ -132,6 +134,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         _journal = journal;
         _grows = grows;
         _hydro = hydro;
+        _tents = tents;
         _targets = targets;
         _wissen = wissen;
         _ha = ha;
@@ -144,11 +147,50 @@ public sealed class Co2SteuerungService : IStartwertDienst
 
     // ----------------------------------------------------------- Einstellungen
 
-    public Co2Einstellungen Einstellungen => _repo.GetEinstellungen<Co2Einstellungen>(Modul) ?? new Co2Einstellungen();
+    /// <summary>Die Einstellungen — das Zeltvolumen ist darin schon das wirksame (aus den Maßen, sonst das gespeicherte).</summary>
+    public Co2Einstellungen Einstellungen
+    {
+        get
+        {
+            var e = _repo.GetEinstellungen<Co2Einstellungen>(Modul) ?? new Co2Einstellungen();
+            e.ZeltvolumenM3 = WirksamesZeltvolumen(e.ZeltvolumenM3).Volumen;
+            return e;
+        }
+    }
+
+    /// <summary>
+    /// Das Zeltvolumen, mit dem die Impulsdauer gerechnet wird — aus den Maßen des Zeltes mit CO₂, sonst der gespeicherte Handwert.
+    /// </summary>
+    /// <remarks>
+    /// Eine Wahrheit je Zahl: Wer die Maße eines Zeltes einträgt, trägt das Volumen nicht noch einmal ein. Aus den Maßen
+    /// nur dann, wenn genau EIN aktives Zelt CO₂ hat, alle drei Maße da sind und das Volumen in die Spanne des Helfers
+    /// passt (sonst lehnte jedes Speichern der Seite ab). Sonst gilt der Handwert, und die Seite nennt den Grund.
+    /// Mit mehreren CO₂-Zelten folgt die Steuerung je Zelt (eigener Schritt).
+    /// </remarks>
+    public (double Volumen, Co2ZeltvolumenQuelle Quelle) WirksamesZeltvolumen(double handM3)
+    {
+        var spanne = SteuerungBauteile.Spanne(Entitaeten.Zeltvolumen);
+        var (min, max) = (spanne.Min, spanne.Max);
+        var mitCo2 = _tents.GetTents().Where(t => t.Status == TentStatus.Active && t.HasCo2Enrichment).ToList();
+        string? grund;
+        if (mitCo2.Count == 0) grund = "Kein Zelt ist als „mit CO₂-Begasung“ eingetragen.";
+        else if (mitCo2.Count > 1) grund = "Mehrere Zelte haben CO₂-Begasung.";
+        else
+        {
+            var z = mitCo2[0];
+            var v = ZeltMasse.VolumenM3(z.WidthCm, z.DepthCm, z.TentHeightCm);
+            if (v is null) grund = $"Für „{z.Name}“ fehlen Breite, Tiefe oder Höhe.";
+            else if (v < min || v > max) grund = $"Das Volumen von „{z.Name}“ ({v:0.##} m³) liegt außerhalb von {min:0.##} bis {max:0.##} m³.";
+            else return (v.Value, new Co2ZeltvolumenQuelle(true, v.Value, z.Name, $"{z.WidthCm}×{z.DepthCm}×{z.TentHeightCm} cm", null));
+        }
+        return (handM3, new Co2ZeltvolumenQuelle(false, handM3, null, null, grund));
+    }
 
     /// <summary>Prüft, speichert und schreibt nach Home Assistant. Liefert die Feldfehler, wenn etwas nicht stimmt.</summary>
     public async Task<(Co2Einstellungen? Gespeichert, Dictionary<string, string> Fehler, bool HaErreicht)> SpeichernAsync(Co2Einstellungen e, CancellationToken ct)
     {
+        // Kommt das Volumen aus den Maßen, zählt der Wert des Formulars nicht.
+        e.ZeltvolumenM3 = WirksamesZeltvolumen(e.ZeltvolumenM3).Volumen;
         var fehler = Pruefen(e);
         if (fehler.Count > 0) return (null, fehler, false);
 
@@ -176,6 +218,21 @@ public sealed class Co2SteuerungService : IStartwertDienst
         }
 
         return (e, fehler, erreicht);
+    }
+
+    /// <summary>
+    /// Nach einer Änderung an den Maßen oder am CO₂-Flag eines Zeltes: das Volumen sofort in den HA-Helfer schreiben.
+    /// </summary>
+    /// <remarks>
+    /// Die Impulsdauer rechnet eine Vorlage in Home Assistant mit <c>input_number.co2_zeltvolumen</c>. Ohne diesen Schritt
+    /// stünde dort bis zum nächsten Stundenlauf noch der alte Wert, während die Seite schon den neuen zeigt.
+    /// Nur dieser eine Helfer, nichts anderes — und nur, wenn die Maße das Volumen bestimmen.
+    /// </remarks>
+    public async Task<bool> ZeltvolumenNachziehenAsync(CancellationToken ct)
+    {
+        var e = Einstellungen;
+        if (!WirksamesZeltvolumen(e.ZeltvolumenM3).Quelle.AusMassen) return true;
+        return await NachHomeAssistantSchreibenAsync(e, ct, mitAutomatik: false, nur: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Entitaeten.Zeltvolumen });
     }
 
     // Wertebereiche der Helfer in Home Assistant. Ein Wert ausserhalb nimmt
@@ -1037,3 +1094,11 @@ public sealed record Co2Live(
     /// <summary>Ob der Mittelwert-Helfer in Home Assistant existiert.</summary>
     public bool RhMittelVorhanden { get; init; }
 }
+
+/// <summary>Woher das Zeltvolumen der CO₂-Steuerung kommt: aus den Maßen des Zeltes oder von Hand.</summary>
+/// <param name="AusMassen">true: gerechnet aus Breite × Tiefe × Höhe des Zeltes mit CO₂.</param>
+/// <param name="VolumenM3">Der Wert, mit dem gerechnet wird.</param>
+/// <param name="ZeltName">Das Zelt, dessen Maße gelten (nur bei <paramref name="AusMassen"/>).</param>
+/// <param name="Masse">„120×120×200 cm“ (nur bei <paramref name="AusMassen"/>).</param>
+/// <param name="Grund">Warum der Handwert gilt (nur bei <c>AusMassen = false</c>).</param>
+public sealed record Co2ZeltvolumenQuelle(bool AusMassen, double VolumenM3, string? ZeltName, string? Masse, string? Grund);

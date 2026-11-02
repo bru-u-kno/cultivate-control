@@ -1,6 +1,7 @@
 using GrowDiary.Web.Api.Contracts;
 using GrowDiary.Web.Infrastructure;
 using GrowDiary.Web.Models;
+using GrowDiary.Web.Services;
 
 namespace GrowDiary.Web.Api.Mapping;
 
@@ -13,7 +14,20 @@ public static class SettingsMapping
         IsManagedByAddon: HomeAssistantAddon.IsRunningAsAddon
     );
 
-    public static TentDto ToDto(this Tent tent) => new(
+    public static TentDto ToDto(this Tent tent) => ToDtoMitMassen(tent);
+
+    private static TentDto ToDtoMitMassen(Tent tent)
+    {
+        var volumen = ZeltMasse.VolumenM3(tent.WidthCm, tent.DepthCm, tent.TentHeightCm);
+        return Gebaut(tent) with
+        {
+            VolumeM3 = volumen,
+            FloorAreaM2 = ZeltMasse.GrundflaecheM2(tent.WidthCm, tent.DepthCm),
+            AirChangesPerHour = ZeltMasse.LuftwechselProStunde(volumen, tent.ExhaustM3h),
+        };
+    }
+
+    private static TentDto Gebaut(Tent tent) => new(
         Id: tent.Id,
         Name: tent.Name,
         Kind: tent.Kind,
