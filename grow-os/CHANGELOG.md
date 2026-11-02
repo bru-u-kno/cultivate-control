@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.310
+
+**CO₂ je Zelt, Teil 2: Die CO₂-Seite hat einen Zeltwechsel, und jedes Zelt zeigt seine eigene Flasche.**
+
+- **Anlass:** Seit Teil 1 hat jedes Zelt mit CO₂-Begasung im Hintergrund seine eigene Steuerung, aber die Seite zeigte nur das erste. Jetzt lässt sich jedes Zelt öffnen.
+- **Zeltwechsel unter der Überschrift:** Er erscheint nur, wenn mehr als ein Zelt eine eigene CO₂-Steuerung hat. Mit einem Zelt sieht die Seite aus wie bisher. Das gewählte Zelt steht in der Adresse (`?zelt=…`), sodass ein Link direkt auf ein Zelt führt. Beim Wechsel wird die Seite des alten Zeltes sofort verworfen, damit nichts davon versehentlich im neuen Zelt gespeichert wird.
+- **Alles gilt je Zelt:** Einstellungen, Live-Werte, Zeltvolumen aus den Maßen dieses Zeltes, Tageswerte, Gerätezuordnung („Rollen bearbeiten“ führt zum Block des gewählten Zeltes) und der Block „Was in Home Assistant fehlt“ samt „Fehlende anlegen“ für die Helfer und Automationen dieses Zeltes.
+- **Eigene Flasche je Zelt:** Die Zeile „Flasche“ nennt den Verbrauchsartikel des Zeltes und die Restmenge. Der Kosten-Artikel unter „Heute“ ist die Flasche dieses Zeltes. Ein Flaschenwechsel wird wie bisher am wieder steigenden Füllstand erkannt und steht in der Tagestabelle des Zeltes als „Flasche gewechselt“.
+- **Vorerst nur beim ersten Zelt:** Die Probeschaltung des Ventils und die Absicherung der vorhandenen Automationen. Bei jedem weiteren Zelt sind beide Blöcke ausgeblendet, statt halb zu funktionieren.
+- **Kleiner:** Der Hinweis „Der Helfer für die tiefe Stufe meldet sich nicht“ nennt keine feste Kennung mehr.
+
 ## 2.0.0-cc.309
 
 **Live: Der Zeltkopf sperrt sich, solange „Anpassen“ läuft — und lässt sich besser vorlesen.**
