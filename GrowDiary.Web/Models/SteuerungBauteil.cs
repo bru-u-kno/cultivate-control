@@ -118,6 +118,10 @@ public enum BauteilArt
 /// <see cref="SteuerungBauteile.AutomationFinden"/>.
 /// </para>
 /// </param>
+/// <param name="MittelMinuten">
+/// Bei einem <see cref="BauteilArt.Mittelwert"/>: über wie viele Minuten gemittelt wird. Ohne Angabe gilt
+/// <see cref="SteuerungRechenwertService.StandardMittelMinuten"/>.
+/// </param>
 /// <summary>
 /// Fork AI (A-010): Was ein Probelauf mit einer Automation tut.
 /// </summary>
@@ -152,7 +156,8 @@ public sealed record Bauteil(
     string? Zustandsklasse = null,
     string? Verfuegbarkeit = null,
     string? VorlagenDatei = null,
-    ProbelaufRolle? Probelauf = null)
+    ProbelaufRolle? Probelauf = null,
+    int? MittelMinuten = null)
 {
     /// <summary>Die Domäne der Entität — <c>input_number</c>, <c>sensor</c>, …</summary>
     public string Domaene => EntityId.Split('.', 2)[0];
@@ -427,6 +432,14 @@ public static class SteuerungBauteile
             Einheit: "g/m³", Zustandsklasse: "measurement",
             Vorlage: "{{ (states('sensor.absolute_feuchte_keller') | float - states('sensor.absolute_feuchte_draussen') | float) | round(2) }}",
             Verfuegbarkeit: "{{ has_value('sensor.absolute_feuchte_keller') and has_value('sensor.absolute_feuchte_draussen') }}"),
+        // Cultivate Control (cc.306): Die geglättete Differenz legt der Fork selbst an, statt sie vorauszusetzen. Die rohe
+        // Differenz springt um 0,5 g/m³ in einer Minute; der Bedarf rechnet mit dem 10-Minuten-Mittel, damit der Lüfter
+        // nicht flattert. Fehlt der Helfer, rechnet der Dienst mit der rohen Differenz weiter.
+        new(Zuluft, "sensor.zuluft_differenz_geglattet", "Zuluft Differenz geglattet", BauteilArt.Mittelwert,
+            "Zehn-Minuten-Mittel der Differenz. Der Bedarf rechnet damit, damit der Lüfter nicht bei jedem Sprung schaltet.",
+            Pflicht: false,
+            OhneDas: "Ohne Mittelwert rechnet der Bedarf mit der rohen Differenz und schaltet unruhiger.",
+            Einheit: "g/m³", Vorlage: "sensor.zuluft_differenz", MittelMinuten: 10),
         new(Zuluft, "sensor.zuluft_zielstufe", "Zuluft Zielstufe", BauteilArt.RechenSensor,
             "Stufe proportional zur Differenz, zwischen Stufe min und max.",
             Pflicht: false, HaengtAn: BrauchtStufe,

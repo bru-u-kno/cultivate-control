@@ -4,7 +4,7 @@ import LichtPlan from './LichtPlan'
 import { HaStummHinweis } from './HaStummHinweis'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
-import { V1Alert, V1Button, V1Card, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Switch, V1Tabs } from '../../components/v1'
+import { V1Alert, V1Button, V1Card, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Tabs } from '../../components/v1'
 import { LICHT_MODI, LICHT_REITER } from './steuerung-typen'
 import type { LichtEinstellungen, LichtReiter, LichtSeite, SteuerungModul } from './steuerung-typen'
 import './steuerung.css'
@@ -363,12 +363,6 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
               wert={entwurf.maxWiederholungen}
               onChange={(v) => setz('maxWiederholungen', v)}
               fehler={feldFehler.MaxWiederholungen}
-            />
-            <V1Switch
-              label="Zeiten für eigene Automationen in Home Assistant bereitstellen"
-              checked={entwurf.helferSpiegeln}
-              onChange={(v) => setz('helferSpiegeln', v)}
-              hint="Nur nötig, wenn eine Automation in Home Assistant die Zeitpläne kennen muss. Dann vier Helfer vom Typ input_datetime anlegen — led_top_zeitplan_veggie_ein und _aus, led_top_zeitplan_blute_ein und _aus — und diesen Schalter einschalten; der Fork hält sie dann aktuell. Für die Bedienung hier ist er nicht nötig."
             />
           </V1Card>
         </V1Section>

@@ -62,18 +62,6 @@ public sealed class LichtSteuerungService
         public const string Sensor = "licht_sensor";
     }
 
-    /// <summary>
-    /// Die Spiegel-Helfer der alten Dashboard-Karte. Sie gehören zur Steuerung,
-    /// nicht zum Gerät, und stehen deshalb fest — solange die Karte lebt.
-    /// </summary>
-    public static class Entitaeten
-    {
-        public const string VeggieEin = "input_datetime.led_top_zeitplan_veggie_ein";
-        public const string VeggieAus = "input_datetime.led_top_zeitplan_veggie_aus";
-        public const string BlueteEin = "input_datetime.led_top_zeitplan_blute_ein";
-        public const string BlueteAus = "input_datetime.led_top_zeitplan_blute_aus";
-    }
-
     /// <summary>Offene Sollwerte je Entität. Statisch, weil der Dienst je Anfrage neu entsteht.</summary>
     private static readonly ConcurrentDictionary<string, LichtOffen> Offene = new(StringComparer.OrdinalIgnoreCase);
 
@@ -147,7 +135,7 @@ public sealed class LichtSteuerungService
         var live = await LiveAsync(ct);
         _repo.SetEinstellungen(Modul, e);
 
-        var erreicht = await HelferSpiegelnAsync(e, ct);
+        var erreicht = true;
         var aktiv = AktivesPreset(vorher, live.EinZeit, live.AusZeit, live.Modus);
         if (aktiv is not null)
         {
@@ -380,26 +368,6 @@ public sealed class LichtSteuerungService
         => Schritt(entityId, soll) is { } s
             ? _funk.SchickenMitAntwortAsync(settings, s.Domain, s.Dienst, s.EntityId, s.Daten, ct)
             : Task.FromResult(HaDienstAntwort.Abgelehnt);
-
-    /// <summary>Die vier Helfer der alten Dashboard-Karte nachziehen.</summary>
-    private async Task<bool> HelferSpiegelnAsync(LichtEinstellungen e, CancellationToken ct)
-    {
-        if (!e.HelferSpiegeln) return true;
-        var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-        if (!settings.IsConfigured) return false;
-
-        var alles = true;
-        foreach (var (id, wert) in new[]
-                 {
-                     (Entitaeten.VeggieEin, e.VeggieEin), (Entitaeten.VeggieAus, e.VeggieAus),
-                     (Entitaeten.BlueteEin, e.BlueteEin), (Entitaeten.BlueteAus, e.BlueteAus),
-                 })
-        {
-            alles &= await SendenAsync(settings, id, wert + ":00", ct) == HaDienstAntwort.Angenommen;
-        }
-
-        return alles;
-    }
 
     /// <summary>Was mit einem offenen Sollwert geschieht.</summary>
     public enum Nachpruefschritt

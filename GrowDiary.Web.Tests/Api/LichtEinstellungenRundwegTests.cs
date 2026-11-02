@@ -59,7 +59,6 @@ public sealed class LichtEinstellungenRundwegTests : IDisposable
             SchreibAbstandMs = 3500,
             VerifySekunden = 45,
             MaxWiederholungen = 4,
-            HelferSpiegeln = true,
         };
 
         _repo.SetEinstellungen(LichtSteuerungService.Modul, gesendet);
@@ -74,7 +73,6 @@ public sealed class LichtEinstellungenRundwegTests : IDisposable
         Assert.Equal(3500, gelesen.SchreibAbstandMs);
         Assert.Equal(45, gelesen.VerifySekunden);
         Assert.Equal(4, gelesen.MaxWiederholungen);
-        Assert.True(gelesen.HelferSpiegeln);
     }
 
     [Fact]
