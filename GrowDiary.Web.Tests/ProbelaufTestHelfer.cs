@@ -60,7 +60,7 @@ internal sealed class FakeChillerRegler : IChillerRegler
     public List<string> Protokoll { get; } = [];
     public IReadOnlyList<int> Betroffen { get; set; } = [1];
 
-    public IReadOnlyList<int> Ausschalten() { Protokoll.Add("regler aus"); return Betroffen; }
+    public IReadOnlyList<int> Ausschalten(int? zeltId = null) { Protokoll.Add("regler aus"); return Betroffen; }
 
     public void Einschalten(IEnumerable<int> zeltIds) => Protokoll.Add("regler an " + string.Join(",", zeltIds));
 }

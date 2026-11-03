@@ -37,6 +37,7 @@ public sealed class ZeltRuheService
     private readonly GrowRepository _grows;
     private readonly IZeltRuheWerkzeug _werkzeug;
     private readonly ILogger<ZeltRuheService> _logger;
+    private readonly SteuerungZeltService? _zelte;
 
     public ZeltRuheService(
         SteuerungRepository repo,
@@ -45,8 +46,10 @@ public sealed class ZeltRuheService
         HomeAssistantSettingsRepository haSettings,
         GrowRepository grows,
         IZeltRuheWerkzeug werkzeug,
-        ILogger<ZeltRuheService> logger)
+        ILogger<ZeltRuheService> logger,
+        SteuerungZeltService? zelte = null)
     {
+        _zelte = zelte;
         _repo = repo;
         _geraete = geraete;
         _ha = ha;
@@ -56,7 +59,41 @@ public sealed class ZeltRuheService
         _logger = logger;
     }
 
+    /// <summary>Der Zustand des Zeltes der Steuerung (wie bisher unter dem Modul <see cref="Modul"/>).</summary>
     public ZeltRuheEinstellungen Einstellungen => _repo.GetEinstellungen<ZeltRuheEinstellungen>(Modul) ?? new ZeltRuheEinstellungen();
+
+    /// <summary>
+    /// Unter welchem Modul der Zustand eines Zeltes liegt: das Zelt der Steuerung behält <see cref="Modul"/> (nichts wird umgezogen),
+    /// jedes andere Zelt bekommt <c>zeltruhe-z{id}</c>.
+    /// </summary>
+    public static string ModulFuer(int? zeltId, int? steuerungsZeltId)
+        => zeltId is { } z && z != steuerungsZeltId ? $"{Modul}-z{z}" : Modul;
+
+    private ZeltRuheEinstellungen EinstellungenFuer(int? zeltId)
+        => _repo.GetEinstellungen<ZeltRuheEinstellungen>(ModulFuer(zeltId, SteuerungsZeltId())) ?? new ZeltRuheEinstellungen();
+
+    private void Speichern(int? zeltId, ZeltRuheEinstellungen e)
+        => _repo.SetEinstellungen(ModulFuer(zeltId, SteuerungsZeltId()), e);
+
+    /// <summary>Das Zelt, um das es geht: das genannte, sonst das Zelt der Steuerung.</summary>
+    private int? Zelt(int? zeltId) => zeltId ?? SteuerungsZeltId();
+
+    /// <summary>Welche Arten Gerät zu einem Zelt gehören: die Steuerungen, die ihm zugewiesen sind, und das CO₂ der Zelte mit CO₂.</summary>
+    public IReadOnlyList<ZeltRuheArt> ArtenFuer(int? zeltId)
+    {
+        // Ohne Zeltangabe (alte Aufrufer, MCP): alles wie bisher — alle Geräte des Zeltes der Steuerung.
+        if (zeltId is not { } zelt) return ZeltRuheArten.Alle;
+        // Ohne Zuweisungsdienst (und mit nur einem Zelt) gehört alles dem Zelt der Steuerung — wie bisher.
+        var bestand = SteuerungsZeltId();
+        var co2Zelte = Co2Zelte.Aktuell.ZeltIds;
+        bool Gehoert(ZeltRuheArt a) => a.Kennung switch
+        {
+            ZeltRuheArten.Co2 or ZeltRuheArten.Abluft => co2Zelte.Count > 0 ? co2Zelte.Contains(zelt) : zelt == bestand,
+            ZeltRuheArten.Zusatz => _zelte is null ? zelt == bestand : _zelte.ZeltFuer("entfeuchter-zusatz") == zelt,
+            _ => _zelte is null ? zelt == bestand : _zelte.ZeltFuer(a.Kennung) == zelt,
+        };
+        return ZeltRuheArten.Alle.Where(Gehoert).ToList();
+    }
 
     // ------------------------------------------------------------------ Reine Regeln (ohne Home Assistant)
 
@@ -136,18 +173,22 @@ public sealed class ZeltRuheService
     /// leer gemeldet. Gilt nur für das Zelt der Steuerung (die Geräte-Zuordnung kennt nur eins).
     /// </summary>
     public static bool IstRuhend(SteuerungRepository repo, GrowRepository grows, int tentId)
-        => repo.GetEinstellungen<ZeltRuheEinstellungen>(Modul) is { Ruhend: true } && SteuerungsZeltId(grows) == tentId;
+        => repo.GetEinstellungen<ZeltRuheEinstellungen>(ModulFuer(tentId, SteuerungsZeltId(grows))) is { Ruhend: true };
 
-    public async Task<ZeltRuheStand> StandAsync(CancellationToken ct)
+    public async Task<ZeltRuheStand> StandAsync(CancellationToken ct) => await StandAsync(null, ct);
+
+    /// <param name="zeltId">Das Zelt; <c>null</c>: das Zelt der Steuerung.</param>
+    public async Task<ZeltRuheStand> StandAsync(int? zeltId, CancellationToken ct)
     {
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-        var e = Einstellungen;
-        var rollen = Rollen();
+        var e = EinstellungenFuer(zeltId);
+        var arten = ArtenFuer(zeltId);
+        var rollen = Rollen(zeltId);
         var wirksam = Wirksam(e.Auswahl, rollen.Where(r => r.Value is not null).Select(r => r.Key).ToList());
 
         var geraete = new List<ZeltRuheGeraet>();
         var erreichbar = settings.IsConfigured;
-        foreach (var art in ZeltRuheArten.Alle)
+        foreach (var art in arten)
         {
             var entity = rollen[art.Kennung];
             if (entity is null)
@@ -168,62 +209,73 @@ public sealed class ZeltRuheService
                 wirksam.Contains(art.Kennung, StringComparer.OrdinalIgnoreCase),
                 e.Gemerkt.Any(m => string.Equals(m.Kennung, art.Kennung, StringComparison.OrdinalIgnoreCase))));
         }
-        var zeltId = SteuerungsZeltId();
-        var zeltTyp = zeltId is { } id ? _grows.GetTent(id)?.TentType.ToString() : null;
-        return new ZeltRuheStand(e.Ruhend, e.SeitUtc, zeltId, zeltTyp, erreichbar, geraete);
+        var zelt = Zelt(zeltId);
+        var zeltTyp = zelt is { } id ? _grows.GetTent(id)?.TentType.ToString() : null;
+        return new ZeltRuheStand(e.Ruhend, e.SeitUtc, zelt, zeltTyp, erreichbar, geraete);
     }
 
-    private Dictionary<string, string?> Rollen()
+    private Dictionary<string, string?> Rollen(int? zeltId)
     {
         var ergebnis = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var art in ZeltRuheArten.Alle) ergebnis[art.Kennung] = _geraete.Entity(art.Modul, art.Rolle);
+        var zelt = zeltId;
+        foreach (var art in ArtenFuer(zeltId))
+        {
+            // CO₂ und Abluft liegen je Zelt unter ihrem eigenen Modul (co2 für das Bestand-Zelt, co2-z{id} für weitere).
+            var modul = art.Modul == Co2Modul.Basis && zelt is { } z && Co2Zelte.Aktuell.BestandZeltId is not null
+                ? Co2Zelte.ModulFuer(z)
+                : art.Modul;
+            ergebnis[art.Kennung] = _geraete.Entity(modul, art.Rolle);
+        }
         return ergebnis;
     }
 
     /// <summary>Speichert, was im Ruhemodus ausgehen soll. Unbekannte Kennungen werden abgelehnt.</summary>
-    public (bool Ok, string? Fehler) AuswahlSpeichern(IReadOnlyList<string> kennungen)
+    public (bool Ok, string? Fehler) AuswahlSpeichern(IReadOnlyList<string> kennungen, int? zeltId = null)
     {
         Sperre.Wait();
-        try { return AuswahlSpeichernOhneSperre(kennungen); }
+        try { return AuswahlSpeichernOhneSperre(kennungen, zeltId); }
         finally { Sperre.Release(); }
     }
 
-    private (bool Ok, string? Fehler) AuswahlSpeichernOhneSperre(IReadOnlyList<string> kennungen)
+    private (bool Ok, string? Fehler) AuswahlSpeichernOhneSperre(IReadOnlyList<string> kennungen, int? zeltId)
     {
         var unbekannt = kennungen.FirstOrDefault(k => ZeltRuheArten.Finden(k) is null);
         if (unbekannt is not null) return (false, $"„{unbekannt}“ ist kein Gerät, das „Zelt ruhend“ kennt.");
-        var e = Einstellungen;
+        var e = EinstellungenFuer(zeltId);
         e.Auswahl = ZeltRuheArten.Alle.Where(a => kennungen.Contains(a.Kennung, StringComparer.OrdinalIgnoreCase)).Select(a => a.Kennung).ToList();
-        _repo.SetEinstellungen(Modul, e);
+        Speichern(zeltId, e);
         return (true, null);
     }
 
     // ------------------------------------------------------------------ Ruhend schalten
 
     /// <param name="kennungen">Die Geräte dieses Mal; <c>null</c>: die gespeicherte Auswahl. Wird sie so mitgeschickt, merkt sich der Fork sie als neue Auswahl.</param>
-    public async Task<ZeltRuheErgebnis> RuhendAsync(IReadOnlyList<string>? kennungen, CancellationToken ct)
+    public async Task<ZeltRuheErgebnis> RuhendAsync(IReadOnlyList<string>? kennungen, CancellationToken ct) => await RuhendAsync(kennungen, null, ct);
+
+    /// <param name="zeltId">Das Zelt; <c>null</c>: das Zelt der Steuerung.</param>
+    public async Task<ZeltRuheErgebnis> RuhendAsync(IReadOnlyList<string>? kennungen, int? zeltId, CancellationToken ct)
     {
         await Sperre.WaitAsync(ct);
         try
         {
             var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-            if (!settings.IsConfigured) return await ErgebnisAsync(false, "Home Assistant ist nicht verbunden — es wurde nichts geschaltet.", [], ct);
+            if (!settings.IsConfigured) return await ErgebnisAsync(zeltId, false, "Home Assistant ist nicht verbunden — es wurde nichts geschaltet.", [], ct);
 
             if (kennungen is not null)
             {
-                var (ok, fehler) = AuswahlSpeichernOhneSperre(kennungen);
-                if (!ok) return await ErgebnisAsync(false, fehler!, [], ct);
+                var (ok, fehler) = AuswahlSpeichernOhneSperre(kennungen, zeltId);
+                if (!ok) return await ErgebnisAsync(zeltId, false, fehler!, [], ct);
             }
 
-            var e = Einstellungen;
-            var rollen = Rollen();
+            var e = EinstellungenFuer(zeltId);
+            var rollen = Rollen(zeltId);
             var wirksam = Wirksam(e.Auswahl, rollen.Where(r => r.Value is not null).Select(r => r.Key).ToList());
 
             // Ist das Zelt schon ruhend, werden nur die Geräte nachgeholt, die noch nicht ausgeschaltet sind.
             var offen = wirksam.Where(k => !e.Gemerkt.Any(m => string.Equals(m.Kennung, k, StringComparison.OrdinalIgnoreCase))).ToList();
             if (offen.Count == 0)
             {
-                return await ErgebnisAsync(false, e.Ruhend
+                return await ErgebnisAsync(zeltId, false, e.Ruhend
                     ? "Das Zelt ist schon ruhend — es gibt nichts Weiteres auszuschalten."
                     : "Es ist kein Gerät zum Ausschalten ausgewählt.", [], ct);
             }
@@ -231,46 +283,49 @@ public sealed class ZeltRuheService
             var geraete = offen.Select(k => (ZeltRuheArten.Finden(k)!, rollen[k]!)).ToList();
             // Ohne das Token der Anfrage: bricht der Aufrufer mitten drin ab, soll der Fork den Weg zu Ende gehen
             // (und der Merker steht schon vor jedem Eingriff im Speicher).
-            var ablauf = new ZeltRuheAblauf(_werkzeug, () => Einstellungen, e2 => _repo.SetEinstellungen(Modul, e2), _logger);
+            var ablauf = new ZeltRuheAblauf(_werkzeug, () => EinstellungenFuer(zeltId), e2 => Speichern(zeltId, e2), _logger, zeltId: zeltId);
             var schritte = await ablauf.RuhendAsync(geraete, CancellationToken.None);
 
             var geklappt = schritte.Count(s => s.Ok);
-            var ruhend = Einstellungen.Ruhend;
+            var ruhend = EinstellungenFuer(zeltId).Ruhend;
             var text = geklappt == schritte.Count
                 ? $"Zelt ruhend: {geklappt} {(geklappt == 1 ? "Gerät" : "Geräte")} ausgeschaltet."
                 : geklappt == 0
                     ? (ruhend ? "Nichts bestätigt ausgeschaltet — die Regelung einiger Geräte ist aber schon aus, Details unten." : "Nichts ausgeschaltet, Details unten.")
                     : $"Zelt ruhend: {geklappt} von {schritte.Count} Geräten ausgeschaltet, der Rest steht unten.";
-            return await ErgebnisAsync(geklappt > 0, text, schritte, ct);
+            return await ErgebnisAsync(zeltId, geklappt > 0, text, schritte, ct);
         }
         finally { Sperre.Release(); }
     }
 
     // ------------------------------------------------------------------ Wieder aktiv
 
-    public async Task<ZeltRuheErgebnis> AktivAsync(CancellationToken ct)
+    public async Task<ZeltRuheErgebnis> AktivAsync(CancellationToken ct) => await AktivAsync(null, ct);
+
+    /// <param name="zeltId">Das Zelt; <c>null</c>: das Zelt der Steuerung.</param>
+    public async Task<ZeltRuheErgebnis> AktivAsync(int? zeltId, CancellationToken ct)
     {
         await Sperre.WaitAsync(ct);
         try
         {
             var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-            if (!settings.IsConfigured) return await ErgebnisAsync(false, "Home Assistant ist nicht verbunden — es wurde nichts geschaltet.", [], ct);
+            if (!settings.IsConfigured) return await ErgebnisAsync(zeltId, false, "Home Assistant ist nicht verbunden — es wurde nichts geschaltet.", [], ct);
 
-            var e = Einstellungen;
-            if (!e.Ruhend) return await ErgebnisAsync(false, "Das Zelt ist nicht ruhend.", [], ct);
+            var e = EinstellungenFuer(zeltId);
+            if (!e.Ruhend) return await ErgebnisAsync(zeltId, false, "Das Zelt ist nicht ruhend.", [], ct);
 
-            var ablauf = new ZeltRuheAblauf(_werkzeug, () => Einstellungen, e2 => _repo.SetEinstellungen(Modul, e2), _logger);
+            var ablauf = new ZeltRuheAblauf(_werkzeug, () => EinstellungenFuer(zeltId), e2 => Speichern(zeltId, e2), _logger, zeltId: zeltId);
             var schritte = await ablauf.AktivAsync(CancellationToken.None);
 
             var offen = schritte.Count(s => !s.Ok);
             var text = offen == 0
                 ? "Zelt wieder aktiv: alles steht wieder wie vorher."
                 : $"{schritte.Count - offen} von {schritte.Count} Geräten wieder aktiv — der Rest bleibt gemerkt, ein zweiter Versuch holt ihn nach.";
-            return await ErgebnisAsync(offen == 0, text, schritte, ct);
+            return await ErgebnisAsync(zeltId, offen == 0, text, schritte, ct);
         }
         finally { Sperre.Release(); }
     }
 
-    private async Task<ZeltRuheErgebnis> ErgebnisAsync(bool ok, string zusammenfassung, IReadOnlyList<ZeltRuheSchritt> schritte, CancellationToken ct)
-        => new(ok, zusammenfassung, schritte, await StandAsync(ct));
+    private async Task<ZeltRuheErgebnis> ErgebnisAsync(int? zeltId, bool ok, string zusammenfassung, IReadOnlyList<ZeltRuheSchritt> schritte, CancellationToken ct)
+        => new(ok, zusammenfassung, schritte, await StandAsync(zeltId, ct));
 }

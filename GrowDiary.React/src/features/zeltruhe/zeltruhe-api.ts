@@ -39,16 +39,19 @@ export interface ZeltRuheErgebnis {
   stand: ZeltRuheStand
 }
 
-export const ladeZeltRuhe = () => apiFetch<ZeltRuheStand>('/api/steuerung/zelt-ruhe')
+/** Je Zelt: ohne `zeltId` gilt das Zelt der Steuerung (wie bisher). */
+const mitZelt = (pfad: string, zeltId?: number | null) => (zeltId == null ? pfad : `${pfad}?zeltId=${zeltId}`)
+
+export const ladeZeltRuhe = (zeltId?: number | null) => apiFetch<ZeltRuheStand>(mitZelt('/api/steuerung/zelt-ruhe', zeltId))
 
 /** Mit `geraete` gilt diese Auswahl (und wird gemerkt), ohne die gespeicherte. */
-export const schalteRuhend = (geraete?: string[]) =>
-  apiFetch<ZeltRuheErgebnis>('/api/steuerung/zelt-ruhe/ruhend', { method: 'POST', body: JSON.stringify(geraete ? { geraete } : {}) })
+export const schalteRuhend = (geraete?: string[], zeltId?: number | null) =>
+  apiFetch<ZeltRuheErgebnis>(mitZelt('/api/steuerung/zelt-ruhe/ruhend', zeltId), { method: 'POST', body: JSON.stringify(geraete ? { geraete } : {}) })
 
-export const schalteAktiv = () => apiFetch<ZeltRuheErgebnis>('/api/steuerung/zelt-ruhe/aktiv', { method: 'POST' })
+export const schalteAktiv = (zeltId?: number | null) => apiFetch<ZeltRuheErgebnis>(mitZelt('/api/steuerung/zelt-ruhe/aktiv', zeltId), { method: 'POST' })
 
-export const speichereAuswahl = (geraete: string[]) =>
-  apiFetch<ZeltRuheStand>('/api/steuerung/zelt-ruhe/auswahl', { method: 'PUT', body: JSON.stringify({ geraete }) })
+export const speichereAuswahl = (geraete: string[], zeltId?: number | null) =>
+  apiFetch<ZeltRuheStand>(mitZelt('/api/steuerung/zelt-ruhe/auswahl', zeltId), { method: 'PUT', body: JSON.stringify({ geraete }) })
 
 /** Geräte, die im Ruhemodus ausgehen sollen und gerade laufen — nur danach fragt das Blatt nach der Ernte. */
 export function laufendeAuswahl(stand: ZeltRuheStand | null | undefined): ZeltRuheGeraet[] {

@@ -7,7 +7,7 @@ import './zeltruhe.css'
 /**
  * Fork AI (cc.277, „Zelt ruhend"): Der Block „Betrieb" in der Zelt-Karte.
  *
- * Steht nur an dem Zelt, zu dem die Steuerung gehört (das Zelt des neuesten Grows). Zeigt In Betrieb oder Ruhend, die Geräte
+ * Steht an jedem Zelt, das Geräte zum Ausschalten hat (je Zelt ein eigener Zustand). Zeigt In Betrieb oder Ruhend, die Geräte
  * mit Haken „im Ruhemodus ausschalten" und den Knopf zum Umschalten. Der Haken gilt für das nächste Ruhendschalten;
  * gespeichert wird er mit dem Knopf (Backend: `auswahl`).
  */
@@ -25,7 +25,7 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
 
   useEffect(() => {
     let abgebrochen = false
-    ladeZeltRuhe().then((s) => { if (!abgebrochen) uebernehmen(s) }).catch(() => { if (!abgebrochen) setStand(null) })
+    ladeZeltRuhe(tentId).then((s) => { if (!abgebrochen) uebernehmen(s) }).catch(() => { if (!abgebrochen) setStand(null) })
     return () => { abgebrochen = true }
   }, [tentId, uebernehmen])
 
@@ -83,7 +83,7 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
               type="button"
               className="ls-btn is-small is-primary"
               disabled={arbeitet || gewaehlt.length === 0}
-              onClick={() => void ausfuehren(() => schalteRuhend(gewaehlt))}
+              onClick={() => void ausfuehren(() => schalteRuhend(gewaehlt, tentId))}
             >
               {arbeitet ? 'Schaltet…' : 'Zelt ruhend schalten'}
             </button>
@@ -97,11 +97,11 @@ export function ZeltRuheBlock({ tentId, growName, growAbgeschlossen }: { tentId:
             <div className="tn-row" data-audit="zelt-ruhe-offen"><span>Noch offen</span><strong>{offen.map((g) => g.titel).join(', ')}</strong></div>
           )}
           <div className="co-actions zr-knoepfe">
-            <button type="button" className="ls-btn is-small is-primary" disabled={arbeitet} onClick={() => void ausfuehren(schalteAktiv)}>
+            <button type="button" className="ls-btn is-small is-primary" disabled={arbeitet} onClick={() => void ausfuehren(() => schalteAktiv(tentId))}>
               {arbeitet ? 'Schaltet…' : 'Zelt wieder aktiv'}
             </button>
             {offen.length > 0 && (
-              <button type="button" className="ls-btn is-small" disabled={arbeitet} onClick={() => void ausfuehren(() => schalteRuhend())}>
+              <button type="button" className="ls-btn is-small" disabled={arbeitet} onClick={() => void ausfuehren(() => schalteRuhend(undefined, tentId))}>
                 Rest ausschalten
               </button>
             )}

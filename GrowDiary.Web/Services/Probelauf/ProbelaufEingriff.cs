@@ -7,8 +7,8 @@ namespace GrowDiary.Web.Services;
 /// <summary>Fork AI (A-010): Was am Chiller-Regler im Fork für die Dauer eines Laufs aus- und danach wieder eingeschaltet wird.</summary>
 public interface IChillerRegler
 {
-    /// <summary>Schaltet die Fork-Regelung aller Zelte aus, die sie an haben. Liefert deren Ids.</summary>
-    IReadOnlyList<int> Ausschalten();
+    /// <summary>Schaltet die Fork-Regelung aller Zelte aus, die sie an haben — mit <paramref name="zeltId"/> nur die dieses Zelts. Liefert deren Ids.</summary>
+    IReadOnlyList<int> Ausschalten(int? zeltId = null);
 
     /// <summary>Schaltet die Fork-Regelung für diese Zelte wieder ein.</summary>
     void Einschalten(IEnumerable<int> zeltIds);
@@ -21,10 +21,10 @@ public sealed class ChillerReglerImZelt : IChillerRegler
 
     public ChillerReglerImZelt(TentRepository zelte) => _zelte = zelte;
 
-    public IReadOnlyList<int> Ausschalten()
+    public IReadOnlyList<int> Ausschalten(int? zeltId = null)
     {
         var betroffen = new List<int>();
-        foreach (var zelt in _zelte.GetTents().Where(z => z.ChillerControlEnabled))
+        foreach (var zelt in _zelte.GetTents().Where(z => z.ChillerControlEnabled && (zeltId is null || z.Id == zeltId)))
         {
             zelt.ChillerControlEnabled = false;
             _zelte.UpdateTent(zelt);

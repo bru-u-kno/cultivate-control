@@ -13,8 +13,10 @@ import './zeltruhe.css'
  * UND gerade läuft; läuft nichts davon, erscheint es gar nicht (siehe `laufendeAuswahl`). Die Frage ist ein Vorschlag:
  * „Alles laufen lassen" ändert nichts.
  */
-export function ZeltRuheBlatt({ geraete, reinigung, onFertig, onReinigung }: {
+export function ZeltRuheBlatt({ geraete, zeltId, reinigung, onFertig, onReinigung }: {
   geraete: ZeltRuheGeraet[]
+  /** Das Zelt des abgeschlossenen Grows. */
+  zeltId?: number | null
   /** Fork AI: die empfohlene Reinigung des leeren Systems — als Angebot unter den Geräten. */
   reinigung?: ReinigungNachGrow | null
   onFertig: () => void
@@ -45,7 +47,7 @@ export function ZeltRuheBlatt({ geraete, reinigung, onFertig, onReinigung }: {
     setArbeitet(true)
     setFehler(null)
     try {
-      const antwort = await schalteRuhend(gewaehlt)
+      const antwort = await schalteRuhend(gewaehlt, zeltId)
       if (antwort.ok) { onFertig(); return }
       setFehler(antwort.zusammenfassung)
     } catch (caught) {

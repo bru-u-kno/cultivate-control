@@ -83,14 +83,15 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
 
     // ------------------------------------------------------------------ Automatik je Gerät
 
-    public Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, CancellationToken ct)
+    public Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, int? zeltId, CancellationToken ct)
         => kennung switch
         {
-            ZeltRuheArten.Co2 => Aus(() => Task.FromResult(_co2.Einstellungen.AutomatikAktiv), async an =>
+            ZeltRuheArten.Co2 => Aus(() => Task.FromResult(Co2(zeltId).Einstellungen.AutomatikAktiv), async an =>
             {
-                var e = _co2.Einstellungen;
+                var co2 = Co2(zeltId);
+                var e = co2.Einstellungen;
                 e.AutomatikAktiv = an;
-                var (g, _, erreicht) = await _co2.SpeichernAsync(e, ct);
+                var (g, _, erreicht) = await co2.SpeichernAsync(e, ct);
                 return g is not null && erreicht;
             }),
             ZeltRuheArten.Zuluft => Aus(async () => (await _zuluft.EinstellungenAsync(ct)).AutomatikAktiv, async an =>
@@ -123,15 +124,16 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
             _ => Task.FromResult<(bool, bool?)>((true, null)),
         };
 
-    public async Task<bool> AutomatikAnAsync(string kennung, CancellationToken ct)
+    public async Task<bool> AutomatikAnAsync(string kennung, int? zeltId, CancellationToken ct)
     {
         var (ok, _) = await (kennung switch
         {
             ZeltRuheArten.Co2 => An(async an =>
             {
-                var e = _co2.Einstellungen;
+                var co2 = Co2(zeltId);
+                var e = co2.Einstellungen;
                 e.AutomatikAktiv = an;
-                var (g, _, erreicht) = await _co2.SpeichernAsync(e, ct);
+                var (g, _, erreicht) = await co2.SpeichernAsync(e, ct);
                 return g is not null && erreicht;
             }),
             ZeltRuheArten.Zuluft => An(async an =>
@@ -179,7 +181,10 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
 
     // ------------------------------------------------------------------ Fork-Regler und Wächter
 
-    public IReadOnlyList<int> KuehlerReglerAus() => _kuehlerRegler.Ausschalten();
+    public IReadOnlyList<int> KuehlerReglerAus(int? zeltId) => _kuehlerRegler.Ausschalten(zeltId);
+
+    /// <summary>Die CO₂-Steuerung des Zeltes: das Bestand-Zelt (und ohne Angabe) der Dienst selbst, jedes weitere seine Kopie.</summary>
+    private Co2SteuerungService Co2(int? zeltId) => zeltId is { } z && Co2Zelte.Aktuell.ZeltIds.Contains(z) ? _co2.Fuer(z) : _co2;
 
     public void KuehlerReglerAn(IEnumerable<int> zeltIds) => _kuehlerRegler.Einschalten(zeltIds);
 

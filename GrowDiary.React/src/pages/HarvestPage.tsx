@@ -138,7 +138,7 @@ function HarvestPage() {
       }
       if (complete) {
         // Die Frage ist ein Vorschlag: Fehlt der Zugang oder läuft nichts davon, geht es wie bisher ins Archiv.
-        const laufend = await ladeZeltRuhe().then(laufendeAuswahl).catch(() => [])
+        const laufend = await ladeZeltRuhe(herkunft?.tentId).then(laufendeAuswahl).catch(() => [])
         if (laufend.length > 0) {
           // Fork AI: die empfohlene Reinigung dieses Grows steht als Angebot im Blatt (fehlt sie, bleibt das Blatt wie es war).
           const empfohlen = await ladeReinigungen().then((liste) => liste.find((r) => String(r.growId) === String(growId)) ?? null).catch(() => null)
@@ -330,7 +330,7 @@ function HarvestPage() {
           </div>
         </form>
       )}
-      {ruheFrage && <ZeltRuheBlatt geraete={ruheFrage} reinigung={reinigung} onFertig={() => navigate('/archiv')} onReinigung={(r) => navigate(reinigungsWeg(r))} />}
+      {ruheFrage && <ZeltRuheBlatt geraete={ruheFrage} zeltId={herkunft?.tentId} reinigung={reinigung} onFertig={() => navigate('/archiv')} onReinigung={(r) => navigate(reinigungsWeg(r))} />}
     </V1Page>
   )
 }

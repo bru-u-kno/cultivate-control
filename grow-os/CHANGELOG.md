@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.317
+
+**„Zelt ruhend“ je Zelt: Jedes Zelt hat seinen eigenen Ruhezustand, seine eigenen Geräte und seine eigenen Alarme.**
+
+- **Was war:** Es gab einen einzigen Ruhezustand, und er galt nur für das Zelt des neuesten Grows. Stellte man ein anderes Zelt auf „ruhend“, passierte nichts, und die Alarme anderer Zelte konnten nie schweigen.
+- **Was jetzt gilt:** Die Karte „Betrieb“ steht an jedem Zelt, das Geräte zum Ausschalten hat. „Ruhend“ und „Wieder aktiv“ betreffen nur dieses Zelt: Es werden nur die Geräte ausgeschaltet und wieder eingeschaltet, die diesem Zelt gehören (Steuerungen laut „Steuerungen Zelten zuweisen“, die CO₂-Steuerung und ihre Abluft bei Zelten mit CO₂). Die Fork-eigene Kühler-Regelung der übrigen Zelte bleibt dabei an.
+- **Alarme:** Die Alarme eines ruhenden Zeltes schweigen, die der anderen Zelte nicht.
+- **Nach der Ernte:** Die Frage, ob die Geräte ausgeschaltet werden sollen, gilt dem Zelt des abgeschlossenen Grows.
+- **Unverändert:** Mit einem Zelt (und für das Zelt, in dem alles bisher lief) arbeitet alles wie vorher; ein schon bestehender Ruhezustand bleibt erhalten.
+- **Geprüft** in der Demo mit vier Zelten (jedes Zelt zeigt nur seine Geräte, die Karte schaltet in beide Richtungen) und in Tests: ruhend in Zelt B lässt Zelt A und seine Alarme unberührt; der Kühler-Regler schaltet nur das genannte Zelt aus.
+
 ## 2.0.0-cc.316
 
 **Wochenplan je Zelt: Laufen in zwei Zelten zwei Durchgänge mit Wochenzielen, schweigt der Plan nicht mehr für alles.**

@@ -29,12 +29,12 @@ public interface IZeltRuheWerkzeug
         string entity, (string Domain, string Dienst, IReadOnlyDictionary<string, object>? Daten) aktion, string? soll, CancellationToken ct);
 
     /// <summary>Automatik des Geräts aus. <c>Ok</c> falsch heißt: nichts hat sich geändert (der alte Stand ist wiederhergestellt). <c>WarAn</c> null: keine Automatik.</summary>
-    Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, CancellationToken ct);
+    Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, int? zeltId, CancellationToken ct);
 
-    Task<bool> AutomatikAnAsync(string kennung, CancellationToken ct);
+    Task<bool> AutomatikAnAsync(string kennung, int? zeltId, CancellationToken ct);
 
     /// <summary>Schaltet die Fork-eigene Kühler-Regelung aus und liefert die Zelte, bei denen sie an war.</summary>
-    IReadOnlyList<int> KuehlerReglerAus();
+    IReadOnlyList<int> KuehlerReglerAus(int? zeltId);
 
     void KuehlerReglerAn(IEnumerable<int> zeltIds);
 
@@ -63,11 +63,13 @@ public sealed class ZeltRuheAblauf
     private readonly Action<ZeltRuheEinstellungen> _speichern;
     private readonly ILogger _logger;
     private readonly Func<DateTime> _jetztUtc;
+    private readonly int? _zeltId;
 
     public ZeltRuheAblauf(
         IZeltRuheWerkzeug werkzeug, Func<ZeltRuheEinstellungen> laden, Action<ZeltRuheEinstellungen> speichern,
-        ILogger logger, Func<DateTime>? jetztUtc = null)
+        ILogger logger, Func<DateTime>? jetztUtc = null, int? zeltId = null)
     {
+        _zeltId = zeltId;
         _w = werkzeug;
         _laden = laden;
         _speichern = speichern;
@@ -116,7 +118,7 @@ public sealed class ZeltRuheAblauf
 
         // 2. Automatik aus. Gelingt das nicht, ist der alte Stand zurück und das Gerät unberührt.
         (bool Ok, bool? WarAn) automatik;
-        try { automatik = await _w.AutomatikAusAsync(art.Kennung, ct); }
+        try { automatik = await _w.AutomatikAusAsync(art.Kennung, _zeltId, ct); }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Zelt ruhend: Automatik von {Kennung} nicht ausgeschaltet.", art.Kennung);
@@ -130,7 +132,7 @@ public sealed class ZeltRuheAblauf
         merker.AutomatikWarAn = automatik.WarAn;
 
         // 3. Der Fork-eigene Kühler-Regler schaltet die Steckdose sonst binnen einer Minute wieder ein.
-        if (art.Kennung == ZeltRuheArten.Chiller) merker.ChillerZelte = _w.KuehlerReglerAus().ToList();
+        if (art.Kennung == ZeltRuheArten.Chiller) merker.ChillerZelte = _w.KuehlerReglerAus(_zeltId).ToList();
         _speichern(e);
 
         // 4. Das Gerät selbst.
@@ -199,7 +201,7 @@ public sealed class ZeltRuheAblauf
 
             if (merker.ChillerZelte.Count > 0) _w.KuehlerReglerAn(merker.ChillerZelte);
 
-            if (merker.AutomatikWarAn == true && !await _w.AutomatikAnAsync(merker.Kennung, ct))
+            if (merker.AutomatikWarAn == true && !await _w.AutomatikAnAsync(merker.Kennung, _zeltId, ct))
                 return (false, "Automatik ließ sich nicht einschalten");
 
             return (true, merker.Gefuehrt ? "Regelung wieder an" : "wieder wie vorher");

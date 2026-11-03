@@ -43,7 +43,7 @@ public sealed class ZeltRuheAblaufTests
             return Task.FromResult(Schaltausgang.Bestaetigt);
         }
 
-        public Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, CancellationToken ct)
+        public Task<(bool Ok, bool? WarAn)> AutomatikAusAsync(string kennung, int? zeltId, CancellationToken ct)
         {
             Protokoll.Add($"automatik-aus {kennung}");
             BeiAutomatikAus?.Invoke();
@@ -52,13 +52,13 @@ public sealed class ZeltRuheAblaufTests
             return Task.FromResult<(bool, bool?)>((true, AutomatikWar.GetValueOrDefault(kennung, true)));
         }
 
-        public Task<bool> AutomatikAnAsync(string kennung, CancellationToken ct)
+        public Task<bool> AutomatikAnAsync(string kennung, int? zeltId, CancellationToken ct)
         {
             Protokoll.Add($"automatik-an {kennung}");
             return Task.FromResult(!AutomatikKaputt.Contains(kennung));
         }
 
-        public IReadOnlyList<int> KuehlerReglerAus() { Protokoll.Add("kuehler-regler-aus"); return KuehlerZelte; }
+        public IReadOnlyList<int> KuehlerReglerAus(int? zeltId) { Protokoll.Add("kuehler-regler-aus"); return KuehlerZelte; }
         public void KuehlerReglerAn(IEnumerable<int> zeltIds) => Protokoll.Add("kuehler-regler-an " + string.Join(",", zeltIds));
         public void WaechterPausierenBis(DateTime bisUtc) => Protokoll.Add("waechter-pause");
         public void WaechterFortsetzen() => Protokoll.Add("waechter-weiter");

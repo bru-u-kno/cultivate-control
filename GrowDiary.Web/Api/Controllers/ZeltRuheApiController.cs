@@ -29,18 +29,18 @@ public sealed class ZeltRuheApiController : ApiControllerBase
     /// <summary>Ruhend oder in Betrieb, und jedes Gerät mit seinem Zustand und ob es im Ruhemodus ausgeht.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(ZeltRuheStand), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZeltRuheStand>> Stand(CancellationToken ct)
-        => Ok(await _ruhe.StandAsync(ct));
+    public async Task<ActionResult<ZeltRuheStand>> Stand([FromQuery] int? zeltId, CancellationToken ct)
+        => Ok(await _ruhe.StandAsync(zeltId, ct));
 
     /// <summary>Speichert, welche Geräte im Ruhemodus ausgehen (ohne etwas zu schalten).</summary>
     [HttpPut("auswahl")]
     [ProducesResponseType(typeof(ZeltRuheStand), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZeltRuheStand>> AuswahlSpeichern([FromBody] ZeltRuheAuswahlRequest request, CancellationToken ct)
+    public async Task<ActionResult<ZeltRuheStand>> AuswahlSpeichern([FromBody] ZeltRuheAuswahlRequest request, [FromQuery] int? zeltId, CancellationToken ct)
     {
         if (request?.Geraete is null) return BadRequestError("auswahl_invalid", "Es wurde keine Geräteliste übergeben.");
-        var (ok, fehler) = _ruhe.AuswahlSpeichern(request.Geraete);
+        var (ok, fehler) = _ruhe.AuswahlSpeichern(request.Geraete, zeltId);
         if (!ok) return BadRequestError("auswahl_unbekannt", fehler!);
-        return Ok(await _ruhe.StandAsync(ct));
+        return Ok(await _ruhe.StandAsync(zeltId, ct));
     }
 
     /// <summary>
@@ -50,15 +50,15 @@ public sealed class ZeltRuheApiController : ApiControllerBase
     [HttpPost("ruhend")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(ZeltRuheErgebnis), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZeltRuheErgebnis>> Ruhend([FromBody] ZeltRuheRuhendRequest? request, CancellationToken ct)
-        => Ok(await _ruhe.RuhendAsync(request?.Geraete, ct));
+    public async Task<ActionResult<ZeltRuheErgebnis>> Ruhend([FromBody] ZeltRuheRuhendRequest? request, [FromQuery] int? zeltId, CancellationToken ct)
+        => Ok(await _ruhe.RuhendAsync(request?.Geraete, zeltId, ct));
 
     /// <summary>Zelt wieder aktiv: genau das wieder an, was der Fork ausgeschaltet hat — Gerät zuerst, dann die Automatik.</summary>
     [HttpPost("aktiv")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(ZeltRuheErgebnis), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZeltRuheErgebnis>> Aktiv(CancellationToken ct)
-        => Ok(await _ruhe.AktivAsync(ct));
+    public async Task<ActionResult<ZeltRuheErgebnis>> Aktiv([FromQuery] int? zeltId, CancellationToken ct)
+        => Ok(await _ruhe.AktivAsync(zeltId, ct));
 }
 
 public sealed class ZeltRuheAuswahlRequest
