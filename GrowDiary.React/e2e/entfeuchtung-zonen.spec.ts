@@ -33,7 +33,8 @@ async function seiteMitWerten(page: Page, request: APIRequestContext, live: Reco
   darfUeberspringen(!da, 'keine Reiterleiste — der Demobestand legt diese Steuerung an.')
 }
 
-const WERTE = { rhObergrenzeProzent: 51, einAktivProzent: 50, ausAktivProzent: 46, portAn: true, tagPhase: false, portOnline: true, automatikAn: true }
+// `grenzeAktivProzent` gehört dazu: die Seite nimmt es VOR der Obergrenze, und das Backend liefert es je nach echter Tages- oder Nachtphase — ohne diese Zeile lief die Prüfung nur tagsüber.
+const WERTE = { rhObergrenzeProzent: 51, grenzeAktivProzent: 51, einAktivProzent: 50, ausAktivProzent: 46, portAn: true, tagPhase: false, portOnline: true, automatikAn: true }
 
 /** Dieselbe Seite mit anderen Messwerten, ohne die Seite zu verlassen (die Antwort wird beim Neuladen neu gebildet). */
 async function werteSetzen(page: Page, live: Record<string, unknown>): Promise<void> {
