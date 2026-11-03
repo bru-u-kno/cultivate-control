@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.313
+
+**CO₂: Der Helfer „tiefe Stufe sinnvoll“ gehört jetzt zum Lieferumfang, und Fehlermeldungen des Assistenten nennen das Zelt.**
+
+- **Anlass:** Die CO₂-Seite erklärt, warum die Abluft gerade tief oder auf der Dosierstufe läuft. Dafür las sie einen Helfer, den nur eine handgebaute Anlage hatte. Auf jeder anderen Anlage stand dort dauerhaft „Der Helfer für die tiefe Stufe meldet sich nicht“, obwohl nichts kaputt war.
+- **Was sich ändert:** Der Einrichtungs-Assistent legt den Helfer mit an (je Zelt mit CO₂ einen eigenen). Er rechnet mit denselben Grenzen und demselben Haltebereich wie die Abluft-Automation: tief, wenn Canopy höchstens 0,5 Grad unter der Grenze und die Feuchte mindestens 1 Punkt unter Obergrenze minus Hysterese liegt; zurück zur Dosierstufe erst am oberen Rand des Haltebereichs; bei ausgefallenem Fühler „nicht tief“. Gegen echtes Home Assistant mit sieben Fällen geprüft. Wer den Helfer schon von Hand angelegt hat, behält ihn unverändert.
+- **Meldungen:** Schlägt beim Bereitstellen etwas für ein weiteres CO₂-Zelt fehl, steht dort „co2 (Zelt 2)“ statt des internen Namens `co2-z2`.
+
 ## 2.0.0-cc.312
 
 **CO₂ je Zelt, Teil 3: Der Einrichtungs-Assistent legt für jedes Zelt mit CO₂ einen eigenen Satz an, und die Dosier-Automation des zweiten Zeltes liest jetzt wirklich nur sein eigenes Zelt.**

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Badge, V1Button, V1Card, V1Section, V1Skeleton, type Tone } from '../../components/v1'
 import {
-  abhaengigkeiten, automationen, automationenMeldung, bausteinModule, fehlendText, helferMeldung, helferUndRechenwerte, reife, summe, unvollstaendigText, wuerdeSchreiben, zaehleFehlend,
+  abhaengigkeiten, automationen, modulAnzeige, automationenMeldung, bausteinModule, fehlendText, helferMeldung, helferUndRechenwerte, reife, summe, unvollstaendigText, wuerdeSchreiben, zaehleFehlend,
   type Meldung, type Phase2, type Reife, type RollenStand,
 } from './bereitstellen-ablauf'
 import type { Bestandsaufnahme, GeraeteSeite, SteuerungAuswahl } from './steuerung-typen'
@@ -170,7 +170,7 @@ export function Bereitstellen({ zusatz }: { zusatz: boolean }) {
               <span className="st-nurlesen">{STAND_LESBAR[a.stand] ?? a.stand}</span>
             </div>
           ))}
-          {vorschau.filter((p) => p.fehler).map((p) => <V1Alert key={p.modul} tone="critical" message={`${p.modul}: ${p.fehler}`} />)}
+          {vorschau.filter((p) => p.fehler).map((p) => <V1Alert key={p.modul} tone="critical" message={`${modulAnzeige(p.modul)}: ${p.fehler}`} />)}
           <p className="st-hinweis">
             Sie schalten Geräte — bei CO₂ ein Ventil, beim Kühler einen Kompressor. Der vorhandene Stand wird vorher gesichert,
             danach wird nachgesehen, ob Home Assistant sie wirklich geladen hat. Von Hand Gebautes bleibt unangetastet.

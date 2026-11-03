@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  abhaengigkeiten, automationen, automationenMeldung, fehlendText, helferMeldung, helferUndRechenwerte, reife, summe, unvollstaendigText, wuerdeSchreiben, zaehleFehlend,
+  abhaengigkeiten, automationen, modulAnzeige, automationenMeldung, fehlendText, helferMeldung, helferUndRechenwerte, reife, summe, unvollstaendigText, wuerdeSchreiben, zaehleFehlend,
   type Aufruf, type AutoBilanz, type Phase1,
 } from './bereitstellen-ablauf'
 import type { BauteilStand, Bestandsaufnahme } from './steuerung-typen'
@@ -328,5 +328,14 @@ describe('helferMeldung / automationenMeldung (Neuling-Test A-017, Lücke 6)', (
     const teil = automationenMeldung([{ modul: 'co2', bilanz: { ...gut, angelegt: 2, fremd: 1, fehlgeschlagen: 1 }, fehler: null }])
     expect(teil.ton).toBe('warn')
     expect(teil.text).toBe('2 Automationen geschrieben, 1 von Hand gebaute blieben unangetastet, 1 nicht.')
+  })
+})
+
+describe('modulAnzeige', () => {
+  it('nennt bei weiteren CO₂-Zelten das Zelt, alle anderen Module bleiben', () => {
+    expect(modulAnzeige('co2-z2')).toBe('co2 (Zelt 2)')
+    expect(modulAnzeige('co2-z17')).toBe('co2 (Zelt 17)')
+    expect(modulAnzeige('co2')).toBe('co2')
+    expect(modulAnzeige('entfeuchter')).toBe('entfeuchter')
   })
 })

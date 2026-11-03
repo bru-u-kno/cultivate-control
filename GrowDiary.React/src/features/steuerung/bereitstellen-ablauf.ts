@@ -31,6 +31,12 @@ export function bausteinModule(gewaehlt: Array<{ module: string[] }>, zusatz: bo
  */
 export const VORAUSSETZUNG: Readonly<Record<string, string>> = { 'entfeuchter-zusatz': 'entfeuchter' }
 
+/** Wie ein Modul in einer Meldung heißt: Die Module weiterer CO₂-Zelte (`co2-z2`) mit „(Zelt 2)“, alle anderen unverändert. */
+export function modulAnzeige(modul: string): string {
+  const zelt = /^co2-z([1-9][0-9]*)$/.exec(modul)
+  return zelt ? `co2 (Zelt ${zelt[1]})` : modul
+}
+
 export type Hinweis = { ton: 'info' | 'warn'; text: string }
 
 /** Eine Rollen-Zeile, so wie `GET /api/steuerung/geraete` sie liefert (nur, was der Abgleich braucht). */
@@ -212,7 +218,7 @@ export function helferMeldung(r: Phase1[]): Meldung {
   if (startwerte > 0) teile.push(`${startwerte} ${startwerte === 1 ? 'Startwert' : 'Startwerte'} aus deinen Einstellungen geschrieben`)
   if (offen) teile.push('Home Assistant hat nicht alle Startwerte angenommen — sie stehen noch auf ihrem Minimum, Einzelheiten im Protokoll')
   if (nicht > 0) teile.push(`${nicht} nicht — Einzelheiten stehen im Protokoll`)
-  for (const k of kaputt) teile.push(`${k.modul}: ${k.fehler}`)
+  for (const k of kaputt) teile.push(`${modulAnzeige(k.modul)}: ${k.fehler}`)
   return { ton: !problem ? 'ok' : hart && angelegt === 0 ? 'critical' : 'warn', text: satz(teile, '. ') }
 }
 
@@ -254,7 +260,7 @@ export function automationenMeldung(r: Phase2[]): Meldung {
   const teile = [`${geschrieben} ${geschrieben === 1 ? 'Automation' : 'Automationen'} geschrieben`]
   if (fremd > 0) teile.push(`${fremd} von Hand gebaute blieben unangetastet`)
   if (nicht > 0) teile.push(`${nicht} nicht`)
-  for (const k of kaputt) teile.push(`${k.modul}: ${k.fehler}`)
+  for (const k of kaputt) teile.push(`${modulAnzeige(k.modul)}: ${k.fehler}`)
   return { ton: !problem ? 'ok' : geschrieben === 0 ? 'critical' : 'warn', text: satz(teile, ', ') }
 }
 
