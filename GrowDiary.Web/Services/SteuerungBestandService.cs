@@ -90,7 +90,7 @@ public sealed class SteuerungBestandService
         var luecken = new List<string>();
         if (zuordnung is null) return luecken;
 
-        if (string.Equals(modul, ChillerSteuerungService.Modul, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(InstanzModul.BasisModul(modul), ChillerSteuerungService.Modul, StringComparison.OrdinalIgnoreCase))
         {
             var steckdose = zuordnung.GetValueOrDefault(ChillerSteuerungService.Rollen.Steckdose);
             var sollwert = zuordnung.GetValueOrDefault(ChillerSteuerungService.Rollen.KuehlerSollwert);
@@ -119,7 +119,7 @@ public sealed class SteuerungBestandService
     /// beide Geräte, sagt die Seite das selbst („Kein Kühler zugeordnet").
     /// </remarks>
     private static bool NurAnsteuerung(string modul, Bauteil b)
-        => string.Equals(modul, ChillerSteuerungService.Modul, StringComparison.OrdinalIgnoreCase)
+        => string.Equals(InstanzModul.BasisModul(modul), ChillerSteuerungService.Modul, StringComparison.OrdinalIgnoreCase)
            && b.HaengtAn is { Count: > 0 } rollen
            && rollen.All(r => r is ChillerSteuerungService.Rollen.Steckdose or ChillerSteuerungService.Rollen.KuehlerSollwert);
 

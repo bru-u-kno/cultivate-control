@@ -111,7 +111,7 @@ public sealed class SteuerungAuswahlService
 
     /// <summary>Ob die Übersichts-Kennung (etwa „abluft") zu einer gewählten Steuerung gehört.</summary>
     public static bool Sichtbar(string uebersichtKennung, IReadOnlyCollection<string> gewaehlt)
-        => Alle.Any(a => gewaehlt.Contains(a.Kennung) && a.Uebersicht.Contains(uebersichtKennung, StringComparer.Ordinal));
+        => Alle.Any(a => gewaehlt.Contains(a.Kennung) && a.Uebersicht.Contains(InstanzModul.Art(uebersichtKennung) ?? uebersichtKennung, StringComparer.Ordinal));
 
     /// <summary>
     /// Die Module der Steuerung, für die der Fork Bausteine in Home Assistant anlegt (Helfer, Rechenwerte,

@@ -82,14 +82,28 @@ public static class ZeltRuheArten
         new(Zuluft, "Zuluft", "zuluft", "port_schalter", false),
     };
 
+    /// <summary>
+    /// Die weiteren Wasserkühler-Instanzen als eigene Geräte: Kennung = Modul der Instanz (<c>chiller-i2</c>), Schalter ist ihre
+    /// Steckdose. Wie der erste Kühler stehen sie ohne Auswahl auf „ausschalten“.
+    /// </summary>
+    public static IReadOnlyList<ZeltRuheArt> Instanzen()
+        => GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Chiller)
+            .Select(i => new ZeltRuheArt(i.Modul, $"Wasserkühler {i.Name}", i.Modul, "steckdose", true)).ToList();
+
+    /// <summary>Ist die Kennung ein weiterer Wasserkühler (<c>chiller-i2</c>)?</summary>
+    public static bool IstKuehlerInstanz(string? kennung) => InstanzModul.Art(kennung) == Chiller;
+
+    /// <summary>Alle Arten: die festen und die weiteren Wasserkühler.</summary>
+    public static IReadOnlyList<ZeltRuheArt> AlleMitInstanzen() => Alle.Concat(Instanzen()).ToList();
+
     public static ZeltRuheArt? Finden(string? kennung)
-        => Alle.FirstOrDefault(a => string.Equals(a.Kennung, kennung, StringComparison.OrdinalIgnoreCase));
+        => AlleMitInstanzen().FirstOrDefault(a => string.Equals(a.Kennung, kennung, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Die Kennungen, die ohne eigene Auswahl ausgehen — nur Geräte, die es gibt.</summary>
     public static IReadOnlyList<string> Standard(IEnumerable<string> vorhanden)
     {
         var da = vorhanden.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return Alle.Where(a => a.Standard && da.Contains(a.Kennung)).Select(a => a.Kennung).ToList();
+        return AlleMitInstanzen().Where(a => a.Standard && da.Contains(a.Kennung)).Select(a => a.Kennung).ToList();
     }
 }
 

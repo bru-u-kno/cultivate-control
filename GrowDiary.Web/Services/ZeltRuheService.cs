@@ -82,7 +82,7 @@ public sealed class ZeltRuheService
     public IReadOnlyList<ZeltRuheArt> ArtenFuer(int? zeltId)
     {
         // Ohne Zeltangabe (alte Aufrufer, MCP): alles wie bisher — alle Geräte des Zeltes der Steuerung.
-        if (zeltId is not { } zelt) return ZeltRuheArten.Alle;
+        if (zeltId is not { } zelt) return ZeltRuheArten.AlleMitInstanzen();
         // Ohne Zuweisungsdienst (und mit nur einem Zelt) gehört alles dem Zelt der Steuerung — wie bisher.
         var bestand = SteuerungsZeltId();
         var co2Zelte = Co2Zelte.Aktuell.ZeltIds;
@@ -92,7 +92,8 @@ public sealed class ZeltRuheService
             ZeltRuheArten.Zusatz => _zelte is null ? zelt == bestand : _zelte.ZeltFuer("entfeuchter-zusatz") == zelt,
             _ => _zelte is null ? zelt == bestand : _zelte.ZeltFuer(a.Kennung) == zelt,
         };
-        return ZeltRuheArten.Alle.Where(Gehoert).ToList();
+        // Weitere Wasserkühler tragen ihr Modul als Kennung; die Zuweisung kennt sie unter demselben Schlüssel.
+        return ZeltRuheArten.AlleMitInstanzen().Where(Gehoert).ToList();
     }
 
     // ------------------------------------------------------------------ Reine Regeln (ohne Home Assistant)
@@ -152,7 +153,7 @@ public sealed class ZeltRuheService
     {
         if (auswahl is null) return ZeltRuheArten.Standard(vorhanden);
         var da = vorhanden.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return ZeltRuheArten.Alle.Where(a => da.Contains(a.Kennung) && auswahl.Contains(a.Kennung, StringComparer.OrdinalIgnoreCase))
+        return ZeltRuheArten.AlleMitInstanzen().Where(a => da.Contains(a.Kennung) && auswahl.Contains(a.Kennung, StringComparer.OrdinalIgnoreCase))
             .Select(a => a.Kennung).ToList();
     }
 
@@ -242,7 +243,7 @@ public sealed class ZeltRuheService
         var unbekannt = kennungen.FirstOrDefault(k => ZeltRuheArten.Finden(k) is null);
         if (unbekannt is not null) return (false, $"„{unbekannt}“ ist kein Gerät, das „Zelt ruhend“ kennt.");
         var e = EinstellungenFuer(zeltId);
-        e.Auswahl = ZeltRuheArten.Alle.Where(a => kennungen.Contains(a.Kennung, StringComparer.OrdinalIgnoreCase)).Select(a => a.Kennung).ToList();
+        e.Auswahl = ZeltRuheArten.AlleMitInstanzen().Where(a => kennungen.Contains(a.Kennung, StringComparer.OrdinalIgnoreCase)).Select(a => a.Kennung).ToList();
         Speichern(zeltId, e);
         return (true, null);
     }

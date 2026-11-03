@@ -116,6 +116,30 @@ public sealed class SteuerungApiController : ApiControllerBase
             HatDetail: false,
             ZeltId: zeltId ?? Co2Zelte.Aktuell.BestandZeltId ?? zelteDienst.StandardZelt());
 
+        SteuerungModulDto ChillerZeile(ChillerLive c, string kennung, string titel, int? zeltId) =>
+            new(
+                        Kennung: kennung,
+                        Titel: titel,
+                        // Der Zustand kommt vom SCHALTER, nicht vom Kuehlbedarf: die
+                        // Zeile meldete „kuehlt", waehrend die Steckdose an einer
+                        // Schaltsperre haengen blieb — der Bedarf ist der Wunsch, nicht
+                        // die Tat.
+                        // Fork AI (Chiller-Ansteuerung): ein Sollwert-Gerät regelt
+                        // selbst — dann zählt, ob es eingeschaltet ist, nicht die Steckdose.
+                        Status: c.AutomatikAn == false ? "aus"
+                            : c.Ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
+                                ? (c.KuehlerZustand is null or "off" or "unavailable" or "unknown" ? "aus" : "an")
+                                : c.SteckdoseAn == true ? "an" : "aus",
+                        Kurz: $"Tag {F(c.ZielTagC, " °C", "0.0")} · Nacht {F(c.ZielNachtC, " °C", "0.0")} · {(c.AutomatikAn == true ? "Automatik an" : "Automatik aus")}",
+                        Wert: F(c.WasserC, " °C", "0.0"),
+                        Unterzeile: c.Ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
+                            ? $"regelt selbst · Soll {F(c.KuehlerSollC, " °C", "0.0")}"
+                            : c.SteckdoseAn == true
+                                ? "kühlt"
+                                : c.Kuehlbedarf == true ? "wartet auf Schaltsperre" : "bereit",
+                        HatDetail: true,
+                        ZeltId: zeltId);
+
         var module = new List<SteuerungModulDto>
         {
             Co2Zeile(live, null),
@@ -139,27 +163,7 @@ public sealed class SteuerungApiController : ApiControllerBase
                     : zusatzLive.ZusatzAn == true ? "entfeuchtet"
                     : zusatzLive.ZusatzAn == false ? "bereit" : "Zustand unbekannt",
                 HatDetail: true),
-            new(
-                Kennung: "chiller",
-                Titel: "Wasserkühler",
-                // Der Zustand kommt vom SCHALTER, nicht vom Kuehlbedarf: die
-                // Zeile meldete „kuehlt", waehrend die Steckdose an einer
-                // Schaltsperre haengen blieb — der Bedarf ist der Wunsch, nicht
-                // die Tat.
-                // Fork AI (Chiller-Ansteuerung): ein Sollwert-Gerät regelt
-                // selbst — dann zählt, ob es eingeschaltet ist, nicht die Steckdose.
-                Status: chiller.AutomatikAn == false ? "aus"
-                    : chiller.Ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
-                        ? (chiller.KuehlerZustand is null or "off" or "unavailable" or "unknown" ? "aus" : "an")
-                        : chiller.SteckdoseAn == true ? "an" : "aus",
-                Kurz: $"Tag {F(chiller.ZielTagC, " °C", "0.0")} · Nacht {F(chiller.ZielNachtC, " °C", "0.0")} · {(chiller.AutomatikAn == true ? "Automatik an" : "Automatik aus")}",
-                Wert: F(chiller.WasserC, " °C", "0.0"),
-                Unterzeile: chiller.Ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
-                    ? $"regelt selbst · Soll {F(chiller.KuehlerSollC, " °C", "0.0")}"
-                    : chiller.SteckdoseAn == true
-                        ? "kühlt"
-                        : chiller.Kuehlbedarf == true ? "wartet auf Schaltsperre" : "bereit",
-                HatDetail: true),
+            ChillerZeile(chiller, "chiller", "Wasserkühler", null),
             // Fork AI (forkai.136): Die Zeile „Crop Steering" ist entfallen —
             // stillgelegt, siehe ForkAiSchalter. Das Ziel führt der Plan.
             AbluftZeile(live, null),
@@ -181,6 +185,13 @@ public sealed class SteuerungApiController : ApiControllerBase
             var zeltLive = await _co2.Fuer(zeltId).LiveAsync(ct);
             module.Insert(module.FindLastIndex(m => m.Kennung == "co2") + 1, Co2Zeile(zeltLive, zeltId));
             module.Insert(module.FindLastIndex(m => m.Kennung == "abluft") + 1, AbluftZeile(zeltLive, zeltId));
+        }
+        // Weitere Wasserkühler: je Instanz eine Zeile hinter dem ersten Kühler, mit dem Namen aus dem Register.
+        foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "chiller"))
+        {
+            var instanzLive = await _chiller.Fuer(instanz.Modul).LiveAsync(ct);
+            module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("chiller", StringComparison.Ordinal)) + 1,
+                ChillerZeile(instanzLive, instanz.Modul, instanz.Name, null));
         }
         var zuordnung = zelteDienst.Zuordnung();
         for (var i = 0; i < module.Count; i++)
@@ -591,13 +602,15 @@ public sealed class SteuerungApiController : ApiControllerBase
     /// </summary>
     [HttpGet("chiller")]
     [ProducesResponseType(typeof(ChillerSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ChillerSeiteDto>> Chiller(CancellationToken ct)
+    public async Task<ActionResult<ChillerSeiteDto>> Chiller([FromQuery] string? instanz, CancellationToken ct)
     {
+        var kuehler = ChillerDienst(instanz);
+        if (kuehler is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
         var (zugeordnet, gesamt) = ChillerSteuerungService.GeraeteZaehlen(
-            _geraete.EntitiesFuerModul(ChillerSteuerungService.Modul));
-        return Ok(new ChillerSeiteDto(await _chiller.EinstellungenAsync(ct), await _chiller.LiveAsync(ct))
+            _geraete.EntitiesFuerModul(kuehler.ModulName), kuehler.ModulName);
+        return Ok(new ChillerSeiteDto(await kuehler.EinstellungenAsync(ct), await kuehler.LiveAsync(ct))
         {
-            AusHomeAssistantUebernommen = _chiller.Gespeichert is null,
+            AusHomeAssistantUebernommen = kuehler.Gespeichert is null,
             GeraeteZugeordnet = zugeordnet,
             GeraeteGesamt = gesamt,
         });
@@ -606,19 +619,108 @@ public sealed class SteuerungApiController : ApiControllerBase
     [HttpPut("chiller")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(ChillerSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ChillerSeiteDto>> ChillerSpeichern([FromBody] ChillerEinstellungen request, CancellationToken ct)
+    public async Task<ActionResult<ChillerSeiteDto>> ChillerSpeichern([FromBody] ChillerEinstellungen request, [FromQuery] string? instanz, CancellationToken ct)
     {
         if (request is null) return BadRequestError("chiller_invalid", "Es wurde nichts übergeben.");
-        var (gespeichert, fehler, erreicht) = await _chiller.SpeichernAsync(request, ct);
+        var kuehler = ChillerDienst(instanz);
+        if (kuehler is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var (gespeichert, fehler, erreicht) = await kuehler.SpeichernAsync(request, ct);
         if (gespeichert is null)
         {
             foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
 
-        var seite = await Chiller(ct);
+        var seite = await Chiller(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is ChillerSeiteDto dto) return Ok(dto with { HaAngenommen = erreicht });
         return seite;
+    }
+
+    /// <summary>Der Kühler-Dienst: ohne Angabe der erste, sonst der einer angelegten Instanz — eine unbekannte gibt <c>null</c>.</summary>
+    private ChillerSteuerungService? ChillerDienst(string? instanz)
+    {
+        if (string.IsNullOrWhiteSpace(instanz) || string.Equals(instanz, ChillerSteuerungService.Modul, StringComparison.Ordinal)) return _chiller.Bestand();
+        return SteuerungInstanzen.Module.Contains(instanz, StringComparer.Ordinal) && InstanzModul.Art(instanz) == ChillerSteuerungService.Modul
+            ? _chiller.Fuer(instanz)
+            : null;
+    }
+
+    // ------------------------------------------------------------ Instanzen
+
+    /// <summary>Die weiteren Instanzen einer Steuerung mit ihrem Zelt (die erste Instanz steht nicht darin).</summary>
+    [HttpGet("instanzen")]
+    [ProducesResponseType(typeof(SteuerungInstanzenDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungInstanzenDto> Instanzen([FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst)
+        => Ok(InstanzenDto(instanzen, zelteDienst));
+
+    /// <summary>
+    /// Eine weitere Instanz anlegen (heute nur der Wasserkühler). Legt nur den Eintrag im Fork an und weist das Zelt zu; die
+    /// Bausteine in Home Assistant entstehen danach über die Einrichtung der Instanz.
+    /// </summary>
+    [HttpPost("instanzen")]
+    [KiStufe(KiStufe.Verwaltung)]
+    [ProducesResponseType(typeof(SteuerungInstanzenDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungInstanzenDto> InstanzAnlegen(
+        [FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst, [FromBody] SteuerungInstanzAnlegen request)
+    {
+        if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
+        // Nur Steuerungen, deren Dienst schon mehrere Instanzen kann: sonst entstünde ein Eintrag ohne Wirkung.
+        if (!string.Equals(request.Art, ChillerSteuerungService.Modul, StringComparison.Ordinal))
+            return BadRequestError("steuerung_instanz_art", "Diese Steuerung lässt sich noch nicht vervielfachen.");
+        if (request.ZeltId is { } zelt && !zelteDienst.AktiveZelte().Any(t => t.Id == zelt))
+            return BadRequestError("steuerung_instanz_zelt", "Dieses Zelt gibt es nicht.");
+
+        var (instanz, fehler) = instanzen.Anlegen(request.Art, request.Name);
+        if (instanz is null) return BadRequestError("steuerung_instanz_ungueltig", fehler!);
+        if (request.ZeltId is { } z)
+        {
+            var zuweisung = zelteDienst.Speichern(new Dictionary<string, int> { [instanz.Modul] = z });
+            if (zuweisung is not null)
+            {
+                // Ohne Zelt bleibt keine Instanz stehen, die in der Übersicht nirgends hingehört.
+                instanzen.Entfernen(instanz.Modul);
+                return BadRequestError("steuerung_instanz_zelt", zuweisung);
+            }
+        }
+
+        return Ok(InstanzenDto(instanzen, zelteDienst));
+    }
+
+    /// <summary>Eine Instanz umbenennen — nur der Anzeigename im Fork, nichts in Home Assistant.</summary>
+    [HttpPut("instanzen/{modul}")]
+    [KiStufe(KiStufe.Verwaltung)]
+    [ProducesResponseType(typeof(SteuerungInstanzenDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungInstanzenDto> InstanzUmbenennen(
+        string modul, [FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst, [FromBody] SteuerungInstanzUmbenennen request)
+    {
+        if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
+        var fehler = instanzen.Umbenennen(modul, request.Name);
+        if (fehler is not null) return BadRequestError("steuerung_instanz_ungueltig", fehler);
+        return Ok(InstanzenDto(instanzen, zelteDienst));
+    }
+
+    /// <summary>
+    /// Eine Instanz aus dem Fork entfernen. Ihre Bausteine in Home Assistant bleiben stehen; die Nummer wird nie wieder vergeben.
+    /// Die erste Instanz gibt es hier nicht — sie ist nicht löschbar, nur abwählbar.
+    /// </summary>
+    [HttpDelete("instanzen/{modul}")]
+    [KiStufe(KiStufe.Verwaltung)]
+    [KiSicherungVorher]
+    [ProducesResponseType(typeof(SteuerungInstanzenDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungInstanzenDto> InstanzEntfernen(
+        string modul, [FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst)
+    {
+        var fehler = instanzen.Entfernen(modul);
+        if (fehler is not null) return NotFoundError("steuerung_instanz_unbekannt", fehler);
+        return Ok(InstanzenDto(instanzen, zelteDienst));
+    }
+
+    private static SteuerungInstanzenDto InstanzenDto(SteuerungInstanzService instanzen, SteuerungZeltService zelteDienst)
+    {
+        var zuordnung = zelteDienst.Zuordnung();
+        return new SteuerungInstanzenDto(instanzen.Liste()
+            .Select(i => new SteuerungInstanzDto(i.Modul, i.Art, i.Nummer, i.Name, zuordnung.GetValueOrDefault(i.Modul)))
+            .ToList());
     }
 
     // ---------------------------------------------------------------- Licht
@@ -1159,6 +1261,23 @@ public sealed record EntfeuchterSeiteDto(EntfeuchterEinstellungen Einstellungen,
 
     /// <summary>Helfer in Home Assistant, die von den Einstellungen des Fork abweichen — leer, wenn alles übereinstimmt oder HA nicht antwortet.</summary>
     public IReadOnlyList<EntfeuchterSteuerungService.Abweichung> Abweichungen { get; init; } = [];
+}
+
+/// <summary>Eine weitere Instanz einer Steuerung für die Oberfläche.</summary>
+public sealed record SteuerungInstanzDto(string Modul, string Art, int Nummer, string Name, int? ZeltId);
+
+public sealed record SteuerungInstanzenDto(IReadOnlyList<SteuerungInstanzDto> Instanzen);
+
+public sealed class SteuerungInstanzAnlegen
+{
+    public string Art { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int? ZeltId { get; set; }
+}
+
+public sealed class SteuerungInstanzUmbenennen
+{
+    public string Name { get; set; } = string.Empty;
 }
 
 public sealed record ChillerSeiteDto(ChillerEinstellungen Einstellungen, ChillerLive Live)

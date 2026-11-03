@@ -301,6 +301,11 @@ public sealed class RundwegVollstaendigTests
     /// <summary>Verträge ohne Rundweg — mit ausgeschriebenem Grund.</summary>
     private static readonly Dictionary<string, string> NichtGefahren = new(StringComparer.Ordinal)
     {
+        // Etappe 2, Release 5a
+        ["SteuerungInstanzUmbenennen"] =
+            "Ein einziges Feld (Name), und die Antwort ist die ganze Liste der Instanzen, nicht das Gesendete. Eine feste Probe "
+            + "wuerde einen Eintrag der gemeinsamen Test-App umbenennen. Umbenennen, Nachlesen im Register, Abweisen leerer und "
+            + "fremder Namen prueft SteuerungInstanzApiTests.",
         // Fork AI (forkai.247)
         ["SetTentSensorRequest"] =
             "Ein Feld (die Entitaet), und die Antwort ist das ganze Zelt, nicht das Gesendete. Eine feste Probe wie \"1\" ist "

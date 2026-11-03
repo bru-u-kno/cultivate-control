@@ -120,6 +120,14 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
             }),
+            _ when ZeltRuheArten.IstKuehlerInstanz(kennung) => Aus(async () => (await _chiller.Fuer(kennung).EinstellungenAsync(ct)).AutomatikAktiv, async an =>
+            {
+                var kuehler = _chiller.Fuer(kennung);
+                var e = await kuehler.EinstellungenAsync(ct);
+                e.AutomatikAktiv = an;
+                var (g, _, erreicht) = await kuehler.SpeichernAsync(e, ct);
+                return g is not null && erreicht;
+            }),
             // Licht und Abluft haben keine eigene Automatik: das Gerät führt Zeitplan oder Stufe selbst.
             _ => Task.FromResult<(bool, bool?)>((true, null)),
         };
@@ -161,6 +169,14 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
             {
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
+            }),
+            _ when ZeltRuheArten.IstKuehlerInstanz(kennung) => An(async an =>
+            {
+                var kuehler = _chiller.Fuer(kennung);
+                var e = await kuehler.EinstellungenAsync(ct);
+                e.AutomatikAktiv = an;
+                var (g, _, erreicht) = await kuehler.SpeichernAsync(e, ct);
+                return g is not null && erreicht;
             }),
             _ => Task.FromResult<(bool, bool?)>((true, null)),
         });

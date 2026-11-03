@@ -70,6 +70,45 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     private readonly ILogger<ChillerSteuerungService> _logger;
     private readonly AppSettingsRepository? _einstellungen;
 
+    // Wasserkühler-Instanzen: Der Dienst aus der Abhängigkeits-Einspritzung gehört der ersten Instanz (Modul „chiller“, alle
+    // Kennungen unverändert). Für eine weitere Instanz liefert Fuer() eine Kopie mit deren Modul; jede Kennung wandert dann
+    // über E() auf die Endung _i{n}.
+    private string _modul = Modul;
+    private int? _nummer;
+
+    /// <summary>Das Modul dieses Dienstes: <c>chiller</c> oder <c>chiller-i{n}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Die Nummer der Instanz (ab 2) — <c>null</c> bei der ersten.</summary>
+    public int? Nummer => _nummer;
+
+    /// <summary>Der Dienst einer Instanz. Ein Modul, das keine weitere Wasserkühler-Instanz ist, bekommt den Dienst der ersten.</summary>
+    public ChillerSteuerungService Fuer(string modul)
+    {
+        if (!string.Equals(InstanzModul.Art(modul), Modul, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return Bestand();
+        var kopie = (ChillerSteuerungService)MemberwiseClone();
+        kopie._modul = modul;
+        kopie._nummer = n;
+        return kopie;
+    }
+
+    /// <summary>Der Dienst der ersten Instanz.</summary>
+    public ChillerSteuerungService Bestand()
+    {
+        if (_nummer is null) return this;
+        var kopie = (ChillerSteuerungService)MemberwiseClone();
+        kopie._modul = Modul;
+        kopie._nummer = null;
+        return kopie;
+    }
+
+    /// <summary>Die Kennung eines Objekts dieser Instanz (erste Instanz: unverändert).</summary>
+    private string E(string basisKennung) => Kennung(basisKennung, _nummer);
+
+    /// <summary>Die Kennung eines Objekts der Instanz <paramref name="nummer"/> (<c>null</c> = erste Instanz).</summary>
+    public static string Kennung(string basisKennung, int? nummer)
+        => nummer is { } n ? InstanzModul.Id(basisKennung, n) : basisKennung;
+
     public ChillerSteuerungService(
         SteuerungRepository repo,
         HomeAssistantService ha,
@@ -102,11 +141,12 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// </summary>
     public void CropSteeringUebernehmen()
     {
-        if (_einstellungen is null || _einstellungen.GetValue(UebernahmeSchluessel) is not null) return;
+        // Crop Steering kennt nur den einen Kühler — weitere Instanzen übernehmen nichts.
+        if (_nummer is not null || _einstellungen is null || _einstellungen.GetValue(UebernahmeSchluessel) is not null) return;
 
         try
         {
-            var gespeichert = _geraete.Gespeichert(Modul);
+            var gespeichert = _geraete.Gespeichert(_modul);
             var zelte = _grows.GetTents();
             var vorschlag = UebernahmeAus(
                 gespeichert.ContainsKey(Rollen.Steckdose) || gespeichert.ContainsKey(Rollen.KuehlerSollwert),
@@ -115,7 +155,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
 
             if (vorschlag.Count > 0)
             {
-                var fehler = _geraete.Speichern(Modul, vorschlag.ToDictionary(p => p.Key, p => (string?)p.Value));
+                var fehler = _geraete.Speichern(_modul, vorschlag.ToDictionary(p => p.Key, p => (string?)p.Value));
                 _logger.LogInformation("Crop Steering übernommen: {Rollen} (Fehler: {Fehler})",
                     string.Join(", ", vorschlag.Select(p => $"{p.Key}={p.Value}")), fehler.Count);
             }
@@ -155,7 +195,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     // ----------------------------------------------------------- Einstellungen
 
     /// <summary>Der gespeicherte Stand — null, solange nie gespeichert wurde.</summary>
-    public ChillerEinstellungen? Gespeichert => _repo.GetEinstellungen<ChillerEinstellungen>(Modul);
+    public ChillerEinstellungen? Gespeichert => _repo.GetEinstellungen<ChillerEinstellungen>(_modul);
 
     /// <summary>
     /// Die Einstellungen, wie die Seite sie zeigen soll: gespeichert, sonst aus
@@ -172,10 +212,10 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         var entities = await _ha.GetEntitiesAsync(settings, ct);
         var zustaende = entities.ToDictionary(
             x => x.EntityId, x => (string?)x.State, StringComparer.OrdinalIgnoreCase);
-        var automatik = AutomatikFuer(AnsteuerungJetzt());
+        var automatik = AutomatikFuer(AnsteuerungJetzt(), _nummer);
         var e = vorhanden is null
-            ? AusHomeAssistant(zustaende, automatik)
-            : MitHystereseAusHomeAssistant(vorhanden, zustaende);
+            ? AusHomeAssistant(zustaende, automatik, _nummer)
+            : MitHystereseAusHomeAssistant(vorhanden, zustaende, _nummer);
         // Fork AI (forkai.139, F-035): Beim ersten Aufruf übernimmt der Fork die
         // Werte aus Home Assistant sofort als eigenen Stand — gespeichert wird nur
         // im Fork, nach HA wird nichts geschrieben. Nur mit echter Antwort von HA,
@@ -183,7 +223,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         if (entities.Count > 0)
         {
             e.HystereseGefuehrt = true;
-            _repo.SetEinstellungen(Modul, e);
+            _repo.SetEinstellungen(_modul, e);
         }
         return e;
     }
@@ -194,10 +234,10 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// was in Home Assistant steht.
     /// </summary>
     public static ChillerEinstellungen MitHystereseAusHomeAssistant(
-        ChillerEinstellungen gespeichert, IReadOnlyDictionary<string, string?> zustaende)
+        ChillerEinstellungen gespeichert, IReadOnlyDictionary<string, string?> zustaende, int? nummer = null)
     {
         if (gespeichert.HystereseGefuehrt) return gespeichert;
-        if (zustaende.TryGetValue(Entitaeten.Hysterese, out var s)
+        if (zustaende.TryGetValue(Kennung(Entitaeten.Hysterese, nummer), out var s)
             && Zahlenlesen.Maschine(s) is { } h)
         {
             gespeichert.HystereseK = h;
@@ -211,9 +251,9 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// sind Alternativen; eine bewusst leere optionale Rolle ist keine Lücke.
     /// Fehlen beide, zählt die Ansteuerung als eine offene Stelle.
     /// </summary>
-    public static (int Zugeordnet, int Gesamt) GeraeteZaehlen(IReadOnlyDictionary<string, string?> geraete)
+    public static (int Zugeordnet, int Gesamt) GeraeteZaehlen(IReadOnlyDictionary<string, string?> geraete, string modul = Modul)
     {
-        var rollen = SteuerungGeraeteRollen.FuerModul(Modul);
+        var rollen = SteuerungGeraeteRollen.FuerModul(modul);
         bool Belegt(string schluessel) => geraete.TryGetValue(schluessel, out var id) && !string.IsNullOrWhiteSpace(id);
 
         var zugeordnet = rollen.Count(r => Belegt(r.Schluessel));
@@ -227,7 +267,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// <summary>Die Ansteuerung nach den aktuellen Rollen.</summary>
     public string AnsteuerungJetzt()
     {
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         geraete.TryGetValue(Rollen.Steckdose, out var steckdose);
         geraete.TryGetValue(Rollen.KuehlerSollwert, out var sollwert);
         return ChillerAnsteuerung.Aus(steckdose, sollwert);
@@ -237,21 +277,21 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// Welche Automation „Automatik aktiv" meint: bei einem Sollwert-Gerät die,
     /// die das Ziel schreibt, sonst die Steckdosen-Regelung.
     /// </summary>
-    public static string AutomatikFuer(string ansteuerung)
-        => ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
+    public static string AutomatikFuer(string ansteuerung, int? nummer = null)
+        => Kennung(ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides
             ? Entitaeten.SollwertAutomatik
-            : Entitaeten.Automatik;
+            : Entitaeten.Automatik, nummer);
 
     /// <summary>
     /// Aus den Zuständen der Helfer Einstellungen bauen. Was fehlt oder sich
     /// nicht lesen lässt, bleibt auf der Vorgabe.
     /// </summary>
     public static ChillerEinstellungen AusHomeAssistant(
-        IReadOnlyDictionary<string, string?> zustaende, string automatik = Entitaeten.Automatik)
+        IReadOnlyDictionary<string, string?> zustaende, string automatik = Entitaeten.Automatik, int? nummer = null)
     {
         var e = new ChillerEinstellungen();
 
-        double? Zahl(string id) => zustaende.TryGetValue(id, out var s)
+        double? Zahl(string basisId) => zustaende.TryGetValue(Kennung(basisId, nummer), out var s)
             ? Zahlenlesen.Maschine(s) : null;
 
         if (Zahl(Entitaeten.ZielTag) is { } tag) e.ZielTagC = tag;
@@ -294,7 +334,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
 
         // Ab jetzt führt der Fork die Hysterese (F-030).
         e.HystereseGefuehrt = true;
-        _repo.SetEinstellungen(Modul, e);
+        _repo.SetEinstellungen(_modul, e);
         var erreicht = await NachHomeAssistantSchreibenAsync(e, ct);
         return (e, fehler, erreicht);
     }
@@ -309,7 +349,7 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         if (!settings.IsConfigured) return false;
 
-        var zahlen = Startwerte.Nur(Schreibliste(e, _wochenplan.GefuehrteHelfer().Keys), nur);
+        var zahlen = Startwerte.Nur(Schreibliste(e, GefuehrteHelfer().Keys, _nummer), nur);
 
         var alles = true;
         foreach (var (entity, wert) in zahlen)
@@ -323,14 +363,14 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         {
             var ansteuerung = AnsteuerungJetzt();
             alles &= await _ha.CallEntityServiceAsync(
-                settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", AutomatikFuer(ansteuerung), ct);
+                settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", AutomatikFuer(ansteuerung, _nummer), ct);
 
             // Regelt das Gerät selbst, darf die Steckdosen-Regelung nicht mehr
             // schalten — sonst greifen zwei Stellen nach demselben Kühler. Fehlt sie
             // (neue Anlage mit Sollwert-Gerät), ist das kein Fehler.
             if (ansteuerung is ChillerAnsteuerung.Regelbar or ChillerAnsteuerung.Beides)
             {
-                await _ha.CallEntityServiceAsync(settings, "automation", "turn_off", Entitaeten.Automatik, ct);
+                await _ha.CallEntityServiceAsync(settings, "automation", "turn_off", E(Entitaeten.Automatik), ct);
             }
         }
 
@@ -338,14 +378,14 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         return alles;
     }
 
-    string IStartwertDienst.StartModul => Modul;
+    string IStartwertDienst.StartModul => _modul;
 
     async Task<object> IStartwertDienst.StandFesthaltenAsync(CancellationToken ct) => await EinstellungenAsync(ct);
 
     async Task<(int Geschrieben, bool Alles)> IStartwertDienst.StartwerteSchreibenAsync(object stand, IReadOnlySet<string> neuAngelegt, CancellationToken ct)
     {
         var e = (ChillerEinstellungen)stand;
-        var anzahl = Startwerte.Nur(Schreibliste(e, _wochenplan.GefuehrteHelfer().Keys), neuAngelegt).Count;
+        var anzahl = Startwerte.Nur(Schreibliste(e, GefuehrteHelfer().Keys, _nummer), neuAngelegt).Count;
         if (anzahl == 0) return (0, true);
 
         var alles = await NachHomeAssistantSchreibenAsync(e, ct, neuAngelegt);
@@ -364,20 +404,20 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         double? Zahl(string id) => Zahlenlesen.Maschine(Text(id));
         bool? An(string id) => Text(id) is { } t && t is not ("unknown" or "unavailable") ? t is "on" or "On" : null;
 
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         string? Rolle(string rolle) => geraete.TryGetValue(rolle, out var id) ? id : null;
         double? ZahlRolle(string rolle) => Rolle(rolle) is { } id ? Zahl(id) : null;
         bool? AnRolle(string rolle) => Rolle(rolle) is { } id ? An(id) : null;
 
         var zustaende = nachId.ToDictionary(x => x.Key, x => (string?)x.Value.State, StringComparer.OrdinalIgnoreCase);
         var ansteuerung = ChillerAnsteuerung.Aus(Rolle(Rollen.Steckdose), Rolle(Rollen.KuehlerSollwert));
-        var automatik = AutomatikFuer(ansteuerung);
+        var automatik = AutomatikFuer(ansteuerung, _nummer);
         var e = Gespeichert is { } g
-            ? MitHystereseAusHomeAssistant(g, zustaende)
-            : AusHomeAssistant(zustaende, automatik);
+            ? MitHystereseAusHomeAssistant(g, zustaende, _nummer)
+            : AusHomeAssistant(zustaende, automatik, _nummer);
 
         // Schaltpunkte aus dem, was in HA wirklich gilt — nicht aus dem Fork.
-        var hysterese = Zahl(Entitaeten.Hysterese) ?? e.HystereseK;
+        var hysterese = Zahl(E(Entitaeten.Hysterese)) ?? e.HystereseK;
         var kuehler = Rolle(Rollen.KuehlerSollwert);
         double? kuehlerSoll = null;
         if (kuehler is not null)
@@ -393,13 +433,14 @@ public sealed class ChillerSteuerungService : IStartwertDienst
         var steckdoseAn = AnRolle(Rollen.SteckdoseZustand) ?? AnRolle(Rollen.Steckdose);
         var tagPhase = AnRolle(Rollen.LichtZustand);
 
-        var zielAktiv = Zahl(Entitaeten.ZielAktiv)
-            ?? (tagPhase == false ? Zahl(Entitaeten.ZielNacht) : Zahl(Entitaeten.ZielTag));
+        var zielAktiv = Zahl(E(Entitaeten.ZielAktiv))
+            ?? (tagPhase == false ? Zahl(E(Entitaeten.ZielNacht)) : Zahl(E(Entitaeten.ZielTag)));
 
-        var (rest, gewechselt) = Sperre(Text(Entitaeten.LetzterSchaltvorgang),
+        var (rest, gewechselt) = Sperre(Text(E(Entitaeten.LetzterSchaltvorgang)),
             e.MindestlaufzeitMin, e.MindestpauseMin, steckdoseAn == true, DateTime.Now);
 
-        var doppelt = GrowDiary.Web.Infrastructure.ForkAiSchalter.CropSteeringAktiv
+        // Crop Steering kennt nur den einen Kühler: bei einer weiteren Instanz gibt es keine Doppelsteuerung zu melden.
+        var doppelt = _nummer is null && GrowDiary.Web.Infrastructure.ForkAiSchalter.CropSteeringAktiv
             ? Doppelsteuerung(_grows.GetTents(), Rolle(Rollen.Steckdose))
             : null;
 
@@ -407,14 +448,14 @@ public sealed class ChillerSteuerungService : IStartwertDienst
             HaErreichbar: entities.Count > 0,
             WasserC: ZahlRolle(Rollen.WasserFuehler),
             ZielAktivC: zielAktiv,
-            ZielTagC: Zahl(Entitaeten.ZielTag),
-            ZielNachtC: Zahl(Entitaeten.ZielNacht),
+            ZielTagC: Zahl(E(Entitaeten.ZielTag)),
+            ZielNachtC: Zahl(E(Entitaeten.ZielNacht)),
             TagPhase: tagPhase,
-            Kuehlbedarf: An(Entitaeten.Kuehlbedarf),
+            Kuehlbedarf: An(E(Entitaeten.Kuehlbedarf)),
             SteckdoseAn: steckdoseAn,
             LeistungW: ZahlRolle(Rollen.Leistung),
             AutomatikAn: An(automatik),
-            WaechterAn: An(Entitaeten.Waechter),
+            WaechterAn: An(E(Entitaeten.Waechter)),
             ZielQuelle: ZielQuelle(Gespeichert is not null, PlanFuehrtZiel()),
             SperreRestMin: rest,
             LetzterWechsel: gewechselt,
@@ -437,16 +478,16 @@ public sealed class ChillerSteuerungService : IStartwertDienst
     /// die Wassertemperatur danach nicht mehr nach.
     /// </remarks>
     public static IReadOnlyList<(string Entity, double Wert)> Schreibliste(
-        ChillerEinstellungen e, IEnumerable<string> vomWochenplanGefuehrt)
+        ChillerEinstellungen e, IEnumerable<string> vomWochenplanGefuehrt, int? nummer = null)
     {
         var gefuehrt = new HashSet<string>(vomWochenplanGefuehrt, StringComparer.OrdinalIgnoreCase);
         var zahlen = new (string Entity, double Wert)[]
         {
-            (Entitaeten.ZielTag, e.ZielTagC),
-            (Entitaeten.ZielNacht, e.ZielNachtC),
-            (Entitaeten.Mindestlaufzeit, e.MindestlaufzeitMin),
-            (Entitaeten.Mindestpause, e.MindestpauseMin),
-            (Entitaeten.Hysterese, e.HystereseK),
+            (Kennung(Entitaeten.ZielTag, nummer), e.ZielTagC),
+            (Kennung(Entitaeten.ZielNacht, nummer), e.ZielNachtC),
+            (Kennung(Entitaeten.Mindestlaufzeit, nummer), e.MindestlaufzeitMin),
+            (Kennung(Entitaeten.Mindestpause, nummer), e.MindestpauseMin),
+            (Kennung(Entitaeten.Hysterese, nummer), e.HystereseK),
         };
 
         return zahlen.Where(z => !gefuehrt.Contains(z.Entity)).ToList();
@@ -463,9 +504,13 @@ public sealed class ChillerSteuerungService : IStartwertDienst
 
     private bool PlanFuehrtZiel()
     {
-        var gefuehrt = _wochenplan.GefuehrteHelfer();
-        return gefuehrt.ContainsKey(Entitaeten.ZielTag) || gefuehrt.ContainsKey(Entitaeten.ZielNacht);
+        var gefuehrt = GefuehrteHelfer();
+        return gefuehrt.ContainsKey(E(Entitaeten.ZielTag)) || gefuehrt.ContainsKey(E(Entitaeten.ZielNacht));
     }
+
+    /// <summary>Die Helfer dieser Instanz, die der Wochenplan führt (Kennung → Wert der laufenden Woche).</summary>
+    private IReadOnlyDictionary<string, double> GefuehrteHelfer()
+        => _nummer is null ? _wochenplan.GefuehrteHelfer() : _wochenplan.GefuehrteChillerHelfer(_modul);
 
     /// <summary>
     /// Schaltet die Steckdosen-Funktion der Crop-Steering-Seite dieselbe

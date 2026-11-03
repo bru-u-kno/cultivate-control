@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.320
+
+**Steuerungen je Zelt, Teil 5: Wasserkühler-Instanzen — der Unterbau für einen zweiten (dritten …) Wasserkühler. Anlegen in der Oberfläche folgt im nächsten Teil.**
+
+- **Was sich für dich ändert:** Nichts, solange du keine weitere Instanz anlegst. Dein Wasserkühler, seine Einstellungen, Geräte und Bausteine in Home Assistant bleiben Zeichen für Zeichen, wie sie sind.
+- **Eigene Einstellungen, eigene Bausteine:** Eine weitere Wasserkühler-Instanz hat ihre eigenen Einstellungen (Zieltemperatur Tag und Nacht, Hysterese, Mindestlaufzeit und -pause), ihre eigenen Geräte und ihre eigenen Helfer, Rechenwerte und Automationen in Home Assistant. Deren Kennungen enden auf `_i2`, `_i3` …; sie lesen und schreiben nie die Werte der ersten Instanz. Frisch angelegte Helfer bekommen sinnvolle Startwerte statt des Mindestwerts von Home Assistant.
+- **Wochenplan je Zelt:** Das Wasserziel einer Instanz folgt dem Plan des Durchgangs in dem Zelt, dem die Instanz zugewiesen ist — auch wenn die erste Instanz in einem anderen Zelt steht.
+- **Zelt ruhend:** Jede weitere Instanz ist ein eigenes Gerät in „Zelt ruhend“ („Wasserkühler Reserve“): Die Automatik wird abgestellt und die Steckdose ausgeschaltet, beim Aufwecken kommt beides zurück — wie beim ersten Wasserkühler.
+- **Verwaltung:** Neue Schnittstelle zum Anlegen (mit Name und Zelt), Umbenennen und Entfernen weiterer Wasserkühler; die Kühler-Seite und die Übersicht kennen jede Instanz. Entfernen nimmt die Instanz aus Cultivate Control (über einen KI-Schlüssel wird vorher eine Sicherung angelegt); die Bausteine in Home Assistant bleiben stehen und die Nummer wird nie wieder vergeben. Die erste Instanz lässt sich nicht entfernen.
+- **Noch nicht:** Knöpfe in der Oberfläche, das Entfernen der Bausteine aus Home Assistant und Pumpen-Wächter-Meldungen je Instanz. Andere Steuerungen (Entfeuchter, Zuluft, Lampe) lassen sich noch nicht vervielfachen.
+- **Geprüft** mit Tests: Jede Kennung des Wasserkühler-Dienstes steht im Katalog und wird für die Instanz übersetzt (ohne die Übersetzung werden vier Tests rot), Lesen und Schreiben der Einstellungen bleiben je Instanz getrennt, der Wochenplan führt die Helfer jeder Instanz in ihrem Zelt, „Zelt ruhend“ kennt die Instanzen, und die Schnittstelle weist Unsinn ab, ohne etwas zu hinterlassen.
+
 ## 2.0.0-cc.319
 
 **Probelauf je Zelt: Ein Probelauf misst das Zelt der Steuerung, an der er eingreift — nie die Werte eines anderen Zeltes.**

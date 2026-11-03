@@ -77,6 +77,9 @@ public sealed class KiEinstufungBTests
         ["SteuerungApiController.AuswahlSpeichern"] = "Verwaltung", // A-016: blendet Steuerungen ein/aus
         ["SteuerungApiController.ZuweisungSpeichern"] = "Verwaltung", // Steuerungen je Zelt: gliedert die Übersicht, schaltet nichts
         ["SteuerungApiController.ChillerSpeichern"] = "GeraeteSchalten, Verwaltung",
+        ["SteuerungApiController.InstanzAnlegen"] = "Verwaltung", // weitere Instanzen: nur Eintrag im Fork + Zeltzuweisung
+        ["SteuerungApiController.InstanzUmbenennen"] = "Verwaltung",
+        ["SteuerungApiController.InstanzEntfernen"] = "Verwaltung + Sicherung",
         ["SteuerungApiController.LichtSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtBefehl"] = "GeraeteSchalten",
         // cc.276: Licht-Wächter. Schaltet nichts selbst beim Speichern; die Einstellung entscheidet

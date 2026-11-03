@@ -290,6 +290,35 @@ public sealed class WochenplanSyncService
         return liste;
     }
 
+    /// <summary>
+    /// Wasserkühler-Instanzen: Die Zieltemperatur-Helfer einer weiteren Instanz, die der Plan führt — Tag und Nacht aus der laufenden
+    /// Woche des Durchgangs in ihrem Zelt (bei einem Zelt der eine Durchgang wie bisher). Leer, solange dort kein einzelner Durchgang
+    /// mit Wochen-Zielen läuft oder das Modul keine weitere Wasserkühler-Instanz ist.
+    /// </summary>
+    /// <remarks>
+    /// Die Helfer einer Instanz heißen immer wie die des Katalogs mit der Endung der Instanz: Die Zuordnung der Plan-Helfer
+    /// (<see cref="HelferFuer"/>) gehört der ersten Instanz und gilt nicht für weitere.
+    /// </remarks>
+    public IReadOnlyDictionary<string, double> GefuehrteChillerHelfer(string modul)
+    {
+        var liste = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (!string.Equals(InstanzModul.Art(modul), ArtChiller, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return liste;
+        if (Spalte(PlanZelt(modul)) is not { } jetzt) return liste;
+
+        foreach (var (rolle, wert) in WerteMitZelt(jetzt.Grow, jetzt.Spalte))
+        {
+            if (ArtFuer(rolle) == ArtChiller && Standardhelfer.TryGetValue(rolle, out var basis)) liste[InstanzModul.Id(basis, n)] = wert;
+        }
+
+        return liste;
+    }
+
+    /// <summary>Die Planwerte der Zieltemperatur-Helfer aller weiteren Wasserkühler-Instanzen.</summary>
+    private List<(string Entity, double Planwert)> ChillerInstanzAuftraege()
+        => SteuerungInstanzen.ModuleVon(ArtChiller)
+            .SelectMany(m => GefuehrteChillerHelfer(m).Select(p => (p.Key, p.Value)))
+            .ToList();
+
     /// <summary>Die Planwerte der CO₂-Helfer aller weiteren Zelte mit CO₂ (nicht des Bestand-Zeltes).</summary>
     private List<(string Entity, double Planwert)> Co2ZeltAuftraege()
     {
@@ -351,6 +380,7 @@ public sealed class WochenplanSyncService
         var rollen = Rollenwerte();
         var durchgaenge = ZeltDurchgaenge();
         var zeltAuftraege = Co2ZeltAuftraege();
+        zeltAuftraege.AddRange(ChillerInstanzAuftraege());
         if (rollen.Count == 0 && durchgaenge.Count == 0 && zeltAuftraege.Count == 0) return 0;
 
         var stand = Stand;
@@ -392,7 +422,7 @@ public sealed class WochenplanSyncService
             stand.LetzterLauf = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         }
 
-        // Die Helfer weiterer CO₂-Zelte hat Cultivate Control selbst angelegt: kein „erster Lauf“, in dem nur gemerkt wird.
+        // Die Helfer weiterer CO₂-Zelte und weiterer Wasserkühler hat Cultivate Control selbst angelegt: kein „erster Lauf“, in dem nur gemerkt wird.
         if (zeltAuftraege.Count > 0) geschrieben += await Nachziehen(zeltAuftraege, false);
 
         _repo.SetEinstellungen(Modul, stand);

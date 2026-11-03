@@ -35,6 +35,10 @@ describe('Löschwege sind erreichbar', () => {
       + 'Ausschalten IST dort der Weg zurueck; ein Loeschknopf wuerde eine Zeile '
       + 'entfernen, die die Seite beim naechsten Einschalten neu anlegt. Den '
       + 'Loeschweg gibt es fuer Vorlagen, die ueber die API entstanden sind.'],
+    ['api/steuerung/instanzen',
+      'Zwischenstand der Wasserkuehler-Instanzen (Etappe 2): Anlegen, Benennen und Loeschen kommen im naechsten Release '
+      + 'als Knoepfe auf der Steuerungsuebersicht. Bis dahin gibt es nur die Schnittstelle. Diese Ausnahme faellt mit dem '
+      + 'Knopf weg.'],
   ])
 
   /** Alle DELETE-Wege, die das Backend anbietet. */

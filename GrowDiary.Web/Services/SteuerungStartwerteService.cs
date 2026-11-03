@@ -38,7 +38,11 @@ public sealed class SteuerungStartwerteService
     ];
 
     /// <summary>Hat diese Steuerung einen Weg für Startwerte? (Alle mit Zahl-Helfern; die Lampe hat keine.)</summary>
-    public static bool Kann(string modul) => Module.Contains(modul, StringComparer.OrdinalIgnoreCase) || Co2Modul.ZeltId(modul) is not null;
+    public static bool Kann(string modul) => Module.Contains(modul, StringComparer.OrdinalIgnoreCase) || Co2Modul.ZeltId(modul) is not null || InstanzMitStartwerten(modul);
+
+    /// <summary>Weitere Instanzen einer Steuerung, deren Dienst schon <c>Fuer(modul)</c> kann (heute der Wasserkühler).</summary>
+    private static bool InstanzMitStartwerten(string modul)
+        => string.Equals(InstanzModul.Art(modul), ChillerSteuerungService.Modul, StringComparison.Ordinal);
 
     /// <summary>Die fehlenden Helfer anlegen und den neuen ihren Startwert geben; die Bilanz sagt, wie viele es waren.</summary>
     public Task<SteuerungHelferService.Bilanz> AnlegenAsync(
@@ -72,6 +76,12 @@ public sealed class SteuerungStartwerteService
         if (Co2Modul.ZeltId(modul) is { } zelt && dienste.TryGetValue(Co2Modul.Basis, out var basis) && basis is Co2SteuerungService co2)
         {
             return co2.Fuer(zelt);
+        }
+
+        // Wasserkühler-Instanzen: wie CO₂ je Zelt der Dienst der ersten Instanz mit dem Modul der Instanz als Kontext.
+        if (InstanzMitStartwerten(modul) && dienste.TryGetValue(ChillerSteuerungService.Modul, out var kuehler) && kuehler is ChillerSteuerungService chiller)
+        {
+            return chiller.Fuer(modul);
         }
 
         return dienste.TryGetValue(modul, out var dienst)
