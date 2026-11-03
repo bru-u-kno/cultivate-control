@@ -256,9 +256,10 @@ public sealed class WochenplanSyncService
     /// an einer Stelle — im Wochenplan (Festlegung vom 15.09.2026).
     /// Leer, solange kein einzelner Durchgang mit Wochen-Zielen läuft.
     /// </remarks>
-    public IReadOnlyDictionary<string, double> GefuehrteHelfer()
+    public IReadOnlyDictionary<string, double> GefuehrteHelfer(int? zeltId = null)
     {
         var liste = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (zeltId is { } zelt) return Co2ZeltHelfer(zelt);
         if (Spalte() is not { } jetzt) return liste;
 
         var co2Gespeichert = Co2Gespeichert();
@@ -270,6 +271,30 @@ public sealed class WochenplanSyncService
         }
 
         return liste;
+    }
+
+    /// <summary>
+    /// CO₂ je Zelt (A-031): Die Helfer eines weiteren CO₂-Zeltes, die der Plan führt — die Feuchte-Obergrenze aus der laufenden Woche
+    /// des Durchgangs IN diesem Zelt. Leer, solange dort kein einzelner Durchgang mit Wochen-Zielen läuft oder die Woche keine nennt.
+    /// </summary>
+    /// <remarks>Die Helfer gehören dem Zelt, nicht dem Grow: Das erste CO₂-Zelt behält den Weg über <see cref="HelferFuer"/>.</remarks>
+    private Dictionary<string, double> Co2ZeltHelfer(int zeltId)
+    {
+        var liste = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (Spalte(zeltId) is { } jetzt && jetzt.Spalte.RhMax is { } rh)
+        {
+            liste[Co2Modul.Id(EntfeuchterSteuerungService.Entitaeten.RhObergrenze, zeltId)] = rh;
+        }
+        return liste;
+    }
+
+    /// <summary>Die Planwerte der CO₂-Helfer aller weiteren Zelte mit CO₂ (nicht des Bestand-Zeltes).</summary>
+    private List<(string Entity, double Planwert)> Co2ZeltAuftraege()
+    {
+        var stand = Co2Zelte.Aktuell;
+        return stand.ZeltIds.Where(z => z != stand.BestandZeltId)
+            .SelectMany(z => Co2ZeltHelfer(z).Select(p => (p.Key, p.Value)))
+            .ToList();
     }
 
     /// <summary>
@@ -322,29 +347,19 @@ public sealed class WochenplanSyncService
     /// <summary>Ein Durchlauf: vergleichen, schreiben, Stand fortschreiben.</summary>
     public async Task<int> UebergebenAsync(CancellationToken ct)
     {
-        if (Spalte() is not { } laufend) return 0;
-        var (grow, spalte) = laufend;
+        var laufend = Spalte();
+        var zeltAuftraege = Co2ZeltAuftraege();
+        if (laufend is null && zeltAuftraege.Count == 0) return 0;
 
         var stand = Stand;
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-        var ersterLauf = stand.LetzterLauf is null;
         var geschrieben = 0;
-        var co2Gespeichert = Co2Gespeichert();
-
-        var auftraege = new List<(string Entity, double Planwert)>();
-        foreach (var (rolle, wert) in WerteMitZelt(grow, spalte))
-        {
-            if (Zeltregeln.ContainsKey(rolle)) continue; // eigener Durchgang unten
-            if (RolleBeiCo2Steuerung(rolle, co2Gespeichert)) continue; // schreibt die CO₂-Steuerung
-            if (HelferFuer(rolle) is not { } entity) continue;
-            auftraege.Add((entity, wert));
-        }
 
         // Einzelabfrage je Helfer statt GetStatesAsync: dessen Wörterbuch
         // ist nach METRIK-Kennungen geschlüsselt (chiller, reservoir-temp),
         // nicht nach Entitäts-Kennungen — wer dort `input_number.…`
         // nachschlägt, findet grundsätzlich nichts.
-        geschrieben += await HelferNachziehenAsync(
+        Task<int> Nachziehen(List<(string Entity, double Planwert)> auftraege, bool ersterLauf) => HelferNachziehenAsync(
             auftraege,
             async entity => HelferLesung.Aus(await _ha.GetEntityStateAsync(settings, entity, ct)),
             (entity, wert) => _ha.CallEntityServiceAsync(settings, "input_number", "set_value", entity, ct,
@@ -353,10 +368,31 @@ public sealed class WochenplanSyncService
             ersterLauf,
             _logger);
 
-        geschrieben += Zeltgrenzen(grow, spalte, stand, ersterLauf);
+        if (laufend is { } l)
+        {
+            var (grow, spalte) = l;
+            var ersterLauf = stand.LetzterLauf is null;
+            var co2Gespeichert = Co2Gespeichert();
 
-        stand.LetzteSpalte = spalte.Id;
-        stand.LetzterLauf = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+            var auftraege = new List<(string Entity, double Planwert)>();
+            foreach (var (rolle, wert) in WerteMitZelt(grow, spalte))
+            {
+                if (Zeltregeln.ContainsKey(rolle)) continue; // eigener Durchgang unten
+                if (RolleBeiCo2Steuerung(rolle, co2Gespeichert)) continue; // schreibt die CO₂-Steuerung
+                if (HelferFuer(rolle) is not { } entity) continue;
+                auftraege.Add((entity, wert));
+            }
+
+            geschrieben += await Nachziehen(auftraege, ersterLauf);
+            geschrieben += Zeltgrenzen(grow, spalte, stand, ersterLauf);
+
+            stand.LetzteSpalte = spalte.Id;
+            stand.LetzterLauf = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        }
+
+        // Die Helfer weiterer CO₂-Zelte hat Cultivate Control selbst angelegt: kein „erster Lauf“, in dem nur gemerkt wird.
+        if (zeltAuftraege.Count > 0) geschrieben += await Nachziehen(zeltAuftraege, false);
+
         _repo.SetEinstellungen(Modul, stand);
         return geschrieben;
     }
@@ -615,9 +651,9 @@ public sealed class WochenplanSyncService
     /// <see cref="Nachtabsenkung"/>. null, solange kein einzelner Durchgang mit
     /// Wochen-Zielen läuft oder der Plan keine Lufttemperatur nennt.
     /// </remarks>
-    public (string Woche, double LuftTagC, double LuftNachtC)? PlanLuft()
+    public (string Woche, double LuftTagC, double LuftNachtC)? PlanLuft(int? zeltId = null)
     {
-        if (Spalte() is not { } jetzt || jetzt.Spalte.AirTempC is not { } tag) return null;
+        if (Spalte(zeltId) is not { } jetzt || jetzt.Spalte.AirTempC is not { } tag) return null;
         var woche = string.IsNullOrWhiteSpace(jetzt.Spalte.Label) ? jetzt.Spalte.Id : jetzt.Spalte.Label;
         var nacht = GrowPlanRegister.Inhalt(jetzt.Grow.Id)?.NachtWerte(jetzt.Spalte).LuftC
             ?? jetzt.Spalte.AirTempNightC ?? tag - Nachtabsenkung;
@@ -651,9 +687,12 @@ public sealed class WochenplanSyncService
     /// Liefen zwei Durchgänge mit verschiedenen Programmen, würden sie sich um
     /// dieselben Helfer streiten — dann lieber nichts schreiben.
     /// </remarks>
-    private (GrowRun Grow, FeedChartColumn Spalte)? Spalte()
+    private (GrowRun Grow, FeedChartColumn Spalte)? Spalte(int? zeltId = null)
     {
-        var grows = _grows.GetActiveGrows().Where(MischplanService.NutztWochenziele).ToList();
+        // Mit Zelt: nur der Durchgang IN diesem Zelt — für die CO₂-Helfer weiterer Zelte (jedes Zelt hat seine eigenen).
+        var grows = _grows.GetActiveGrows()
+            .Where(g => zeltId is null || g.TentId == zeltId)
+            .Where(MischplanService.NutztWochenziele).ToList();
         if (grows.Count != 1) return null;
 
         if (MischplanService.ZielSpalteFuerGrow(grows[0], _wissen.NutrientPrograms)?.Spalte is not { } spalte)

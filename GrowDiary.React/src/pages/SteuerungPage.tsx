@@ -259,7 +259,8 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
   const zeltParam = Number(suchParameter.get('zelt')) || null
   const zeltAnfrage = zeltParam ? `?zeltId=${zeltParam}` : ''
   const modulName = seite?.zelte?.find((z) => z.id === seite.zeltId)?.modul ?? 'co2'
-  // Probeschaltung und Absicherung kennen vorerst nur das erste Zelt (Modul „co2“).
+  // Die Probeschaltung gilt für jedes Zelt (Modul je Zelt); die Prüfung vorhandener Automationen nur für das erste:
+  // nur dort kann etwas von Hand gebaut sein, die Automationen weiterer Zelte legt Cultivate Control selbst und abgesichert an.
   const istErstesZelt = modulName === 'co2'
   const zeltWechseln = (id: number) => {
     const naechste = new URLSearchParams(suchParameter)
@@ -377,7 +378,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
     setProbe('Ventil wird zwei Sekunden geöffnet …')
     try {
       const e = await apiFetch<{ urteil: string; co2Vorher: string | null; co2Nachher: string | null }>(
-        '/api/steuerung/co2/probe', { method: 'POST' },
+        `/api/steuerung/${modulName}/probe`, { method: 'POST' },
       )
       setProbe(e.urteil + probeWerte(e.co2Vorher, e.co2Nachher))
     } catch (caught) {
@@ -743,7 +744,7 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
       )}
 
       <BestandAbschnitt modul={modulName} schaltet="das Ventil" bestand={bestand} neuLaden={bestandNeuLaden}>
-        {istErstesZelt && <V1Card>
+        <V1Card>
           <div className="st-feldzeile">
             <span className="st-etikett">
               Probeschaltung
@@ -755,8 +756,20 @@ function Co2Detail({ module, aktiv, onWechsel }: { module: SteuerungModul[]; akt
           </div>
           {probe && <p className="st-hinweis">{probe}</p>}
           <V1Button variant="ghost" onClick={ventilProbieren}>Ventil kurz öffnen</V1Button>
-        </V1Card>}
+        </V1Card>
       </BestandAbschnitt>
+
+      {!istErstesZelt && (
+        <V1Section title="Sicherheit der CO₂-Regelung">
+          <V1Card>
+            <p className="st-hinweis" data-audit="co2-absicherung-weiteres-zelt">
+              Die Automationen dieses Zeltes hat Cultivate Control selbst angelegt — mit Sperre ohne CO₂-Messwert, Abbruch bei
+              fehlendem Messwert und Wiedereinschalten nur, wenn das Ventil vorher an war. Die Prüfung vorhandener Automationen
+              gibt es nur beim ersten Zelt, denn nur dort kann etwas von Hand gebaut sein.
+            </p>
+          </V1Card>
+        </V1Section>
+      )}
 
       {istErstesZelt && absicherung?.erreichbar && (
         <V1Section title="Sicherheit der CO₂-Regelung">

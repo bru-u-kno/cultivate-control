@@ -299,4 +299,61 @@ public sealed class Co2JeZeltDienstTests : IDisposable
             File.Copy(datei, pfad);
         }
     }
+
+    // ------------------------------------------------------------- Wochenplan je Zelt
+
+    private (WochenplanSyncService Plan, GrowRun A, GrowRun B, KnowledgeBaseLoader Wissen) PlanMitZweiDurchgaengen()
+    {
+        var grows = new GrowRepository(_pfade);
+        var wissen = new KnowledgeBaseLoader(_pfade, NullLogger<KnowledgeBaseLoader>.Instance);
+        wissen.Initialize();
+        var a = grows.GetGrow(grows.CreateGrow(new GrowRun
+        {
+            Name = "Grow A", TentId = _zelt1, StartDate = DateTime.Today.AddDays(-75), FlipDate = DateTime.Today.AddDays(-20), Status = GrowStatus.Running,
+            UseFeedChartTargets = true, FeedProgramId = "skx-canna-aqua",
+        }))!;
+        var b = grows.GetGrow(grows.CreateGrow(new GrowRun
+        {
+            Name = "Grow B", TentId = _zelt2, StartDate = DateTime.Today.AddDays(-5), Status = GrowStatus.Running,
+            UseFeedChartTargets = true, FeedProgramId = "skx-canna-aqua",
+        }))!;
+        var ha = new HomeAssistantService(new StubHttpClientFactory(_ha), NullLogger<HomeAssistantService>.Instance);
+        var plan = new WochenplanSyncService(grows, wissen, new SteuerungRepository(_pfade), new AlertRuleRepository(_pfade), ha,
+            new HomeAssistantSettingsRepository(_pfade), NullLogger<WochenplanSyncService>.Instance);
+        return (plan, a, b, wissen);
+    }
+
+    [Fact]
+    public void Wochenplan_FuehrtDieFeuchteObergrenzeJedesWeiterenZeltesAusDemDurchgangInDiesemZelt()
+    {
+        var (plan, a, b, wissen) = PlanMitZweiDurchgaengen();
+        var woche = MischplanService.ZielSpalteFuerGrow(b, wissen.NutrientPrograms)!.Value.Spalte.RhMax!.Value;
+        var wocheA = MischplanService.ZielSpalteFuerGrow(a, wissen.NutrientPrograms)!.Value.Spalte.RhMax!.Value;
+        Assert.NotEqual(wocheA, woche); // sonst könnte der Test nicht unterscheiden, aus welchem Zelt der Wert kommt
+
+        var gefuehrt = plan.GefuehrteHelfer(_zelt2);
+
+        Assert.Equal(woche, gefuehrt["input_number.co2_z2_rh_obergrenze"]);
+        Assert.Single(gefuehrt);
+        // Zwei Durchgänge mit Wochenzielen: die gemeinsamen Helfer (Bestand) bleiben, wie sie waren — der Plan schweigt dort.
+        Assert.Empty(plan.GefuehrteHelfer());
+        Assert.Null(plan.PlanLuft());
+        Assert.NotNull(plan.PlanLuft(_zelt2)); // die Plan-Luft des Zeltes kommt aus SEINEM Durchgang
+    }
+
+    [Fact]
+    public async Task Wochenplan_SchreibtDieHelferWeitererZelteAuchWennZweiDurchgaengeLaufen()
+    {
+        var (plan, _, b, wissen) = PlanMitZweiDurchgaengen();
+        var woche = MischplanService.ZielSpalteFuerGrow(b, wissen.NutrientPrograms)!.Value.Spalte.RhMax!.Value;
+
+        var geschrieben = await plan.UebergebenAsync(CancellationToken.None);
+
+        Assert.Equal(1, geschrieben);
+        var aufrufe = _ha.Requests.Where(r => r.Method == HttpMethod.Post && r.Uri.AbsolutePath.EndsWith("/api/services/input_number/set_value"))
+            .Select(r => JsonDocument.Parse(r.Body!).RootElement).ToList();
+        var zeile = Assert.Single(aufrufe);
+        Assert.Equal("input_number.co2_z2_rh_obergrenze", zeile.GetProperty("entity_id").GetString());
+        Assert.Equal(woche, zeile.GetProperty("value").GetDouble());
+    }
 }

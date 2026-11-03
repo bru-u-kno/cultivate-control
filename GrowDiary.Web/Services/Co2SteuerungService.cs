@@ -145,11 +145,10 @@ public sealed class Co2SteuerungService : IStartwertDienst
     }
 
     /// <summary>
-    /// Welche Helfer der Wochenplan führt. Er kennt nur die Helfer des Bestand-Zeltes; ein weiteres Zelt wird
-    /// (noch) nicht vom Wochenplan geführt, seine Werte gelten, wie gespeichert.
+    /// Welche Helfer der Wochenplan führt: beim Bestand-Zelt wie bisher, bei einem weiteren Zelt die Feuchte-Obergrenze
+    /// aus der Woche des Durchgangs in diesem Zelt.
     /// </summary>
-    private IReadOnlyDictionary<string, double> FuehrungDurchPlan()
-        => _zeltId is null ? _wochenplan.GefuehrteHelfer() : new Dictionary<string, double>();
+    private IReadOnlyDictionary<string, double> FuehrungDurchPlan() => _wochenplan.GefuehrteHelfer(_zeltId);
 
     /// <summary>
     /// Die Verbrauchsartikel (CO₂-Flaschen), die die CO₂-Steuerung <b>aller</b> Zelte selbst bucht. Eine Buchung von Hand auf einen davon
@@ -629,7 +628,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         var (warm, mittel, kuehl) = WirksameZiele(e, PlanZielPpm());
         var gefuehrt = FuehrungDurchPlan();
         var rhWirksam = gefuehrt.TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
-        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC, _zeltId), nur);
+        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft(_zeltId)?.LuftTagC, _zeltId), nur);
 
         var alles = true;
         foreach (var (entity, wert) in zahlen)
@@ -721,7 +720,7 @@ public sealed class Co2SteuerungService : IStartwertDienst
         var (warm, mittel, kuehl) = WirksameZiele(e, PlanZielPpm());
         var gefuehrt = FuehrungDurchPlan();
         var rhWirksam = gefuehrt.TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : e.RhObergrenzeProzent;
-        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft()?.LuftTagC, _zeltId), neuAngelegt).Count;
+        var zahlen = Startwerte.Nur(Schreibliste(e, warm, mittel, kuehl, gefuehrt.Keys, rhWirksam, _wochenplan.PlanLuft(_zeltId)?.LuftTagC, _zeltId), neuAngelegt).Count;
         var schalter = Schalterliste(e, mitAutomatik: false, zeltId: _zeltId).Count(s => neuAngelegt.Contains(s.Entity));
         var zusatz = ZusatzStartwerte(neuAngelegt, _zeltId);
         var anzahl = zahlen + schalter + zusatz.Count;
@@ -791,10 +790,10 @@ public sealed class Co2SteuerungService : IStartwertDienst
 
         // Fork AI (forkai.115): Führt der Wochenplan die Feuchte-Obergrenze, gilt
         // dessen Wert — der gespeicherte der CO₂-Seite wird dann nicht geschrieben.
-        double? rhAusPlan = _wochenplan.GefuehrteHelfer().TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : null;
+        double? rhAusPlan = _wochenplan.GefuehrteHelfer(_zeltId).TryGetValue(E(Entitaeten.RhObergrenze), out var rhPlan) ? rhPlan : null;
         var rhWirksam = Zahl(E(Entitaeten.RhObergrenze)) ?? rhAusPlan ?? e.RhObergrenzeProzent;
 
-        var planLuft = _wochenplan.PlanLuft();
+        var planLuft = _wochenplan.PlanLuft(_zeltId);
         var co2 = ZahlRolle("co2_sensor");
         var ziel = Zahl(E(Entitaeten.ZielEffektiv));
         return new Co2Live(

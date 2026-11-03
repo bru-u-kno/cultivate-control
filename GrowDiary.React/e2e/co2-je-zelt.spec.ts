@@ -3,7 +3,7 @@ import { backendAntwortet, darfUeberspringen } from './pflicht'
 
 /**
  * CO₂ je Zelt (Oberfläche): Der Zeltwechsel erscheint nur bei mehr als einem Zelt mit CO₂-Steuerung, lädt und speichert mit dem gewählten
- * Zelt, zeigt dessen Flasche, und Probeschaltung sowie Absicherung gibt es vorerst nur beim ersten Zelt.
+ * Zelt, zeigt dessen Flasche und die Probeschaltung des Zeltes; die Prüfung vorhandener Automationen gibt es nur beim ersten Zelt, bei weiteren steht ein Hinweis.
  *
  * Der Demobestand hat kein CO₂-Zelt und darf hier nicht verändert werden: die Seite mit zwei Zelten entsteht aus der echten Antwort,
  * die per Route um die Zelte ergänzt wird. Gespeichert wird nichts.
@@ -48,7 +48,7 @@ test('Ohne zweites CO₂-Zelt gibt es keinen Zeltwechsel', async ({ page }) => {
   await expect(page.locator('[data-audit="co2-zeltwechsel"]')).toHaveCount(0)
 })
 
-test('Zwei CO₂-Zelte: Wechsel lädt das andere Zelt, zeigt dessen Flasche und blendet Probeschaltung und Absicherung aus', async ({ page }) => {
+test('Zwei CO₂-Zelte: Wechsel lädt das andere Zelt, zeigt dessen Flasche, hat eine eigene Probeschaltung und statt der Absicherungsprüfung einen Hinweis', async ({ page }) => {
   const anfragen: string[] = []
   await zweiZelteEinlegen(page, anfragen)
   await page.goto('/steuerung/co2', { waitUntil: 'networkidle' })
@@ -62,6 +62,7 @@ test('Zwei CO₂-Zelte: Wechsel lädt das andere Zelt, zeigt dessen Flasche und 
   const zeile = page.locator('[data-audit="co2-zeltvolumen-aus-massen"]')
   await expect(zeile).toContainText('2,88')
   await expect(page.getByRole('button', { name: 'Ventil kurz öffnen' })).toBeVisible()   // erstes Zelt: Probeschaltung da
+  await expect(page.locator('[data-audit="co2-absicherung-weiteres-zelt"]')).toHaveCount(0) // beim ersten Zelt kein Hinweis
   const flasche1 = await page.locator('.st-feldzeile', { hasText: 'Flasche' }).first().innerText()
 
   await wechsel.getByRole('tab', { name: 'Zelt B' }).click()
@@ -72,7 +73,8 @@ test('Zwei CO₂-Zelte: Wechsel lädt das andere Zelt, zeigt dessen Flasche und 
   await expect(page.locator('[data-audit="co2-zeltvolumen-aus-massen"]')).toContainText(/100×100×200 cm\s*2\s*m³/)
   const flasche2 = await page.locator('.st-feldzeile', { hasText: 'Flasche' }).first().innerText()
   expect(flasche2).not.toEqual(flasche1)                                 // jedes Zelt führt seine eigene Flasche
-  await expect(page.getByRole('button', { name: 'Ventil kurz öffnen' })).toHaveCount(0)  // weiteres Zelt: keine Probeschaltung
+  await expect(page.getByRole('button', { name: 'Ventil kurz öffnen' })).toBeVisible()   // auch das weitere Zelt hat seine Probeschaltung
+  await expect(page.locator('[data-audit="co2-absicherung-weiteres-zelt"]')).toBeVisible() // … und statt der Prüfung den Hinweis
 
   // Zurück zum ersten Zelt: die Adresse trägt keinen Zelt-Parameter mehr.
   await wechsel.getByRole('tab', { name: 'Zelt A' }).click()

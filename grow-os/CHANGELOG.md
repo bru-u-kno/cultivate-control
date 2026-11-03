@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.314
+
+**CO₂ je Zelt: Der Wochenplan führt die Feuchte-Obergrenze jedes CO₂-Zeltes, und jedes Zelt hat seine eigene Probeschaltung.**
+
+- **Wochenplan je Zelt:** Bisher führte der Plan nur die Helfer des ersten CO₂-Zeltes; bei weiteren Zelten galt, was gespeichert war. Jetzt bekommt jedes weitere Zelt die Feuchte-Obergrenze der laufenden Woche des Durchgangs in diesem Zelt, an dem Tag, an dem der Wochenplan sonst übergibt. Läuft in einem Zelt mehr als ein Durchgang mit Wochenzielen, schreibt der Plan dort nichts. Der Helfer nimmt nur seine Spanne an: Im Test verlangte die Woche 85 %, geschrieben wurden 80 %, und das Protokoll sagt es.
+- **Plan-Luft:** Die Plan-Lufttemperatur eines weiteren Zeltes kam bisher aus dem Durchgang des ersten Zeltes. Sie kommt jetzt aus dem eigenen.
+- **Unverändert:** Die gemeinsamen Helfer (Wasserkühler, Entfeuchter) und das erste Zelt arbeiten wie vorher. Gibt es zwei laufende Durchgänge mit Wochenzielen, schweigt dort der Plan wie bisher.
+- **Probeschaltung:** Die Seite „CO₂-Begasung“ zeigt die Probeschaltung bei jedem Zelt und öffnet das Ventil dieses Zeltes. Die Prüfung vorhandener Automationen bleibt beim ersten Zelt, denn nur dort kann etwas von Hand gebaut sein; bei weiteren Zelten steht statt der Prüfung ein Hinweis, dass Cultivate Control sie selbst und abgesichert angelegt hat.
+- **Geprüft** in einem Test-Home-Assistant mit zwei CO₂-Zelten und zwei laufenden Durchgängen: Zelt 2 bekam seine Obergrenze (80), das erste Zelt blieb bei 65, beide Probeschaltungen liefen.
+
 ## 2.0.0-cc.313
 
 **CO₂: Der Helfer „tiefe Stufe sinnvoll“ gehört jetzt zum Lieferumfang, und Fehlermeldungen des Assistenten nennen das Zelt.**
