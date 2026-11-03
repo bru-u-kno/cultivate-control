@@ -45,6 +45,7 @@ export function mitEntfeuchtung(module: SteuerungModul[], zusatzGesagt: boolean 
     wert: haupt.wert,
     unterzeile: zusatzDa ? `${haupt.unterzeile.split(' · ')[0]} · Zusatz ${zusatz!.unterzeile}` : haupt.unterzeile,
     hatDetail: haupt.hatDetail,
+    zeltId: haupt.zeltId,
   }
   const ergebnis: SteuerungModul[] = []
   for (const m of module) {

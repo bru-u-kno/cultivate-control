@@ -179,6 +179,7 @@ builder.Services.AddScoped<IStartwertDienst>(sp => sp.GetRequiredService<ZuluftS
 builder.Services.AddScoped<IStartwertDienst>(sp => sp.GetRequiredService<Co2SteuerungService>());
 builder.Services.AddScoped<HelferBereichService>();
 builder.Services.AddScoped<SteuerungAuswahlService>(); // Fork AI (A-016)
+builder.Services.AddScoped<SteuerungZeltService>(); // Steuerungen je Zelt (A-031 Folge, Etappe 1)
 // Fork AI (forkai.69): legt die Rechenwerte ueber den Einrichtungsdialog an.
 builder.Services.AddScoped<SteuerungRechenwertService>();
 builder.Services.AddScoped<SteuerungMittelwertService>();

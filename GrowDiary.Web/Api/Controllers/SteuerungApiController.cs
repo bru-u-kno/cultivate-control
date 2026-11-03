@@ -76,7 +76,7 @@ public sealed class SteuerungApiController : ApiControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(SteuerungUebersichtDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<SteuerungUebersichtDto>> Uebersicht([FromServices] SteuerungAuswahlService auswahl, [FromServices] TrocknungSteuerungService trocknung, CancellationToken ct)
+    public async Task<ActionResult<SteuerungUebersichtDto>> Uebersicht([FromServices] SteuerungAuswahlService auswahl, [FromServices] TrocknungSteuerungService trocknung, [FromServices] SteuerungZeltService zelteDienst, CancellationToken ct)
     {
         var live = await _co2.LiveAsync(ct);
         var licht = await _licht.LiveAsync(ct);
@@ -94,18 +94,31 @@ public sealed class SteuerungApiController : ApiControllerBase
         double? Zahl(string id) => Zahlenlesen.Maschine(Text(id));
         string F(double? v, string einheit, string format = "0") => v is { } x ? x.ToString(format, de) + einheit : "–";
 
+        // CO₂ und Abluft gibt es je Zelt mit eigener CO₂-Steuerung; zelt == null ist das Bestand-Zelt (alte Kennungen).
+        SteuerungModulDto Co2Zeile(Co2Live l, int? zeltId) => new(
+            Kennung: "co2",
+            Titel: "CO₂-Begasung",
+            Status: l.AutomatikAn == false ? "aus" : l.KlimaOk == false ? "warn" : "an",
+            Kurz: l.ZielQuelle == "plan" && l.PlanPpm is { } p
+                ? $"Plan {p} ppm · Ziel {l.ZielPpm?.ToString(de) ?? "–"} · {(l.AutomatikAn == true ? "Automatik an" : "Automatik aus")}"
+                : $"Fest · Ziel {l.ZielPpm?.ToString(de) ?? "–"} · {(l.AutomatikAn == true ? "Automatik an" : "Automatik aus")}",
+            Wert: F(l.Co2Ppm, " ppm"),
+            Unterzeile: $"Ventil {(l.VentilOffen == true ? "offen" : "zu")} · Lüfter Stufe {l.T6Stufe?.ToString(de) ?? "–"}",
+            HatDetail: true,
+            ZeltId: zeltId ?? Co2Zelte.Aktuell.BestandZeltId ?? zelteDienst.StandardZelt());
+        SteuerungModulDto AbluftZeile(Co2Live l, int? zeltId) => new(
+            Kennung: "abluft",
+            Titel: "Abluft",
+            Status: l.KlimaOk == false ? "warn" : "an",
+            Kurz: $"Klima hat Vorrang · Stufen {Zahl(Co2Modul.Id(Co2SteuerungService.Entitaeten.T6Normal, zeltId))?.ToString("0", de) ?? "–"} / {Zahl(Co2Modul.Id(Co2SteuerungService.Entitaeten.T6Dosierung, zeltId))?.ToString("0", de) ?? "–"} / {Zahl(Co2Modul.Id(Co2SteuerungService.Entitaeten.T6Tief, zeltId))?.ToString("0", de) ?? "–"}",
+            Wert: $"Stufe {l.T6Stufe?.ToString(de) ?? "–"}",
+            Unterzeile: l.KlimaOk == true ? "gedrosselt" : "Klima gesperrt",
+            HatDetail: false,
+            ZeltId: zeltId ?? Co2Zelte.Aktuell.BestandZeltId ?? zelteDienst.StandardZelt());
+
         var module = new List<SteuerungModulDto>
         {
-            new(
-                Kennung: "co2",
-                Titel: "CO₂-Begasung",
-                Status: live.AutomatikAn == false ? "aus" : live.KlimaOk == false ? "warn" : "an",
-                Kurz: live.ZielQuelle == "plan" && live.PlanPpm is { } p
-                    ? $"Plan {p} ppm · Ziel {live.ZielPpm?.ToString(de) ?? "–"} · {(live.AutomatikAn == true ? "Automatik an" : "Automatik aus")}"
-                    : $"Fest · Ziel {live.ZielPpm?.ToString(de) ?? "–"} · {(live.AutomatikAn == true ? "Automatik an" : "Automatik aus")}",
-                Wert: F(live.Co2Ppm, " ppm"),
-                Unterzeile: $"Ventil {(live.VentilOffen == true ? "offen" : "zu")} · Lüfter Stufe {live.T6Stufe?.ToString(de) ?? "–"}",
-                HatDetail: true),
+            Co2Zeile(live, null),
             new(
                 Kennung: "entfeuchter",
                 Titel: "Entfeuchter",
@@ -149,14 +162,7 @@ public sealed class SteuerungApiController : ApiControllerBase
                 HatDetail: true),
             // Fork AI (forkai.136): Die Zeile „Crop Steering" ist entfallen —
             // stillgelegt, siehe ForkAiSchalter. Das Ziel führt der Plan.
-            new(
-                Kennung: "abluft",
-                Titel: "Abluft",
-                Status: live.KlimaOk == false ? "warn" : "an",
-                Kurz: $"Klima hat Vorrang · Stufen {Zahl(Co2SteuerungService.Entitaeten.T6Normal)?.ToString("0", de) ?? "–"} / {Zahl(Co2SteuerungService.Entitaeten.T6Dosierung)?.ToString("0", de) ?? "–"} / {Zahl(Co2SteuerungService.Entitaeten.T6Tief)?.ToString("0", de) ?? "–"}",
-                Wert: $"Stufe {live.T6Stufe?.ToString(de) ?? "–"}",
-                Unterzeile: live.KlimaOk == true ? "gedrosselt" : "Klima gesperrt",
-                HatDetail: false),
+            AbluftZeile(live, null),
             ZuluftKachel.Modul(zuluft, F(Zahl(ZuluftSteuerungService.Entitaeten.MindestDifferenz), " g/m³", "0.0")),
             new(
                 Kennung: "licht",
@@ -167,6 +173,20 @@ public sealed class SteuerungApiController : ApiControllerBase
                 Unterzeile: licht.NaechsterWechsel ?? (licht.LichtAn == true ? "Lichtphase" : "Dunkelphase"),
                 HatDetail: true),
         };
+
+        // Steuerungen je Zelt: Jedes weitere Zelt mit eigener CO₂-Steuerung bekommt eigene Zeilen, hinter denen des Bestand-Zeltes;
+        // alle anderen Zeilen tragen das Zelt, dem der Anwender sie zugewiesen hat.
+        foreach (var zeltId in Co2Zelte.Aktuell.ZeltIds.Where(z => z != Co2Zelte.Aktuell.BestandZeltId))
+        {
+            var zeltLive = await _co2.Fuer(zeltId).LiveAsync(ct);
+            module.Insert(module.FindLastIndex(m => m.Kennung == "co2") + 1, Co2Zeile(zeltLive, zeltId));
+            module.Insert(module.FindLastIndex(m => m.Kennung == "abluft") + 1, AbluftZeile(zeltLive, zeltId));
+        }
+        var zuordnung = zelteDienst.Zuordnung();
+        for (var i = 0; i < module.Count; i++)
+        {
+            if (module[i].ZeltId is null && zuordnung.TryGetValue(module[i].Kennung, out var zugewiesen)) module[i] = module[i] with { ZeltId = zugewiesen };
+        }
 
         // Fork AI (A-016): Nur die Steuerungen, die der Nutzer hat. Der Rest steht als „nicht eingerichtet" daneben.
         var gewaehlt = auswahl.Gewaehlt();
@@ -180,7 +200,8 @@ public sealed class SteuerungApiController : ApiControllerBase
             .Select(a => new SteuerungKarteDto(a.Kennung, a.Titel, a.Beschreibung))
             .ToList();
 
-        return Ok(new SteuerungUebersichtDto(live.HaErreichbar, sichtbar, nichtEingerichtet, DateTime.UtcNow));
+        return Ok(new SteuerungUebersichtDto(live.HaErreichbar, sichtbar, nichtEingerichtet, DateTime.UtcNow,
+            zelteDienst.AktiveZelte().Select(t => new SteuerungZeltKurzDto(t.Id, t.Name)).ToList()));
     }
 
     private static async Task<SteuerungModulDto> TrocknungModulAsync(Tent zelt, TrocknungSteuerungService trocknung, CancellationToken ct)
@@ -226,6 +247,43 @@ public sealed class SteuerungApiController : ApiControllerBase
             return BadRequestError("steuerung_auswahl_unbekannt", $"Diese Steuerung gibt es nicht: {string.Join(", ", unbekannt)}.");
         }
         return Ok(AuswahlDto(auswahl));
+    }
+
+    // ------------------------------------------------------------ Zuweisung
+
+    /// <summary>Zu welchem Zelt gehört jede Steuerung — und welche Zelte es gibt.</summary>
+    [HttpGet("zuweisung")]
+    [ProducesResponseType(typeof(SteuerungZuweisungDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungZuweisungDto> Zuweisung([FromServices] SteuerungZeltService zelteDienst, [FromServices] SteuerungAuswahlService auswahl)
+        => Ok(ZuweisungDto(zelteDienst, auswahl));
+
+    /// <summary>
+    /// Steuerungen Zelten zuweisen. Ändert die Gliederung der Übersicht, sonst nichts: Geräte, Helfer und Automationen bleiben,
+    /// wie sie sind.
+    /// </summary>
+    [HttpPut("zuweisung")]
+    [KiStufe(KiStufe.Verwaltung)]
+    [ProducesResponseType(typeof(SteuerungZuweisungDto), StatusCodes.Status200OK)]
+    public ActionResult<SteuerungZuweisungDto> ZuweisungSpeichern(
+        [FromServices] SteuerungZeltService zelteDienst, [FromServices] SteuerungAuswahlService auswahl, [FromBody] SteuerungZuweisungAenderung request)
+    {
+        if (request?.Zuordnungen is null) return BadRequestError("steuerung_zuweisung_invalid", "Es wurde nichts übergeben.");
+        var fehler = zelteDienst.Speichern(request.Zuordnungen);
+        if (fehler is not null) return BadRequestError("steuerung_zuweisung_ungueltig", fehler);
+        return Ok(ZuweisungDto(zelteDienst, auswahl));
+    }
+
+    private static SteuerungZuweisungDto ZuweisungDto(SteuerungZeltService zelteDienst, SteuerungAuswahlService auswahl)
+    {
+        var gewaehlt = auswahl.Gewaehlt();
+        var jetzt = zelteDienst.Zuordnung();
+        var eintraege = SteuerungZeltService.Zuweisbar
+            .Select(k => (Kennung: k, Art: SteuerungAuswahlService.Alle.FirstOrDefault(a => a.Uebersicht.Contains(k, StringComparer.Ordinal))))
+            // Der Zusatz-Entfeuchter folgt dem Entfeuchter: eine Zeile für beide.
+            .Where(x => x.Art is not null && gewaehlt.Contains(x.Art.Kennung) && x.Kennung != "entfeuchter-zusatz")
+            .Select(x => new SteuerungZuweisungEintragDto(x.Kennung, ModulTitel(x.Kennung), jetzt.GetValueOrDefault(x.Kennung)))
+            .ToList();
+        return new SteuerungZuweisungDto(zelteDienst.AktiveZelte().Select(t => new SteuerungZeltKurzDto(t.Id, t.Name)).ToList(), eintraege);
     }
 
     private static SteuerungAuswahlDto AuswahlDto(SteuerungAuswahlService auswahl)
@@ -1029,7 +1087,9 @@ public sealed record SteuerungModulDto(string Kennung, string Titel, string Stat
 public sealed record SteuerungModulZustandDto(string Wort, string Satz, string Ton);
 public sealed record SteuerungModulBalkenDto(double Ist, double AusUnter, double AnAb);
 public sealed record SteuerungKarteDto(string Kennung, string Titel, string Beschreibung);
-public sealed record SteuerungUebersichtDto(bool HaErreichbar, IReadOnlyList<SteuerungModulDto> Module, IReadOnlyList<SteuerungKarteDto> NichtEingerichtet, DateTime StandUtc);
+/// <param name="Zelte">Die aktiven Zelte in der Reihenfolge der Oberfläche — mit zwei oder mehr gliedert die Seite nach Zelten.</param>
+public sealed record SteuerungUebersichtDto(bool HaErreichbar, IReadOnlyList<SteuerungModulDto> Module, IReadOnlyList<SteuerungKarteDto> NichtEingerichtet, DateTime StandUtc, IReadOnlyList<SteuerungZeltKurzDto>? Zelte = null);
+public sealed record SteuerungZeltKurzDto(int Id, string Name);
 /// <param name="Module">Die Module, für die Bausteine in Home Assistant angelegt werden, in Anlege-Reihenfolge.</param>
 /// <param name="Rollenmodule">Alle Module der Steuerung, deren Geräte (Rollen) zugeordnet werden — auch die Lampe.</param>
 /// <param name="FehlendePflicht">Die Namen der Pflicht-Rollen ohne Gerät — die Meldung „Pflichtgerät fehlt" nennt sie.</param>
@@ -1037,6 +1097,10 @@ public sealed record SteuerungAuswahlEintragDto(string Kennung, string Titel, st
 /// <param name="Gespeichert">False: der Nutzer hat nie gewählt, die Liste ergibt sich aus den zugeordneten Geräten.</param>
 public sealed record SteuerungAuswahlDto(bool Gespeichert, IReadOnlyList<SteuerungAuswahlEintragDto> Eintraege);
 public sealed record SteuerungAuswahlAenderung(IReadOnlyList<string> Gewaehlt);
+public sealed record SteuerungZuweisungEintragDto(string Kennung, string Titel, int? ZeltId);
+public sealed record SteuerungZuweisungDto(IReadOnlyList<SteuerungZeltKurzDto> Zelte, IReadOnlyList<SteuerungZuweisungEintragDto> Eintraege);
+/// <param name="Zuordnungen">Steuerung (Kennung) → Zelt (Id). Nur die genannten ändern sich.</param>
+public sealed record SteuerungZuweisungAenderung(Dictionary<string, int> Zuordnungen);
 public sealed record KostenArtikelKurzDto(int Id, string Name, string Einheit);
 public sealed record Co2TagDto(string Datum, int Impulse, double VentilSekunden, double Gramm, string? ZielErreichtUm, bool Abgeschlossen, bool ImJournal, bool InKosten, bool Flaschenwechsel);
 public sealed record Co2SeiteDto(

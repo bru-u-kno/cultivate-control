@@ -24,7 +24,8 @@ import { BestandAbschnitt, BestandHinweis } from '../features/steuerung/Bestand'
 import { useBestand } from '../features/steuerung/bestand-laden'
 import { AuswahlFeld, NichtEingerichtet } from '../features/steuerung/Auswahl'
 import { useSteuerungAuswahl } from '../features/steuerung/useSteuerungAuswahl'
-import { HaltBand } from '../features/steuerung/HaltBand'
+import { SteuerungNachZelten } from '../features/steuerung/SteuerungNachZelten'
+import { ZuweisungAbschnitt } from '../features/steuerung/ZuweisungAbschnitt'
 import { KlappBereich } from '../components/Klapp'
 
 /**
@@ -186,11 +187,7 @@ export default function SteuerungPage() {
       ) : (
         <>
           {module.length > 0 && (
-            <div className="st-liste">
-              {module.map((m) => (
-                <ModulZeile key={m.kennung} modul={m} onOeffnen={() => navigate(`/steuerung/${m.kennung}`)} />
-              ))}
-            </div>
+            <SteuerungNachZelten module={module} zelte={uebersicht?.zelte} onOeffnen={(pfad) => navigate(pfad)} />
           )}
           {module.length === 0 && (
             <V1Card>
@@ -204,47 +201,10 @@ export default function SteuerungPage() {
       {module.length > 0 && (
         <p className="st-fuss st-fuss-link"><Link to="/steuerung/einrichtung">Einrichtungs-Assistent öffnen</Link></p>
       )}
+      {module.length > 0 && <ZuweisungAbschnitt zelteAnzahl={uebersicht?.zelte?.length ?? 0} onGespeichert={() => setLadeNr((n) => n + 1)} />}
       <AuswahlFeld auswahl={auswahl} fehler={auswahlFehler} onUmschalten={(k, v) => void umschalten(k, v)} />
       <p className="st-fuss">Sollwerte werden in Home Assistant gespiegelt</p>
     </V1Page>
-  )
-}
-
-function ModulZeile({ modul, onOeffnen }: { modul: SteuerungModul; onOeffnen: () => void }) {
-  const punkt = modul.status === 'an' ? 'is-an' : modul.status === 'warn' ? 'is-warn' : 'is-aus'
-  // Fork AI (forkai.238): Hat ein Modul einen Zustand (Zuluft), steht er als eigene Zeile über die volle
-  // Breite — Schild, Grund mit Zahlen, bei „zu wenig Unterschied" das Band. Rechts bleibt dann nur der Wert;
-  // die anderen Module behalten ihre kleine Unterzeile unter dem Wert.
-  const zustand = modul.zustand ?? null
-  return (
-    <button type="button" className={zustand ? 'st-zeile hat-zustand' : 'st-zeile'} onClick={onOeffnen} disabled={!modul.hatDetail}>
-      <span className="st-zeile-links">
-        <i className={`st-punkt ${punkt}`} aria-hidden="true" />
-        <span className="st-titel">
-          {modul.titel}
-          <small>{modul.kurz}</small>
-        </span>
-      </span>
-      <span className="st-wert">
-        {modul.wert}
-        {!zustand && <small>{modul.unterzeile}</small>}
-      </span>
-      {zustand && (
-        <span className="st-zustand">
-          <span className="st-zustand-zeile">
-            <span className={`st-schild ton-${zustand.ton}`}>{zustand.wort}</span>
-            <span className="st-zustand-satz">{zustand.satz}</span>
-          </span>
-          {modul.balken && (
-            <HaltBand
-              hb={{ anAb: modul.balken.anAb, ausUnter: modul.balken.ausUnter }}
-              differenz={modul.balken.ist}
-              kompakt
-            />
-          )}
-        </span>
-      )}
-    </button>
   )
 }
 

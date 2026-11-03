@@ -46,8 +46,13 @@ export type SteuerungKarte = {
   beschreibung: string
 }
 
+/** Ein aktives Zelt der Übersicht. */
+export type SteuerungZeltKurz = { id: number; name: string }
+
 export type SteuerungUebersicht = {
   haErreichbar: boolean
+  /** Die aktiven Zelte; mit zwei oder mehr gliedert die Seite nach Zelten (ein älteres Backend kennt das Feld nicht). */
+  zelte?: SteuerungZeltKurz[]
   module: SteuerungModul[]
   /** Steuerungen, die nicht gewählt sind. Leer, sobald der Nutzer alle hat. */
   nichtEingerichtet: SteuerungKarte[]
@@ -811,4 +816,10 @@ export type Bestandsaufnahme = {
   fehlendeRollen: string[]
   ausgefalleneFunktionen: string[]
   bauteile: BauteilStand[]
+}
+
+/** Steuerungen je Zelt: Zu welchem Zelt gehört eine Steuerung? (GET/PUT /api/steuerung/zuweisung) */
+export type SteuerungZuweisung = {
+  zelte: SteuerungZeltKurz[]
+  eintraege: Array<{ kennung: string; titel: string; zeltId: number | null }>
 }

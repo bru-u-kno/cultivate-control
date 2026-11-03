@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.315
+
+**Steuerungen je Zelt, Teil 1: Mit zwei oder mehr Zelten gliedert sich die Steuerungs-Übersicht nach Zelten, und der Anwender weist jede Steuerung selbst einem Zelt zu.**
+
+- **Übersicht nach Zelten:** Jedes Zelt hat einen einklappbaren Kopf („Zelt A · 4 Steuerungen · 2 an · 2 aus“), darunter stehen seine Steuerungen in den gewohnten Zeilen. Der Zustand von auf- und zugeklappt bleibt am Gerät gemerkt. Steuerungen ohne (gültiges) Zelt stehen am Ende unter „Noch keinem Zelt zugewiesen“. Mit einem Zelt bleibt alles wie vorher: eine Liste, keine Köpfe.
+- **CO₂ je Zelt in der Übersicht:** Jedes Zelt mit eigener CO₂-Steuerung hat seine eigene CO₂- und Abluft-Zeile; ein Tipp öffnet die CO₂-Seite direkt beim richtigen Zelt. Bisher zeigte die Übersicht nur das erste Zelt.
+- **Zuweisen:** Unter der Liste öffnet „Steuerungen Zelten zuweisen“ je Steuerung die Zelte als Auswahl. Das gilt für Entfeuchter (mit Zusatz-Entfeuchter), Wasserkühler, Zuluft und Lampe; das CO₂ gehört nicht dazu, es trägt sein Zelt selbst. Gespeichert werden nur die geänderten Steuerungen. Ein nicht vorhandenes oder archiviertes Zelt wird abgelehnt, nicht still verworfen.
+- **Bestand bleibt, wo er war:** Mit einem Zelt wird nichts gespeichert, alles gehört dorthin. Kommt ein zweites Zelt dazu, schreibt der erste Blick den heutigen Stand fest (das Zelt des laufenden Durchgangs, sonst das erste CO₂-Zelt), damit keine Steuerung stumm das Zelt wechselt, wenn später ein anderer Durchgang läuft.
+- **Was noch nicht geändert ist:** Die Zuweisung gliedert die Anzeige. Geräte, Helfer, Automationen, Probelauf und Ruhemodus bleiben, wie sie sind; mehrere Entfeuchter oder Wasserkühler mit eigenen Geräten folgen im nächsten Teil.
+- **Geprüft** in einem Test-Home-Assistant mit zwei Zelten: ein Zelt gab eine Liste ohne Zeltköpfe, nach dem zweiten Zelt zwei Zeltblöcke, die Zuweisung über die Oberfläche verschob den Wasserkühler ins andere Zelt, die CO₂-Zeile von Zelt B öffnete dessen Seite.
+
 ## 2.0.0-cc.314
 
 **CO₂ je Zelt: Der Wochenplan führt die Feuchte-Obergrenze jedes CO₂-Zeltes, und jedes Zelt hat seine eigene Probeschaltung.**
