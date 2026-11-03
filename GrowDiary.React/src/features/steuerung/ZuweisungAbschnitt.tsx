@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card } from '../../components/v1'
 import type { SteuerungZuweisung } from './steuerung-typen'
@@ -26,7 +26,12 @@ export function ZuweisungAbschnitt({ zelteAnzahl, onGespeichert }: { zelteAnzahl
     }
   }, [])
 
-  useEffect(() => { if (offen && !stand) void laden() }, [offen, stand, laden])
+  // Gelesen wird erst beim Öffnen — nicht beim Laden der Seite.
+  const umschalten = () => {
+    const neu = !offen
+    setOffen(neu)
+    if (neu && !stand) void laden()
+  }
 
   if (zelteAnzahl < 2) return null
 
@@ -52,7 +57,7 @@ export function ZuweisungAbschnitt({ zelteAnzahl, onGespeichert }: { zelteAnzahl
 
   return (
     <div data-audit="steuerung-zuweisung" style={{ marginTop: 14 }}>
-      <V1Button variant="ghost" onClick={() => setOffen(!offen)} aria-expanded={offen}>
+      <V1Button variant="ghost" onClick={umschalten} aria-expanded={offen}>
         {offen ? 'Zuweisung schließen' : 'Steuerungen Zelten zuweisen'}
       </V1Button>
       {offen && (
