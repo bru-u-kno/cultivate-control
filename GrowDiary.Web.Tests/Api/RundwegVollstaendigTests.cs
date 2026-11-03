@@ -398,6 +398,11 @@ public sealed class RundwegVollstaendigTests
         ["EntfeuchtungEinrichtungAenderung"] =
             "Ein einziger Wahrheitswert mit drei Zuständen (true / false / null = automatisch). Die feste Probe (1) "
             + "kennt „null“ nicht und träfe nur „true“. Fährt EntfeuchterZusatzApiTests (alle drei Zustände, zweimal).",
+        // Steuerungen je Zelt (Etappe 1)
+        ["SteuerungZuweisungAenderung"] =
+            "Eine Zuordnung Steuerung → Zelt-Id aus einer festen Menge; die feste Probe (1) ist keine bekannte Steuerung und würde "
+            + "abgelehnt. Die Logik (nur Genanntes ändert sich, unbekannte Steuerung und Zelt werden abgelehnt, der Zusatz-Entfeuchter "
+            + "folgt) fährt SteuerungZeltServiceTests; den Aufruf aus der Oberfläche e2e/steuerung-nach-zelten.spec.ts.",
         // Fork AI (A-016)
         ["SteuerungAuswahlAenderung"] =
             "Eine Liste von Kennungen aus einer festen Menge; die feste Probe (1) ist keine Kennung und würde "

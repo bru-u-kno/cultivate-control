@@ -75,6 +75,7 @@ public sealed class KiEinstufungBTests
         // Fork AI (A-015): sagt nur, wie viele Entfeuchter es gibt — die Regelung bleibt unberührt.
         ["SteuerungApiController.EntfeuchtungEinrichtungSpeichern"] = "Verwaltung",
         ["SteuerungApiController.AuswahlSpeichern"] = "Verwaltung", // A-016: blendet Steuerungen ein/aus
+        ["SteuerungApiController.ZuweisungSpeichern"] = "Verwaltung", // Steuerungen je Zelt: gliedert die Übersicht, schaltet nichts
         ["SteuerungApiController.ChillerSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtBefehl"] = "GeraeteSchalten",
