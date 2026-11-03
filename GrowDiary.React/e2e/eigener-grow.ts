@@ -36,6 +36,7 @@ export async function eigenenGrowAnlegen(
   api: APIRequestContext,
   name: string,
   zusatz: Record<string, unknown> = {},
+  zelt?: number,
 ): Promise<EigenerGrow | null> {
   // Die Zeltliste haengt an den Einstellungen — GET /api/tents gehoert dem
   // Live-Bildschirm und liefert etwas anderes.
@@ -44,7 +45,7 @@ export async function eigenenGrowAnlegen(
   const liste = await zelte.json()
   const erstes = Array.isArray(liste) ? liste[0] : liste?.tents?.[0]
   if (erstes?.id == null) return null
-  const tentId: number = erstes.id
+  const tentId: number = zelt ?? erstes.id
 
   const marke = `${name} ${Date.now()}`
 

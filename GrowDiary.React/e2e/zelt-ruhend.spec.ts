@@ -6,7 +6,7 @@ import { gibSchloss, nimmSchloss } from './schloss'
 /**
  * „Zelt ruhend" (cc.277): ruhend schalten, wieder aktiv, und die Frage nach der Ernte.
  *
- * Läuft mit einem eigenen Grow (der neueste Grow bestimmt das Zelt der Steuerung) und stellt den Ruhezustand am Ende
+ * Läuft mit einem eigenen Grow im Zelt der Steuerungen (der neueste Grow bestimmt das Zelt der Steuerung) und stellt den Ruhezustand am Ende
  * zurück — der Testbestand ist geteilt. Der Demobestand führt Home Assistant selbst nach (Licht, Zusatz-Entfeuchter,
  * Entfeuchter), deshalb sieht der Fall echte Zustandswechsel und nicht nur Antworten.
  */
@@ -36,7 +36,10 @@ test.describe('Zelt ruhend', () => {
   test.beforeAll(async ({ playwright, baseURL }) => {
     const api = await playwright.request.newContext({ baseURL })
     try {
-      eigener = await eigenenGrowAnlegen(api, 'Rundweg-Ruhe')
+      // Das Blatt nach der Ernte fragt nach den Geräten DES Zeltes: der Grow gehört in das Zelt, dem die Steuerungen zugewiesen sind.
+      const zuweisung = await (await api.get('/api/steuerung/zuweisung')).json().catch(() => null)
+      const zelt = zuweisung?.eintraege?.find((e: { kennung: string }) => e.kennung === 'licht')?.zeltId as number | undefined
+      eigener = await eigenenGrowAnlegen(api, 'Rundweg-Ruhe', {}, zelt)
     } finally {
       await api.dispose()
     }
