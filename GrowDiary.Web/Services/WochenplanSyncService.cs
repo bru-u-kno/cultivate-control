@@ -160,6 +160,7 @@ public sealed class WochenplanSyncService
     private readonly HomeAssistantService _ha;
     private readonly HomeAssistantSettingsRepository _haSettings;
     private readonly ILogger<WochenplanSyncService> _logger;
+    private readonly SteuerungZeltService? _zelte;
 
     public WochenplanSyncService(
         GrowRepository grows,
@@ -168,8 +169,10 @@ public sealed class WochenplanSyncService
         AlertRuleRepository regeln,
         HomeAssistantService ha,
         HomeAssistantSettingsRepository haSettings,
-        ILogger<WochenplanSyncService> logger)
+        ILogger<WochenplanSyncService> logger,
+        SteuerungZeltService? zelte = null)
     {
+        _zelte = zelte;
         _grows = grows;
         _wissen = wissen;
         _repo = repo;
@@ -189,7 +192,7 @@ public sealed class WochenplanSyncService
     {
         if (Zeltregeln.TryGetValue(rolle, out var metrik))
         {
-            if (Spalte()?.Grow.TentId is not { } zeltId) return null;
+            if (Spalte(PlanZelt(ArtEntfeuchter))?.Grow.TentId is not { } zeltId) return null;
             return $"zelt:{zeltId}/{metrik}/{Grenzfeld(rolle)}";
         }
 
@@ -260,10 +263,9 @@ public sealed class WochenplanSyncService
     {
         var liste = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         if (zeltId is { } zelt) return Co2ZeltHelfer(zelt);
-        if (Spalte() is not { } jetzt) return liste;
 
         var co2Gespeichert = Co2Gespeichert();
-        foreach (var (rolle, wert) in WerteMitZelt(jetzt.Grow, jetzt.Spalte))
+        foreach (var (rolle, wert, _, _) in Rollenwerte())
         {
             if (Zeltregeln.ContainsKey(rolle)) continue;
             if (RolleBeiCo2Steuerung(rolle, co2Gespeichert)) continue;
@@ -304,7 +306,7 @@ public sealed class WochenplanSyncService
     public IReadOnlyDictionary<string, double> PlanWerte()
     {
         var werte = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        if (Spalte() is not { } jetzt) return werte;
+        if (Spalte(PlanZelt(ArtEntfeuchter)) is not { } jetzt) return werte;
         foreach (var (rolle, wert) in WerteMitZelt(jetzt.Grow, jetzt.Spalte)) werte[rolle] = wert;
         return werte;
     }
@@ -325,10 +327,9 @@ public sealed class WochenplanSyncService
     {
         var stand = Stand;
         var liste = new List<WochenplanUebergabe>();
-        if (Spalte() is not { } jetzt) return liste;
 
         var co2Gespeichert = Co2Gespeichert();
-        foreach (var (rolle, wert) in WerteMitZelt(jetzt.Grow, jetzt.Spalte))
+        foreach (var (rolle, wert, _, _) in Rollenwerte())
         {
             if (ZielFuer(rolle) is not { } entity) continue;
 
@@ -347,9 +348,10 @@ public sealed class WochenplanSyncService
     /// <summary>Ein Durchlauf: vergleichen, schreiben, Stand fortschreiben.</summary>
     public async Task<int> UebergebenAsync(CancellationToken ct)
     {
-        var laufend = Spalte();
+        var rollen = Rollenwerte();
+        var durchgaenge = ZeltDurchgaenge();
         var zeltAuftraege = Co2ZeltAuftraege();
-        if (laufend is null && zeltAuftraege.Count == 0) return 0;
+        if (rollen.Count == 0 && durchgaenge.Count == 0 && zeltAuftraege.Count == 0) return 0;
 
         var stand = Stand;
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
@@ -368,14 +370,13 @@ public sealed class WochenplanSyncService
             ersterLauf,
             _logger);
 
-        if (laufend is { } l)
+        if (rollen.Count > 0 || durchgaenge.Count > 0)
         {
-            var (grow, spalte) = l;
             var ersterLauf = stand.LetzterLauf is null;
             var co2Gespeichert = Co2Gespeichert();
 
             var auftraege = new List<(string Entity, double Planwert)>();
-            foreach (var (rolle, wert) in WerteMitZelt(grow, spalte))
+            foreach (var (rolle, wert, _, _) in rollen)
             {
                 if (Zeltregeln.ContainsKey(rolle)) continue; // eigener Durchgang unten
                 if (RolleBeiCo2Steuerung(rolle, co2Gespeichert)) continue; // schreibt die CO₂-Steuerung
@@ -384,9 +385,10 @@ public sealed class WochenplanSyncService
             }
 
             geschrieben += await Nachziehen(auftraege, ersterLauf);
-            geschrieben += Zeltgrenzen(grow, spalte, stand, ersterLauf);
+            // Die Zelt-Regeln gehören dem Zelt der Entfeuchtung (bei einem Zelt dem einen Durchgang wie bisher).
+            foreach (var (grow, spalte) in durchgaenge) geschrieben += Zeltgrenzen(grow, spalte, stand, ersterLauf);
 
-            stand.LetzteSpalte = spalte.Id;
+            stand.LetzteSpalte = SpaltenSchluessel();
             stand.LetzterLauf = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         }
 
@@ -653,7 +655,7 @@ public sealed class WochenplanSyncService
     /// </remarks>
     public (string Woche, double LuftTagC, double LuftNachtC)? PlanLuft(int? zeltId = null)
     {
-        if (Spalte(zeltId) is not { } jetzt || jetzt.Spalte.AirTempC is not { } tag) return null;
+        if (Spalte(zeltId ?? PlanZelt(ArtEntfeuchter)) is not { } jetzt || jetzt.Spalte.AirTempC is not { } tag) return null;
         var woche = string.IsNullOrWhiteSpace(jetzt.Spalte.Label) ? jetzt.Spalte.Id : jetzt.Spalte.Label;
         var nacht = GrowPlanRegister.Inhalt(jetzt.Grow.Id)?.NachtWerte(jetzt.Spalte).LuftC
             ?? jetzt.Spalte.AirTempNightC ?? tag - Nachtabsenkung;
@@ -670,14 +672,75 @@ public sealed class WochenplanSyncService
     /// </remarks>
     public (double RhTag, double RhNacht)? PlanFeuchte()
     {
-        if (Spalte() is not { } jetzt || jetzt.Spalte.RhMax is not { } tag) return null;
+        if (Spalte(PlanZelt(ArtEntfeuchter)) is not { } jetzt || jetzt.Spalte.RhMax is not { } tag) return null;
         var nacht = GrowPlanRegister.Inhalt(jetzt.Grow.Id)?.NachtWerte(jetzt.Spalte).RhMax ?? tag;
         return (tag, nacht);
     }
 
     /// <summary>Hat die Woche gewechselt, seit zuletzt übergeben wurde?</summary>
     public bool Wochenwechsel()
-        => Spalte() is { } jetzt && !string.Equals(jetzt.Spalte.Id, Stand.LetzteSpalte, StringComparison.OrdinalIgnoreCase);
+        => SpaltenSchluessel() is { } jetzt && !string.Equals(jetzt, Stand.LetzteSpalte, StringComparison.OrdinalIgnoreCase);
+
+    private const string ArtEntfeuchter = "entfeuchter";
+    private const string ArtChiller = "chiller";
+    private const string ArtCo2 = "co2";
+
+    /// <summary>Zu welcher Steuerung ein Helfer des Plans gehört — und damit zu welchem Zelt.</summary>
+    /// <remarks>
+    /// Die Feuchte-Obergrenze ist der Helfer der CO₂-Steuerung (<c>input_number.co2_rh_obergrenze</c>); der Entfeuchter liest ihn nur mit.
+    /// Alles andere (VPD-Band, Blatt-Offset, Zelt-Regeln) gehört dem Entfeuchter, das Wasser dem Wasserkühler.
+    /// </remarks>
+    private static string ArtFuer(string rolle) => rolle switch
+    {
+        Rollen.WasserTag or Rollen.WasserNacht => ArtChiller,
+        Rollen.Co2Ziel or Rollen.RhObergrenze => ArtCo2,
+        _ => ArtEntfeuchter,
+    };
+
+    /// <summary>
+    /// Das Zelt, dessen Durchgang die Helfer einer Steuerung führt. <c>null</c> bei höchstens einem aktiven Zelt: dann gilt wie bisher
+    /// der eine Durchgang überhaupt. Mit mehreren Zelten gehört jede Steuerung zu dem Zelt, dem sie zugewiesen ist
+    /// (<see cref="SteuerungZeltService"/>, das CO₂ seinem Bestand-Zelt) — ein Durchgang in einem anderen Zelt legt sie nicht still.
+    /// </summary>
+    public int? PlanZelt(string art)
+    {
+        if (_zelte is null || _zelte.AktiveZelte().Count < 2) return null;
+        return string.Equals(art, ArtCo2, StringComparison.Ordinal) ? Co2Zelte.Aktuell.BestandZeltId : _zelte.ZeltFuer(art);
+    }
+
+    /// <summary>Alle Werte der laufenden Woche, je Rolle aus dem Durchgang im Zelt ihrer Steuerung.</summary>
+    private IReadOnlyList<(string Rolle, double Wert, GrowRun Grow, FeedChartColumn Spalte)> Rollenwerte()
+    {
+        var liste = new List<(string, double, GrowRun, FeedChartColumn)>();
+        foreach (var art in new[] { ArtEntfeuchter, ArtChiller, ArtCo2 })
+        {
+            if (Spalte(PlanZelt(art)) is not { } jetzt) continue;
+            foreach (var (rolle, wert) in WerteMitZelt(jetzt.Grow, jetzt.Spalte))
+            {
+                if (ArtFuer(rolle) == art) liste.Add((rolle, wert, jetzt.Grow, jetzt.Spalte));
+            }
+        }
+        return liste;
+    }
+
+    /// <summary>
+    /// Der Durchgang, dessen Zelt-Regeln (Alarm-Grenzen für Luft und Feuchte) nachgezogen werden: der im Zelt der Entfeuchtung.
+    /// </summary>
+    /// <remarks>
+    /// Weitere Zelte folgen später — ihre Regeln dürfen beim ersten Sehen nicht einfach überschrieben werden, sondern brauchen
+    /// erst einen gemerkten Ausgangsstand je Zelt.
+    /// </remarks>
+    private IReadOnlyList<(GrowRun Grow, FeedChartColumn Spalte)> ZeltDurchgaenge()
+        => Spalte(PlanZelt(ArtEntfeuchter)) is { } eine ? [eine] : [];
+
+    /// <summary>Welche Wochen gerade gelten — für den Wochenwechsel. Bei einem Zelt die eine Spalten-Id wie bisher.</summary>
+    private string? SpaltenSchluessel()
+    {
+        var ids = new[] { ArtEntfeuchter, ArtChiller, ArtCo2 }
+            .Select(art => Spalte(PlanZelt(art))?.Spalte.Id)
+            .Where(id => id is not null).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return ids.Count == 0 ? null : string.Join("|", ids);
+    }
 
     /// <summary>
     /// Die Spalte des ersten laufenden Durchgangs mit aktiven Wochen-Zielen.

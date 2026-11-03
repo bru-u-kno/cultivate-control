@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.316
+
+**Wochenplan je Zelt: Laufen in zwei Zelten zwei Durchgänge mit Wochenzielen, schweigt der Plan nicht mehr für alles.**
+
+- **Was war:** Der Wochenplan führte die gemeinsamen Helfer (Wasserkühler-Ziele, Feuchte-Obergrenze, VPD-Band, Blatt-Offset, CO₂-Ziel) nur, solange im ganzen System genau ein Durchgang mit Wochenzielen lief. Mit einem zweiten Durchgang in einem anderen Zelt blieben sie auf dem Wert der letzten Woche stehen, und die Entfeuchter-Schwellen aus dem Plan fielen auf ihre festen Werte zurück.
+- **Was jetzt gilt:** Mit zwei oder mehr Zelten folgt jede Steuerung dem Durchgang in dem Zelt, dem sie zugewiesen ist (Entfeuchter und Wasserkühler wie unter „Steuerungen Zelten zuweisen“, die CO₂-Feuchte-Obergrenze dem Zelt der ersten CO₂-Steuerung). Der Plan schweigt nur noch dann, wenn in genau diesem Zelt zwei Durchgänge mit Wochenzielen laufen.
+- **Wochenwechsel:** Wechselt in einem der Zelte die Woche, werden die Werte sofort übergeben, nicht erst beim Tageslauf.
+- **Unverändert:** Mit einem Zelt (oder ohne Zuweisung) arbeitet alles wie vorher, auch die Alarm-Grenzen der Zelt-Regeln. Diese zieht der Plan weiter nur im Zelt der Entfeuchtung nach; weitere Zelte folgen später, damit ihre Grenzen nicht beim ersten Sehen überschrieben werden.
+- **Geprüft** mit zwei Zelten und zwei laufenden Durchgängen: Der Wasserkühler bekommt das Wasserziel aus Zelt B, Feuchte-Obergrenze, VPD-Band und Plan-Luft aus Zelt A; laufen in Zelt B zwei Durchgänge, schweigt nur der Wasserkühler.
+
 ## 2.0.0-cc.315
 
 **Steuerungen je Zelt, Teil 1: Mit zwei oder mehr Zelten gliedert sich die Steuerungs-Übersicht nach Zelten, und der Anwender weist jede Steuerung selbst einem Zelt zu.**
