@@ -60,7 +60,9 @@ internal sealed class FakeChillerRegler : IChillerRegler
     public List<string> Protokoll { get; } = [];
     public IReadOnlyList<int> Betroffen { get; set; } = [1];
 
-    public IReadOnlyList<int> Ausschalten(int? zeltId = null) { Protokoll.Add("regler aus"); return Betroffen; }
+    public List<int?> AusgeschalteteZelte { get; } = [];
+
+    public IReadOnlyList<int> Ausschalten(int? zeltId = null) { Protokoll.Add("regler aus"); AusgeschalteteZelte.Add(zeltId); return zeltId is { } z ? [z] : Betroffen; }
 
     public void Einschalten(IEnumerable<int> zeltIds) => Protokoll.Add("regler an " + string.Join(",", zeltIds));
 }
@@ -75,23 +77,26 @@ internal sealed class FakeProbelaufMessung : IProbelaufMessung
     public IReadOnlyList<ProbelaufMesswerte> Verlauf { get; set; } = [];
     public ProbelaufGrenzen Voreinstellung { get; set; } = new(60, 27.5, 0.9, 1.4);
 
-    public Task<ProbelaufMomentaufnahme?> JetztAsync(CancellationToken ct)
+    public List<int?> GemesseneZelte { get; } = [];
+
+    public Task<ProbelaufMomentaufnahme?> JetztAsync(CancellationToken ct, int? zeltId = null)
     {
+        GemesseneZelte.Add(zeltId);
         if (Wirft) throw new InvalidOperationException("Messung kaputt");
         return Task.FromResult(Aktuell is null ? null : new ProbelaufMomentaufnahme(Aktuell, TagPhase));
     }
 
-    public Task<IReadOnlyList<ProbelaufMesswerte>> VerlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct)
+    public Task<IReadOnlyList<ProbelaufMesswerte>> VerlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct, int? zeltId = null)
         => Task.FromResult(Verlauf);
 
-    public Task<ProbelaufGrenzen> VoreinstellungAsync(CancellationToken ct) => Task.FromResult(Voreinstellung);
+    public Task<ProbelaufGrenzen> VoreinstellungAsync(CancellationToken ct, int? zeltId = null) => Task.FromResult(Voreinstellung);
 
     public IReadOnlyList<ZeltMinute> Zeltverlauf { get; set; } = [];
     public Zielbaender Ziele { get; set; } = new(new ZielBand(62, 27.5, 0.9, 1.4), new ZielBand(51, 24, 1.4, 1.4));
 
-    public Task<IReadOnlyList<ZeltMinute>> ZeltverlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct) => Task.FromResult(Zeltverlauf);
+    public Task<IReadOnlyList<ZeltMinute>> ZeltverlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct, int? zeltId = null) => Task.FromResult(Zeltverlauf);
 
-    public Task<Zielbaender> ZielbaenderAsync(CancellationToken ct) => Task.FromResult(Ziele);
+    public Task<Zielbaender> ZielbaenderAsync(CancellationToken ct, int? zeltId = null) => Task.FromResult(Ziele);
 }
 
 internal sealed class FakeProbelaufMeldung : IProbelaufMeldung

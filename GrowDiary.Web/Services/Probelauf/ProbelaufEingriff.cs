@@ -78,7 +78,18 @@ public sealed class ProbelaufEingriff
     /// <summary>Die Module, an denen ein Probelauf möglich ist.</summary>
     public static IReadOnlyCollection<string> Module => GeraeteRollen.Keys;
 
-    public static bool KenntModul(string modul) => GeraeteRollen.ContainsKey(modul);
+    /// <summary>Kennt der Probelauf dieses Modul? Auch eine weitere Instanz einer Steuerung (<c>chiller-i2</c>) nimmt die Rollen ihrer Art.</summary>
+    public static bool KenntModul(string modul) => GeraeteRollen.ContainsKey(Art(modul));
+
+    /// <summary>Die Art hinter dem Modul: für eine weitere Instanz ihre Art, sonst das Modul selbst (CO₂-Zelte bleiben unbekannt).</summary>
+    private static string Art(string modul) => InstanzModul.Art(modul) ?? modul;
+
+    /// <summary>Das Zelt, in dem der Lauf eingegriffen hat — <c>null</c> bei einem Zelt und in älteren Läufen (dann gilt alles wie bisher).</summary>
+    public static int? ZeltIdAus(string ausgangszustand)
+    {
+        try { return JsonSerializer.Deserialize<Ausgang>(ausgangszustand, Json)?.ZeltId; }
+        catch (JsonException) { return null; }
+    }
 
     private readonly IProbelaufHa _ha;
     private readonly IChillerRegler _chiller;
@@ -98,10 +109,13 @@ public sealed class ProbelaufEingriff
     private sealed record GeraetZustand(string Rolle, string Id, string Zustand);
 
     private sealed record Ausgang(
-        List<AutomationZustand> Automationen, List<GeraetZustand> Geraete, List<int> ChillerZelte);
+        List<AutomationZustand> Automationen, List<GeraetZustand> Geraete, List<int> ChillerZelte, int? ZeltId = null);
 
     /// <summary>Liest, was der Lauf später verändern wird — vor dem Eingriff.</summary>
-    public async Task<string> AusgangszustandLesenAsync(string modul, CancellationToken ct)
+    public Task<string> AusgangszustandLesenAsync(string modul, CancellationToken ct) => AusgangszustandLesenAsync(modul, null, ct);
+
+    /// <param name="zeltId">Das Zelt des Laufs; es wird im Ausgangszustand festgehalten, damit Messen und Zurückstellen dasselbe Zelt meinen.</param>
+    public async Task<string> AusgangszustandLesenAsync(string modul, int? zeltId, CancellationToken ct)
     {
         var rollen = RollenFuer(modul);
 
@@ -119,7 +133,7 @@ public sealed class ProbelaufEingriff
             if (await _ha.ZustandAsync(id, ct) is { } zustand) geraete.Add(new GeraetZustand(rolle, id, zustand));
         }
 
-        return JsonSerializer.Serialize(new Ausgang(automationen, geraete, []), Json);
+        return JsonSerializer.Serialize(new Ausgang(automationen, geraete, [], zeltId), Json);
     }
 
     /// <summary>
@@ -152,8 +166,9 @@ public sealed class ProbelaufEingriff
         var ok = true;
 
         // Chiller: der Fork-eigene Regler zuerst — er schaltet die Steckdose sonst innerhalb einer Minute wieder an.
-        if (string.Equals(modul, "chiller", StringComparison.OrdinalIgnoreCase))
-            zustand.ChillerZelte.AddRange(_chiller.Ausschalten());
+        // Mit Zelt nur der Regler dieses Zeltes: die Kühler der anderen Zelte laufen weiter.
+        if (string.Equals(Art(modul), "chiller", StringComparison.OrdinalIgnoreCase))
+            zustand.ChillerZelte.AddRange(_chiller.Ausschalten(zustand.ZeltId));
 
         foreach (var automation in zustand.Automationen.Where(a => IstAn(a.Zustand)))
             ok &= await _ha.AutomationSetzenAsync(automation.Id, false, ct);
@@ -205,7 +220,7 @@ public sealed class ProbelaufEingriff
            && !string.Equals(zustand, "unknown", StringComparison.OrdinalIgnoreCase);
 
     private static string[] RollenFuer(string modul)
-        => GeraeteRollen.TryGetValue(modul, out var rollen)
+        => GeraeteRollen.TryGetValue(Art(modul), out var rollen)
             ? rollen
             : throw new ArgumentException($"Für „{modul}\" gibt es keinen Probelauf.", nameof(modul));
 }

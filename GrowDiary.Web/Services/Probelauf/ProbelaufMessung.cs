@@ -23,11 +23,14 @@ public sealed class ProbelaufMessung : IProbelaufMessung
     private readonly EntfeuchterSteuerungService _entfeuchter;
     private readonly WochenplanSyncService _wochenplan;
     private readonly TimeProvider _zeit;
+    private readonly SteuerungZeltService? _zelte;
 
     public ProbelaufMessung(
         HomeAssistantSettingsRepository einstellungen, HomeAssistantService ha, SteuerungGeraeteService geraete,
-        EntfeuchterSteuerungService entfeuchter, WochenplanSyncService wochenplan, TimeProvider? zeit = null)
+        EntfeuchterSteuerungService entfeuchter, WochenplanSyncService wochenplan, TimeProvider? zeit = null,
+        SteuerungZeltService? zelte = null)
     {
+        _zelte = zelte;
         _wochenplan = wochenplan;
         _einstellungen = einstellungen;
         _ha = ha;
@@ -38,9 +41,22 @@ public sealed class ProbelaufMessung : IProbelaufMessung
 
     private HomeAssistantSettings Einstellungen => _einstellungen.GetEffectiveHomeAssistantSettings();
 
-    private string? Fuehler(string rolle) => _geraete.Entity(Modul, rolle);
+    private string? Fuehler(string rolle, int? zeltId) => FuehlerModul(zeltId) is { } modul ? _geraete.Entity(modul, rolle) : null;
 
-    public async Task<ProbelaufMomentaufnahme?> JetztAsync(CancellationToken ct)
+    /// <summary>
+    /// Das Modul, dessen Zeltfühler ein Zelt misst: ohne Zelt der Entfeuchter (wie bisher); mit Zelt der Entfeuchter, der ihm
+    /// zugewiesen ist — die erste Instanz oder eine weitere. <c>null</c>, wenn das Zelt keinen hat.
+    /// </summary>
+    private string? FuehlerModul(int? zeltId)
+        => zeltId is null || _zelte is null
+            ? Modul
+            : FuehlerModulFuer(zeltId.Value, _zelte.ZeltFuer, SteuerungInstanzen.ModuleVon(Modul));
+
+    /// <summary>Die reine Wahl des Fühler-Moduls — ohne Datenbank prüfbar.</summary>
+    public static string? FuehlerModulFuer(int zeltId, Func<string, int?> zeltFuer, IReadOnlyList<string> weitereEntfeuchter)
+        => new[] { Modul }.Concat(weitereEntfeuchter).FirstOrDefault(m => zeltFuer(m) == zeltId);
+
+    public async Task<ProbelaufMomentaufnahme?> JetztAsync(CancellationToken ct, int? zeltId = null)
     {
         var einstellungen = Einstellungen;
         if (!einstellungen.IsConfigured && !DemoData.IsEnabled) return null;
@@ -48,10 +64,10 @@ public sealed class ProbelaufMessung : IProbelaufMessung
         async Task<string?> Zustand(string? entityId)
             => entityId is null ? null : (await _ha.GetEntityStateAsync(einstellungen, entityId, ct))?.State;
 
-        var rh = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltFeuchte));
-        var temp = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltTemp));
-        var vpd = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltVpd));
-        var licht = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.LichtZustand));
+        var rh = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltFeuchte, zeltId));
+        var temp = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltTemp, zeltId));
+        var vpd = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.ZeltVpd, zeltId));
+        var licht = await Zustand(Fuehler(EntfeuchterSteuerungService.Rollen.LichtZustand, zeltId));
 
         // Ohne einen einzigen Wert antwortet Home Assistant nicht — das ist „keine Messung", nicht „leere Messung".
         if (rh is null && temp is null && vpd is null) return null;
@@ -61,15 +77,18 @@ public sealed class ProbelaufMessung : IProbelaufMessung
         return new ProbelaufMomentaufnahme(werte, tag);
     }
 
+    /// <summary>Der Live-Stand (<see cref="EntfeuchterSteuerungService.LiveAsync"/>) gehört dem ersten Entfeuchter: gilt er für dieses Zelt?</summary>
+    private bool LiveGiltFuer(int? zeltId) => FuehlerModul(zeltId) is null or Modul;
+
     private static double? Zahl(string? zustand) => Zahlenlesen.Maschine(zustand);
 
-    public async Task<IReadOnlyList<ProbelaufMesswerte>> VerlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct)
+    public async Task<IReadOnlyList<ProbelaufMesswerte>> VerlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct, int? zeltId = null)
     {
         var einstellungen = Einstellungen;
 
         async Task<List<HaVerlaufsPunkt>> Reihe(string rolle)
         {
-            var id = Fuehler(rolle);
+            var id = Fuehler(rolle, zeltId);
             if (id is null) return [];
             return (await _ha.GetVerlaufAsync(einstellungen, id, vonUtc, bisUtc, ct))?.ToList() ?? [];
         }
@@ -99,13 +118,13 @@ public sealed class ProbelaufMessung : IProbelaufMessung
         return letzter is null ? null : Zahlenlesen.Maschine(letzter.Zustand);
     }
 
-    public async Task<IReadOnlyList<ZeltMinute>> ZeltverlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct)
+    public async Task<IReadOnlyList<ZeltMinute>> ZeltverlaufAsync(DateTime vonUtc, DateTime bisUtc, CancellationToken ct, int? zeltId = null)
     {
         var einstellungen = Einstellungen;
 
         async Task<List<HaVerlaufsPunkt>> Reihe(string rolle)
         {
-            var id = Fuehler(rolle);
+            var id = Fuehler(rolle, zeltId);
             if (id is null) return [];
             return (await _ha.GetVerlaufAsync(einstellungen, id, vonUtc, bisUtc, ct))?.ToList() ?? [];
         }
@@ -143,11 +162,15 @@ public sealed class ProbelaufMessung : IProbelaufMessung
         return ergebnis;
     }
 
-    public async Task<Zielbaender> ZielbaenderAsync(CancellationToken ct)
+    public async Task<Zielbaender> ZielbaenderAsync(CancellationToken ct, int? zeltId = null)
     {
         // Zuerst der Plan der laufenden Woche: nur er kennt Tag UND Nacht. Der aktive Wert der Entfeuchter-Seite gilt nur für die
         // gerade laufende Lichtphase — für „Licht an" nachts gelesen wäre das Nachtziel dort falsch.
-        if (ZielbaenderAusPlan(_wochenplan.PlanWerte()) is { } ausPlan) return ausPlan;
+        if (ZielbaenderAusPlan(_wochenplan.PlanWerte(zeltId)) is { } ausPlan) return ausPlan;
+
+        // Der Live-Stand gehört dem ersten Entfeuchter. Für ein Zelt mit einem anderen Entfeuchter gäbe er fremde Ziele: keine Ziele.
+        if (!LiveGiltFuer(zeltId))
+            return new Zielbaender(new ZielBand(null, null, null, null), new ZielBand(null, null, null, null));
 
         var live = await _entfeuchter.LiveAsync(ct);
         return new Zielbaender(
@@ -173,8 +196,16 @@ public sealed class ProbelaufMessung : IProbelaufMessung
             new ZielBand(W(WochenplanSyncService.Rollen.FeuchteNachtOben) ?? feuchteTag, W(WochenplanSyncService.Rollen.LuftNachtOben) ?? luftTag, vpdUnten, vpdOben));
     }
 
-    public async Task<ProbelaufGrenzen> VoreinstellungAsync(CancellationToken ct)
+    public async Task<ProbelaufGrenzen> VoreinstellungAsync(CancellationToken ct, int? zeltId = null)
     {
+        // Ein Zelt mit anderem Entfeuchter: Grenzen aus dem Plan dieses Zeltes, nie aus dem Live-Stand des ersten Entfeuchters.
+        if (!LiveGiltFuer(zeltId))
+        {
+            var plan = _wochenplan.PlanWerte(zeltId);
+            double? W(string rolle) => plan.TryGetValue(rolle, out var v) ? v : null;
+            return ProbelaufBewertung.GrenzenAusZielen(W(WochenplanSyncService.Rollen.FeuchteOben), W(WochenplanSyncService.Rollen.LuftOben), W(WochenplanSyncService.Rollen.VpdUnten), W(WochenplanSyncService.Rollen.VpdOben));
+        }
+
         var live = await _entfeuchter.LiveAsync(ct);
         return ProbelaufBewertung.GrenzenAusZielen(live.RhObergrenzeProzent, live.TempMaxAktivC, live.VpdUnten, live.VpdOben);
     }

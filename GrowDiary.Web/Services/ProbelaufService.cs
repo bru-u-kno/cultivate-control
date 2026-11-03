@@ -18,7 +18,7 @@ public enum ProbelaufFehler
 
 /// <summary>Fork AI (A-010): Der Wunsch, einen Lauf zu starten.</summary>
 /// <param name="Grenzen"><c>null</c> = die Voreinstellung aus den Pflanzenzielen.</param>
-public sealed record ProbelaufStart(string Modul, int DauerMinuten, ProbelaufGrenzen? Grenzen);
+public sealed record ProbelaufStart(string Modul, int DauerMinuten, ProbelaufGrenzen? Grenzen, int? ZeltId = null);
 
 /// <summary>Fork AI (A-010): Antwort auf einen Startwunsch.</summary>
 public sealed record ProbelaufStartErgebnis(ProbelaufLauf? Lauf, ProbelaufFehler Fehler, string? Meldung);
@@ -71,19 +71,24 @@ public sealed class ProbelaufService
     /// Nur solange der Eingriff läuft. Im Nachlauf ist der Kühler wieder an; steht er dort aus, ist das ein
     /// echter Fehler (oder ein nicht bestätigtes Zurückstellen) und muss gemeldet werden.
     /// </remarks>
-    public static bool KuehlerAbsichtlichAus(IEnumerable<ProbelaufLauf> offene)
-        => offene.Any(l => l.Status == ProbelaufStatus.Laeuft && string.Equals(l.Modul, "chiller", StringComparison.OrdinalIgnoreCase));
+    public static bool KuehlerAbsichtlichAus(IEnumerable<ProbelaufLauf> offene, int? zeltId = null)
+        => offene.Any(l => l.Status == ProbelaufStatus.Laeuft
+            && string.Equals(InstanzModul.Art(l.Modul) ?? l.Modul, "chiller", StringComparison.OrdinalIgnoreCase)
+            // Ein Lauf in einem anderen Zelt schaltet nur dessen Kühler ab. Ohne Zelt (ein Zelt, ältere Läufe) gilt er überall.
+            && (zeltId is null || ProbelaufEingriff.ZeltIdAus(l.Ausgangszustand) is not { } laufZelt || laufZelt == zeltId));
 
     private readonly ProbelaufRepository _repo;
     private readonly ProbelaufEingriff _eingriff;
     private readonly IProbelaufMessung _messung;
     private readonly IProbelaufMeldung _meldung;
     private readonly TimeProvider _zeit;
+    private readonly SteuerungZeltService? _zelte;
 
     public ProbelaufService(
         ProbelaufRepository repo, ProbelaufEingriff eingriff, IProbelaufMessung messung, IProbelaufMeldung meldung,
-        TimeProvider? zeit = null)
+        TimeProvider? zeit = null, SteuerungZeltService? zelte = null)
     {
+        _zelte = zelte;
         _repo = repo;
         _eingriff = eingriff;
         _messung = messung;
@@ -92,6 +97,13 @@ public sealed class ProbelaufService
     }
 
     private DateTime Jetzt => _zeit.GetUtcNow().UtcDateTime;
+
+    /// <summary>
+    /// Das Zelt, in dem ein Lauf misst und eingreift: das genannte, sonst das Zelt, dem die Steuerung zugewiesen ist.
+    /// <c>null</c> bei höchstens einem aktiven Zelt — dann gilt wie bisher alles.
+    /// </summary>
+    private int? ZeltFuer(ProbelaufStart start)
+        => start.ZeltId ?? (_zelte is { } z && z.AktiveZelte().Count >= 2 ? z.ZeltFuer(start.Modul) : null);
 
     // -------------------------------------------------------------------- Start
 
@@ -108,17 +120,20 @@ public sealed class ProbelaufService
             if (_repo.Offene().Count > 0)
                 return Abgelehnt(ProbelaufFehler.LaeuftSchon, "Es läuft schon ein Probelauf. Erst wenn er abgeschlossen ist, kann der nächste starten.");
 
-            var grenzen = start.Grenzen ?? await _messung.VoreinstellungAsync(ct);
+            var zelt = ZeltFuer(start);
+            var grenzen = start.Grenzen ?? await _messung.VoreinstellungAsync(ct, zelt);
             var jetzt = Jetzt;
 
-            var aufnahme = await _messung.JetztAsync(ct);
+            var aufnahme = await _messung.JetztAsync(ct, zelt);
             if (aufnahme is null)
-                return Abgelehnt(ProbelaufFehler.KeineMessung, "Home Assistant liefert gerade keine Messwerte — ohne Sicht aufs Zelt startet kein Probelauf.");
+                return Abgelehnt(ProbelaufFehler.KeineMessung, zelt is null
+                    ? "Home Assistant liefert gerade keine Messwerte — ohne Sicht aufs Zelt startet kein Probelauf."
+                    : "Für dieses Zelt liefert Home Assistant keine Messwerte: Der Entfeuchter des Zeltes mit den Zeltfühlern fehlt oder antwortet nicht. Ohne Sicht aufs Zelt startet kein Probelauf.");
             if (ProbelaufBewertung.Pruefen(grenzen, aufnahme.Werte, TimeSpan.Zero) is { } schonVerletzt)
                 return Abgelehnt(ProbelaufFehler.GrenzeVerletzt, "Ein Lauf würde sofort abbrechen: " + schonVerletzt.Grund);
 
-            var vorlauf = (await _messung.VerlaufAsync(jetzt - Vorlauf, jetzt, ct)).ToList();
-            var ausgang = await _eingriff.AusgangszustandLesenAsync(start.Modul, ct);
+            var vorlauf = (await _messung.VerlaufAsync(jetzt - Vorlauf, jetzt, ct, zelt)).ToList();
+            var ausgang = await _eingriff.AusgangszustandLesenAsync(start.Modul, zelt, ct);
 
             var geplant = jetzt.AddMinutes(start.DauerMinuten);
             var lauf = new ProbelaufLauf
@@ -223,9 +238,9 @@ public sealed class ProbelaufService
     }
 
     /// <summary>Messen, ohne dass ein Fehler der Messung den Takt anhält: Fehler heißt „keine Messung".</summary>
-    private async Task<ProbelaufMomentaufnahme?> SicherMessenAsync(CancellationToken ct)
+    private async Task<ProbelaufMomentaufnahme?> SicherMessenAsync(ProbelaufLauf lauf, CancellationToken ct)
     {
-        try { return await _messung.JetztAsync(ct); }
+        try { return await _messung.JetztAsync(ct, ProbelaufEingriff.ZeltIdAus(lauf.Ausgangszustand)); }
         catch (Exception) when (!ct.IsCancellationRequested) { return null; }
     }
 
@@ -238,7 +253,7 @@ public sealed class ProbelaufService
             return;
         }
 
-        var aufnahme = await SicherMessenAsync(ct);
+        var aufnahme = await SicherMessenAsync(lauf, ct);
         var werte = aufnahme?.Werte ?? new ProbelaufMesswerte(jetzt, null, null, null);
 
         // Fühler ohne Wert: die Uhr startet beim ersten fehlenden Wert und stoppt, wenn alle wieder da sind.
@@ -265,7 +280,7 @@ public sealed class ProbelaufService
 
     private async Task NachlaufSchrittAsync(ProbelaufLauf lauf, DateTime jetzt, CancellationToken ct)
     {
-        var aufnahme = await SicherMessenAsync(ct);
+        var aufnahme = await SicherMessenAsync(lauf, ct);
         if (aufnahme is not null && (lauf.LetzteMessungUtc is null || jetzt - lauf.LetzteMessungUtc >= Messtakt))
         {
             lauf.Messreihe.Nachlauf.Add(aufnahme.Werte with { ZeitUtc = jetzt });

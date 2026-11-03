@@ -182,7 +182,7 @@ public sealed class PumpWatchNotifier
         // Regelpause, sondern ein Defekt — dann greift die alte Beurteilung.
         var absichtlich = KuehlerService.IstAbsichtlichAus(tent, KuehlerWorker.LetzterBefehl(_settings, tent.Id))
             || await KeinKuehlbedarfAsync(cancellationToken)
-            || (_probelauf is not null && ProbelaufService.KuehlerAbsichtlichAus(_probelauf.Offene()));
+            || (_probelauf is not null && ProbelaufService.KuehlerAbsichtlichAus(_probelauf.Offene(), tent.Id));
 
         var befunde = AnlagenWatchService.Beurteilen(zustaende, nowUtc, SchonfristMinuten, absichtlich);
 

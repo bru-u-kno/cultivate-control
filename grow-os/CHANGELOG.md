@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.319
+
+**Probelauf je Zelt: Ein Probelauf misst das Zelt der Steuerung, an der er eingreift — nie die Werte eines anderen Zeltes.**
+
+- **Was war:** Der Probelauf las die Zeltfühler (Luftfeuchte, Temperatur, VPD, Licht) immer vom Entfeuchter, die Grenzen kamen aus dem Stand dieses einen Entfeuchters, und ein Probelauf am Wasserkühler schaltete die Kühler-Regelung aller Zelte ab. Bei zwei Zelten hätte ein Probelauf im zweiten Zelt das erste gemessen.
+- **Was jetzt gilt:** Mit zwei oder mehr Zelten gehört ein Probelauf zu dem Zelt, dem die Steuerung zugewiesen ist („Steuerungen Zelten zuweisen“). Gemessen werden die Fühler des Entfeuchters in diesem Zelt, die Grenzen kommen aus dem Plan dieses Zeltes, und nur die Kühler-Regelung dieses Zeltes wird für den Lauf abgeschaltet. Hat das Zelt keinen Entfeuchter mit Fühlern, startet kein Lauf und die Meldung sagt, woran es liegt.
+- **Pumpen-Wächter:** Läuft der Probelauf am Wasserkühler eines Zeltes, bleibt die Kühler-Meldung der anderen Zelte aktiv; sie schweigt nur im Zelt des Laufs.
+- **Unverändert:** Mit einem Zelt (und für alle bisherigen Läufe) arbeitet der Probelauf wie vorher. Es läuft weiter höchstens ein Probelauf zur selben Zeit.
+- **Vorbereitung:** Der Probelauf kennt jetzt auch weitere Instanzen einer Steuerung (zum Beispiel einen zweiten Wasserkühler), sobald es sie gibt. Anlegen lassen sie sich noch nicht.
+- **Geprüft** mit zwei Zelten: Der Lauf am Wasserkühler in Zelt B misst Zelt B, schaltet nur dessen Regler ab und misst auch in den folgenden Takten dieses Zelt; ohne Messung im Zelt startet nichts und nichts wird angefasst; ältere Läufe ohne Zelt bleiben lesbar.
+
 ## 2.0.0-cc.318
 
 **Steuerungen je Zelt, Teil 3: Das Fundament für mehrere Entfeuchter, Wasserkühler, Zuluft-Steuerungen und Lampen — noch nichts davon ist sichtbar.**
