@@ -179,6 +179,7 @@ builder.Services.AddScoped<IStartwertDienst>(sp => sp.GetRequiredService<ZuluftS
 builder.Services.AddScoped<IStartwertDienst>(sp => sp.GetRequiredService<Co2SteuerungService>());
 builder.Services.AddScoped<HelferBereichService>();
 builder.Services.AddScoped<SteuerungAuswahlService>(); // Fork AI (A-016)
+builder.Services.AddScoped<SteuerungInstanzService>(); // Steuerungen je Zelt, Etappe 2: weitere Instanzen
 builder.Services.AddScoped<SteuerungZeltService>(); // Steuerungen je Zelt (A-031 Folge, Etappe 1)
 // Fork AI (forkai.69): legt die Rechenwerte ueber den Einrichtungsdialog an.
 builder.Services.AddScoped<SteuerungRechenwertService>();
@@ -253,6 +254,7 @@ app.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 KennungsRaumWahl.BeimStart(app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
 // CO₂ je Zelt: welches Zelt gehört dem vorhandenen CO₂-Objektsatz, und welche Zelte haben eine eigene CO₂-Steuerung?
 Co2ZeltWahl.Aktualisieren(app.Services.GetRequiredService<TentRepository>(), app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
+SteuerungInstanzService.Aktualisieren(app.Services.GetRequiredService<SteuerungRepository>());
 // Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" und ihre Abweichungs-Risiken sind geschlossen (bis cc.294 setzte der Abschluss beides nicht). Idempotent: beim zweiten Start 0.
 try
 {

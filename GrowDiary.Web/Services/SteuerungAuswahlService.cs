@@ -102,7 +102,9 @@ public sealed class SteuerungAuswahlService
     /// </summary>
     public static IReadOnlyList<string> ModuleVon(Art art)
     {
-        if (!string.Equals(art.Kennung, Co2Modul.Basis, StringComparison.Ordinal)) return art.Module;
+        // Weitere Instanzen (Register) kommen hinter die erste Instanz jeder Art.
+        if (!string.Equals(art.Kennung, Co2Modul.Basis, StringComparison.Ordinal))
+            return art.Module.SelectMany(m => new[] { m }.Concat(SteuerungInstanzen.ModuleVon(m))).ToList();
         var zelte = Co2Zelte.Module;
         return zelte.Count == 0 ? art.Module : zelte;
     }

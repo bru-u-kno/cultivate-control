@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.318
+
+**Steuerungen je Zelt, Teil 3: Das Fundament für mehrere Entfeuchter, Wasserkühler, Zuluft-Steuerungen und Lampen — noch nichts davon ist sichtbar.**
+
+- **Was sich ändert:** Nichts, was du siehst. Die Oberfläche, deine Steuerungen und deine Bausteine in Home Assistant bleiben, wie sie sind; es wird nichts angelegt, umbenannt oder geschaltet.
+- **Was jetzt im Hintergrund bereitsteht:** Eine weitere Instanz einer Steuerung bekommt ihren eigenen Namen (zum Beispiel „Wasserkühler Reserve“), ihre eigenen Geräte und ihre eigenen Helfer, Rechenwerte und Automationen in Home Assistant. Deren Kennungen enden auf `_i2`, `_i3` …, die Namen auf „I2“, „I3“ …; die erste Steuerung behält alle bisherigen Kennungen. Die Nummern zählen je Steuerungsart und werden nie wiederverwendet.
+- **Gemeinsam bleiben** die Messwerte für Außen- und Kellerluft: Sie gehören keiner einzelnen Instanz.
+- **Was noch fehlt:** Anlegen, Benennen und Löschen in der Oberfläche, die Geräte-Zuordnung je Instanz und die Anlage der Bausteine in Home Assistant folgen in den nächsten Teilen, zuerst beim Wasserkühler.
+- **Geprüft** mit Tests über alle vier Steuerungsarten und jede mitgelieferte Automationsvorlage: Jede Instanz bekommt dieselben Bausteine mit eigenen Kennungen, keine Rechenvorschrift und keine Automation verweist noch auf die der ersten Instanz, Rollen-Platzhalter bleiben, und ohne Instanz ist der Katalog Zeichen für Zeichen der alte.
+
 ## 2.0.0-cc.317
 
 **„Zelt ruhend“ je Zelt: Jedes Zelt hat seinen eigenen Ruhezustand, seine eigenen Geräte und seine eigenen Alarme.**

@@ -114,7 +114,7 @@ public sealed class SteuerungAutomationService
         bool nurVorschau,
         CancellationToken ct = default)
     {
-        var ordner = Path.Combine(_vorlagenWurzel, Co2Modul.BasisModul(modul));
+        var ordner = Path.Combine(_vorlagenWurzel, InstanzModul.BasisModul(modul));
         if (!Directory.Exists(ordner))
         {
             return new Bilanz(true, Array.Empty<Ergebnis>());
@@ -156,6 +156,8 @@ public sealed class SteuerungAutomationService
             }
             // CO₂ je Zelt: die Vorlage ist die des Bestands, Kennungen und Alias werden auf das Zelt umgestellt.
             vorlage = Co2Modul.Vorlage(vorlage, Co2Modul.ZeltId(modul));
+            // Weitere Instanzen einer Steuerung: dieselbe Vorlage, Kennungen und Alias auf die Instanz umgestellt.
+            vorlage = InstanzModul.Vorlage(vorlage, modul, SteuerungBauteile.FuerModul(InstanzModul.Art(modul) ?? modul).Select(b => b.EntityId));
             if (vorlage["alias"] is JsonValue alias && alias.TryGetValue<string>(out var lesbar)) titel[kennung] = lesbar;
 
             // Fork AI (Chiller-Ansteuerung): Eine Vorlage kann entfallen, weil ein
@@ -371,7 +373,7 @@ public sealed class SteuerungAutomationService
     /// <summary>Die Fassung der mitgelieferten Vorlage, oder null, wenn es sie nicht gibt.</summary>
     public static int? VorlagenFassung(string modul, string vorlage)
     {
-        var datei = Path.Combine(VorlagenWurzel, Co2Modul.BasisModul(modul), vorlage + ".json");
+        var datei = Path.Combine(VorlagenWurzel, InstanzModul.BasisModul(modul), vorlage + ".json");
         if (!File.Exists(datei)) return null;
         try
         {

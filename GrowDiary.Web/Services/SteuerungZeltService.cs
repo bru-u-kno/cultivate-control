@@ -25,7 +25,10 @@ public sealed class SteuerungZeltService
     public const string Modul = "steuerung-zelte";
 
     /// <summary>Die Steuerungen, die einem Zelt zugewiesen werden (alle außer dem CO₂ und seiner Abluft).</summary>
-    public static IReadOnlyList<string> Zuweisbar { get; } = ["entfeuchter", "entfeuchter-zusatz", "zuluft", "chiller", "licht"];
+    private static readonly string[] ErsteInstanzen = ["entfeuchter", "entfeuchter-zusatz", "zuluft", "chiller", "licht"];
+
+    /// <summary>Die Steuerungen, die einem Zelt zugewiesen werden: die ersten Instanzen und alle weiteren aus dem Register.</summary>
+    public static IReadOnlyList<string> Zuweisbar => ErsteInstanzen.Concat(SteuerungInstanzen.Module).ToList();
 
     private readonly SteuerungRepository _repo;
     private readonly TentRepository _zelte;

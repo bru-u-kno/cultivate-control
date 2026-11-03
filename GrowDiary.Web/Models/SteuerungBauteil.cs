@@ -861,7 +861,30 @@ public static class SteuerungBauteile
     public static IReadOnlyList<Bauteil> FuerModul(string modul)
         => Co2Modul.ZeltId(modul) is { } zelt
             ? FuerCo2Zelt(modul, zelt)
-            : Alle.Where(b => string.Equals(b.Modul, modul, StringComparison.OrdinalIgnoreCase)).ToList();
+            : InstanzModul.Nummer(modul) is { } nummer
+                ? FuerInstanz(modul, InstanzModul.Art(modul)!, nummer)
+                : Alle.Where(b => string.Equals(b.Modul, modul, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<Bauteil>> InstanzListen = new();
+
+    /// <summary>
+    /// Der Katalog einer weiteren Instanz: die Bauteile der Art, Kennung, Name und Rechenvorschrift auf die Instanz umgestellt
+    /// (<see cref="InstanzModul"/>). Die erste Instanz bleibt beim Modul der Art und seinen Kennungen.
+    /// </summary>
+    private static IReadOnlyList<Bauteil> FuerInstanz(string modul, string art, int nummer)
+        => InstanzListen.GetOrAdd(modul, _ =>
+        {
+            var basis = Alle.Where(b => string.Equals(b.Modul, art, StringComparison.OrdinalIgnoreCase)).ToList();
+            var kennungen = basis.Select(b => b.EntityId).ToList();
+            return basis.Select(b => b with
+            {
+                Modul = modul,
+                EntityId = InstanzModul.Id(b.EntityId, nummer),
+                Name = InstanzModul.Name(b.Name, nummer, b.EntityId),
+                Vorlage = b.Vorlage is null ? null : InstanzModul.Text(b.Vorlage, nummer, kennungen),
+                Verfuegbarkeit = b.Verfuegbarkeit is null ? null : InstanzModul.Text(b.Verfuegbarkeit, nummer, kennungen),
+            }).ToList();
+        });
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<Bauteil>> ZeltListen = new();
 
@@ -887,6 +910,9 @@ public static class SteuerungBauteile
            ?? Co2Zelte.Aktuell.ZeltIds
                .Where(z => z != Co2Zelte.Aktuell.BestandZeltId)
                .SelectMany(z => FuerCo2Zelt(Co2Modul.Fuer(z, Co2Zelte.Aktuell.BestandZeltId), z))
+               .FirstOrDefault(b => string.Equals(b.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
+           ?? SteuerungInstanzen.Aktuell
+               .SelectMany(i => FuerModul(i.Modul))
                .FirstOrDefault(b => string.Equals(b.EntityId, entityId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
