@@ -139,6 +139,18 @@ public sealed class SteuerungInstanzAufraeumenTests : IDisposable
     }
 
     [Fact]
+    public void DerPlanEinerZuluftInstanzNenntAuchIhrenMittelwertHelfer()
+    {
+        var plan = SteuerungInstanzAufraeumenService.Planen("zuluft-i2");
+
+        // Der gleitende Mittelwert ist ein Filter-Helfer, kein Template: ohne eigenen Eintrag bliebe er in Home Assistant stehen.
+        var mittel = Assert.Single(plan, p => p.Art == "mittelwert");
+        Assert.Equal("sensor.zuluft_differenz_geglattet_i2", mittel.Kennung);
+        Assert.DoesNotContain(plan, p => p.Art == "rechenwert" && p.Kennung == mittel.Kennung);
+        Assert.Empty(SteuerungInstanzAufraeumenService.Planen("chiller-i2").Where(p => p.Art == "mittelwert"));
+    }
+
+    [Fact]
     public async Task EntferntNurDieBausteineDerInstanzUndLaesstHandgebautesStehen()
     {
         var l = Aufbau(Standard);

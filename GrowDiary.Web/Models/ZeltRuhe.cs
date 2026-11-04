@@ -92,7 +92,13 @@ public static class ZeltRuheArten
             // Weitere Entfeuchter: wie der erste ohne Auswahl „läuft weiter“, Schalter ist ihr Port.
             .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Entfeuchter)
                 .Select(i => new ZeltRuheArt(i.Modul, $"Entfeuchter {i.Name}", i.Modul, "port_schalter", false)))
+            // Weitere Zuluft-Steuerungen: wie die erste „läuft weiter“, Schalter ist ihr Port.
+            .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Zuluft)
+                .Select(i => new ZeltRuheArt(i.Modul, $"Zuluft {i.Name}", i.Modul, "port_schalter", false)))
             .ToList();
+
+    /// <summary>Ist die Kennung eine weitere Zuluft-Steuerung (<c>zuluft-i2</c>)?</summary>
+    public static bool IstZuluftInstanz(string? kennung) => InstanzModul.Art(kennung) == Zuluft;
 
     /// <summary>Ist die Kennung ein weiterer Entfeuchter (<c>entfeuchter-i2</c>)?</summary>
     public static bool IstEntfeuchterInstanz(string? kennung) => InstanzModul.Art(kennung) == Entfeuchter;

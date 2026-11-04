@@ -89,6 +89,44 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
     private readonly SteuerungGeraeteService _geraete;
     private readonly ILogger<ZuluftSteuerungService> _logger;
 
+    // Zuluft-Instanzen: Der Dienst aus der Abhängigkeits-Einspritzung gehört der ersten Instanz (Modul „zuluft“, alle Kennungen
+    // unverändert). Für eine weitere Instanz liefert Fuer() eine Kopie mit deren Modul; jede Kennung wandert dann über E() auf die
+    // Endung _i{n}. Die Absolut-Feuchte draußen und im Keller ist für alle dieselbe (InstanzModul.Gemeinsam).
+    private string _modul = Modul;
+    private int? _nummer;
+
+    /// <summary>Das Modul dieses Dienstes: <c>zuluft</c> oder <c>zuluft-i{n}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Die Nummer der Instanz (ab 2) — <c>null</c> bei der ersten.</summary>
+    public int? Nummer => _nummer;
+
+    /// <summary>Der Dienst einer Instanz. Ein Modul, das keine weitere Zuluft-Instanz ist, bekommt den Dienst der ersten.</summary>
+    public ZuluftSteuerungService Fuer(string modul)
+    {
+        if (!string.Equals(InstanzModul.Art(modul), Modul, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return Bestand();
+        var kopie = (ZuluftSteuerungService)MemberwiseClone();
+        kopie._modul = modul;
+        kopie._nummer = n;
+        return kopie;
+    }
+
+    /// <summary>Der Dienst der ersten Instanz.</summary>
+    public ZuluftSteuerungService Bestand()
+    {
+        if (_nummer is null) return this;
+        var kopie = (ZuluftSteuerungService)MemberwiseClone();
+        kopie._modul = Modul;
+        kopie._nummer = null;
+        return kopie;
+    }
+
+    /// <summary>Die Kennung eines Objekts der Instanz <paramref name="nummer"/> (<c>null</c> = erste Instanz, unverändert).</summary>
+    public static string Kennung(string basisKennung, int? nummer)
+        => nummer is { } n ? InstanzModul.Id(basisKennung, n) : basisKennung;
+
+    private string E(string basisKennung) => Kennung(basisKennung, _nummer);
+
     public ZuluftSteuerungService(
         SteuerungRepository repo,
         HomeAssistantService ha,
@@ -109,7 +147,7 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
     /// Der gespeicherte Stand — null, solange nie gespeichert wurde oder der Stand
     /// von vor forkai.128 stammt (ohne Zelttemperatur, siehe F-022).
     /// </summary>
-    public ZuluftEinstellungen? Gespeichert => GueltigGespeichert(_repo.GetEinstellungen<ZuluftEinstellungen>(Modul));
+    public ZuluftEinstellungen? Gespeichert => GueltigGespeichert(_repo.GetEinstellungen<ZuluftEinstellungen>(_modul));
 
     /// <summary>
     /// Ein Stand ohne Zelttemperatur stammt von vor forkai.128. Er gilt wie „nie
@@ -134,12 +172,12 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         // Der Umweg ueber string? ist noetig: IReadOnlyDictionary ist im Wert
         // invariant, ein Dictionary<string, string> passt nicht auf <string, string?>.
         var uebernommen = AusHomeAssistant(entities.ToDictionary(
-            x => x.EntityId, x => (string?)x.State, StringComparer.OrdinalIgnoreCase));
+            x => x.EntityId, x => (string?)x.State, StringComparer.OrdinalIgnoreCase), _nummer);
         // Fork AI (forkai.139, F-035): Beim ersten Aufruf übernimmt der Fork die
         // Werte aus Home Assistant sofort als eigenen Stand — gespeichert wird nur
         // im Fork, nach HA wird nichts geschrieben. Nur mit echter Antwort von HA,
         // sonst stünden die Werkseinstellungen als „übernommen" da.
-        if (entities.Count > 0) _repo.SetEinstellungen(Modul, uebernommen);
+        if (entities.Count > 0) _repo.SetEinstellungen(_modul, uebernommen);
         return uebernommen;
     }
 
@@ -147,22 +185,23 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
     /// Aus den Zuständen der Helfer Einstellungen bauen. Was fehlt oder sich
     /// nicht lesen lässt, bleibt auf der Vorgabe.
     /// </summary>
-    public static ZuluftEinstellungen AusHomeAssistant(IReadOnlyDictionary<string, string?> zustaende)
+    /// <param name="nummer">Die Instanz (ab 2); <c>null</c> = die erste.</param>
+    public static ZuluftEinstellungen AusHomeAssistant(IReadOnlyDictionary<string, string?> zustaende, int? nummer = null)
     {
         var e = new ZuluftEinstellungen();
 
         double? Zahl(string id) => zustaende.TryGetValue(id, out var s)
             ? Zahlenlesen.Maschine(s) : null;
 
-        if (Zahl(Entitaeten.MindestDifferenz) is { } md) e.MindestDifferenzGm3 = md;
-        if (Zahl(Entitaeten.AbschaltAbstand) is { } aa) e.AbschaltAbstandGm3 = aa;
-        if (Zahl(Entitaeten.AussentemperaturMin) is { } at) e.AussentemperaturMinC = at;
-        if (Zahl(Entitaeten.StufeMin) is { } smin) e.StufeMin = (int)Math.Round(smin);
-        if (Zahl(Entitaeten.StufeMax) is { } smax) e.StufeMax = (int)Math.Round(smax);
-        if (Zahl(Entitaeten.Mindestlaufzeit) is { } lz) e.MindestlaufzeitMin = (int)Math.Round(lz);
-        if (Zahl(Entitaeten.Mindestpause) is { } pa) e.MindestpauseMin = (int)Math.Round(pa);
-        e.ZeltTemperaturMinC = Zahl(Entitaeten.ZeltTemperaturMin) ?? ZeltTemperaturMinVorgabe;
-        if (zustaende.TryGetValue(Entitaeten.Automatik, out var automatik) && automatik is not null)
+        if (Zahl(Kennung(Entitaeten.MindestDifferenz, nummer)) is { } md) e.MindestDifferenzGm3 = md;
+        if (Zahl(Kennung(Entitaeten.AbschaltAbstand, nummer)) is { } aa) e.AbschaltAbstandGm3 = aa;
+        if (Zahl(Kennung(Entitaeten.AussentemperaturMin, nummer)) is { } at) e.AussentemperaturMinC = at;
+        if (Zahl(Kennung(Entitaeten.StufeMin, nummer)) is { } smin) e.StufeMin = (int)Math.Round(smin);
+        if (Zahl(Kennung(Entitaeten.StufeMax, nummer)) is { } smax) e.StufeMax = (int)Math.Round(smax);
+        if (Zahl(Kennung(Entitaeten.Mindestlaufzeit, nummer)) is { } lz) e.MindestlaufzeitMin = (int)Math.Round(lz);
+        if (Zahl(Kennung(Entitaeten.Mindestpause, nummer)) is { } pa) e.MindestpauseMin = (int)Math.Round(pa);
+        e.ZeltTemperaturMinC = Zahl(Kennung(Entitaeten.ZeltTemperaturMin, nummer)) ?? ZeltTemperaturMinVorgabe;
+        if (zustaende.TryGetValue(Kennung(Entitaeten.Automatik, nummer), out var automatik) && automatik is not null)
         {
             e.AutomatikAktiv = automatik is "on" or "On";
         }
@@ -219,36 +258,36 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         var fehler = Pruefen(e);
         if (fehler.Count > 0) return (null, fehler, false);
 
-        _repo.SetEinstellungen(Modul, e);
+        _repo.SetEinstellungen(_modul, e);
         var erreicht = await NachHomeAssistantSchreibenAsync(e, ct);
         return (e, fehler, erreicht);
     }
 
     /// <summary>Die Zahlen, die in den Helfern stehen sollen — eine Liste für das Schreiben und für das Zählen der Startwerte.</summary>
-    public static IReadOnlyList<(string Entity, double Wert)> Schreibliste(ZuluftEinstellungen e)
+    public static IReadOnlyList<(string Entity, double Wert)> Schreibliste(ZuluftEinstellungen e, int? nummer = null)
     {
         var zahlen = new List<(string Entity, double Wert)>
         {
-            (Entitaeten.MindestDifferenz, e.MindestDifferenzGm3),
-            (Entitaeten.AbschaltAbstand, e.AbschaltAbstandGm3),
-            (Entitaeten.AussentemperaturMin, e.AussentemperaturMinC),
-            (Entitaeten.StufeMin, e.StufeMin),
-            (Entitaeten.StufeMax, e.StufeMax),
-            (Entitaeten.Mindestlaufzeit, e.MindestlaufzeitMin),
-            (Entitaeten.Mindestpause, e.MindestpauseMin),
+            (Kennung(Entitaeten.MindestDifferenz, nummer), e.MindestDifferenzGm3),
+            (Kennung(Entitaeten.AbschaltAbstand, nummer), e.AbschaltAbstandGm3),
+            (Kennung(Entitaeten.AussentemperaturMin, nummer), e.AussentemperaturMinC),
+            (Kennung(Entitaeten.StufeMin, nummer), e.StufeMin),
+            (Kennung(Entitaeten.StufeMax, nummer), e.StufeMax),
+            (Kennung(Entitaeten.Mindestlaufzeit, nummer), e.MindestlaufzeitMin),
+            (Kennung(Entitaeten.Mindestpause, nummer), e.MindestpauseMin),
         };
-        if (e.ZeltTemperaturMinC is { } zelt) zahlen.Add((Entitaeten.ZeltTemperaturMin, zelt));
+        if (e.ZeltTemperaturMinC is { } zelt) zahlen.Add((Kennung(Entitaeten.ZeltTemperaturMin, nummer), zelt));
         return zahlen;
     }
 
-    string IStartwertDienst.StartModul => Modul;
+    string IStartwertDienst.StartModul => _modul;
 
     async Task<object> IStartwertDienst.StandFesthaltenAsync(CancellationToken ct) => await EinstellungenAsync(ct);
 
     async Task<(int Geschrieben, bool Alles)> IStartwertDienst.StartwerteSchreibenAsync(object stand, IReadOnlySet<string> neuAngelegt, CancellationToken ct)
     {
         var e = (ZuluftEinstellungen)stand;
-        var anzahl = Startwerte.Nur(Schreibliste(e), neuAngelegt).Count;
+        var anzahl = Startwerte.Nur(Schreibliste(e, _nummer), neuAngelegt).Count;
         if (anzahl == 0) return (0, true);
 
         var alles = await NachHomeAssistantSchreibenAsync(e, ct, neuAngelegt);
@@ -264,7 +303,7 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         if (!settings.IsConfigured) return false;
 
-        var zahlen = Startwerte.Nur(Schreibliste(e), nur);
+        var zahlen = Startwerte.Nur(Schreibliste(e, _nummer), nur);
 
         var alles = true;
         foreach (var (entity, wert) in zahlen)
@@ -277,7 +316,7 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         if (nur is null)
         {
             alles &= await _ha.CallEntityServiceAsync(
-                settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", Entitaeten.Automatik, ct);
+                settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", E(Entitaeten.Automatik), ct);
         }
 
         if (!alles) _logger.LogWarning("Zuluft-Sollwerte: nicht alle Helfer in Home Assistant angenommen.");
@@ -298,46 +337,46 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
 
         // Geräte kommen aus der Zuordnung, nicht aus dem Code: eine Rolle ohne
         // Gerät liefert null, dann steht in der Kachel ein „–".
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         string? Rolle(string rolle) => geraete.TryGetValue(rolle, out var id) ? id : null;
         double? ZahlRolle(string rolle) => Rolle(rolle) is { } id ? Zahl(id) : null;
         bool? AnRolle(string rolle) => Rolle(rolle) is { } id ? An(id) : null;
 
         var e = Gespeichert ?? AusHomeAssistant(
-            nachId.ToDictionary(x => x.Key, x => (string?)x.Value.State, StringComparer.OrdinalIgnoreCase));
+            nachId.ToDictionary(x => x.Key, x => (string?)x.Value.State, StringComparer.OrdinalIgnoreCase), _nummer);
 
-        var (rest, gewechselt) = Sperre(Text(Entitaeten.LetzterSchaltvorgang),
+        var (rest, gewechselt) = Sperre(Text(E(Entitaeten.LetzterSchaltvorgang)),
             e.MindestlaufzeitMin, e.MindestpauseMin, AnRolle(Rollen.PortZustand) == true, DateTime.Now);
 
         var zeltTemp = ZahlRolle(Rollen.ZeltTemp);
         var pause = PauseWegenZeltkaelte(
-            An(Entitaeten.Bedarf),
-            Zahl(Entitaeten.DifferenzGeglaettet) ?? Zahl(Entitaeten.Differenz),
+            An(E(Entitaeten.Bedarf)),
+            Zahl(E(Entitaeten.DifferenzGeglaettet)) ?? Zahl(E(Entitaeten.Differenz)),
             e.MindestDifferenzGm3,
             zeltTemp,
-            e.ZeltTemperaturMinC ?? Zahl(Entitaeten.ZeltTemperaturMin));
+            e.ZeltTemperaturMinC ?? Zahl(E(Entitaeten.ZeltTemperaturMin)));
 
-        var zeltMin = e.ZeltTemperaturMinC ?? Zahl(Entitaeten.ZeltTemperaturMin);
+        var zeltMin = e.ZeltTemperaturMinC ?? Zahl(E(Entitaeten.ZeltTemperaturMin));
         var live = new ZuluftLive(
             HaErreichbar: entities.Count > 0,
-            DifferenzGm3: Zahl(Entitaeten.Differenz),
-            AussenAbsolutGm3: Zahl(Entitaeten.AbsolutDraussen),
-            KellerAbsolutGm3: Zahl(Entitaeten.AbsolutKeller),
+            DifferenzGm3: Zahl(E(Entitaeten.Differenz)),
+            AussenAbsolutGm3: Zahl(E(Entitaeten.AbsolutDraussen)),
+            KellerAbsolutGm3: Zahl(E(Entitaeten.AbsolutKeller)),
             AussenTempC: ZahlRolle(Rollen.AussenTemp),
             AussenRhProzent: ZahlRolle(Rollen.AussenRh),
             KellerTempC: ZahlRolle(Rollen.RaumTemp),
             KellerRhProzent: ZahlRolle(Rollen.RaumRh),
-            Bedarf: An(Entitaeten.Bedarf),
-            Zielstufe: Zahl(Entitaeten.Zielstufe) is { } z ? (int)Math.Round(z) : null,
+            Bedarf: An(E(Entitaeten.Bedarf)),
+            Zielstufe: Zahl(E(Entitaeten.Zielstufe)) is { } z ? (int)Math.Round(z) : null,
             IstStufe: ZahlRolle(Rollen.PortIstStufe) is { } i ? (int)Math.Round(i) : null,
             PortAn: AnRolle(Rollen.PortZustand),
             PortOnline: AnRolle(Rollen.PortStatus),
-            AutomatikAn: An(Entitaeten.Automatik),
+            AutomatikAn: An(E(Entitaeten.Automatik)),
             SperreRestMin: rest,
             LetzterWechsel: gewechselt,
             ZeltTempC: zeltTemp,
             PauseZeltKalt: pause,
-            DifferenzRegelGm3: Zahl(Entitaeten.DifferenzGeglaettet) ?? Zahl(Entitaeten.Differenz),
+            DifferenzRegelGm3: Zahl(E(Entitaeten.DifferenzGeglaettet)) ?? Zahl(E(Entitaeten.Differenz)),
             RaumName: RaumService.NameAus(_repo));
         return live with { Zustand = Zustand(live, e, zeltMin) };
     }

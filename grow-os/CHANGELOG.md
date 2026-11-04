@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.327
+
+**Steuerungen je Zelt, Teil 7a: Weitere Zuluft-Steuerungen lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**
+
+- **Eigene Zuluft je Zelt:** Der Zuluft-Dienst arbeitet jetzt je Zuluft-Steuerung mit eigenen Einstellungen, Helfern, Rechenwerten, Automationen und Geräten (Endung der Nummer). Die erste Zuluft bleibt in allem, wie sie war. Die Feuchte draußen und im Keller ist für alle Zuluft-Steuerungen dieselbe und wird nur einmal angelegt.
+- **An einer echten Test-Home-Assistant durchgespielt:** Ein weiterer Zuluft-Eintrag legt 8 Helfer (mit Startwerten), die Rechenwerte und die beiden Automationen an; die Übersicht zeigt eine eigene Zeile im richtigen Zelt; das Löschen mit „Auch aus Home Assistant entfernen“ räumt alle 13 Bausteine weg. Die erste Zuluft und die gemeinsame Feuchte bleiben unverändert.
+- **Behoben beim Löschen:** Der gleitende Mittelwert der Zuluft-Differenz (ein Filter-Helfer) blieb beim Löschen einer weiteren Instanz in Home Assistant stehen. Er wird jetzt mit entfernt.
+- **Zelt ruhend:** Jede weitere Zuluft steht als eigenes Gerät in der Liste, wie die erste mit „läuft weiter“, bis du sie ankreuzt.
+- **Schnittstelle:** Die Zuluft-Seite nimmt eine Angabe `instanz` an (wie Wasserkühler und Entfeuchter); eine unbekannte oder fremde Instanz wird abgewiesen. Das Anlegen weiterer Steuerungen nimmt jetzt auch „Zuluft“ an.
+- **Getestet:** Jede Kennung des Dienstes steht im Katalog der Instanz oder ist gemeinsam (ohne die Endung werden fünf Tests rot), die Zuluft einer Instanz liest nur ihre eigenen Geräte, das Speichern schreibt nur ihre Helfer, und der Löschplan nennt den Mittelwert-Helfer (ohne ihn wird ein Test rot).
+
 ## 2.0.0-cc.326
 
 **Steuerungen je Zelt, Teil 6c: Weitere Entfeuchter lassen sich jetzt in der Oberfläche anlegen, bedienen und löschen.**

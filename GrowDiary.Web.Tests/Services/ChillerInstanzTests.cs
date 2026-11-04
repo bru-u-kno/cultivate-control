@@ -168,7 +168,7 @@ public sealed class ChillerInstanzTests : IDisposable
     [Theory]
     [InlineData("chiller-i2", true)]
     [InlineData("chiller-i17", true)]
-    [InlineData("zuluft-i2", false)]       // deren Dienste können noch kein Fuer(modul)
+    [InlineData("zuluft-i2", true)]
     [InlineData("entfeuchter-zusatz-i2", false)]
     [InlineData("licht-i2", false)]
     public void NurDieInstanzenMitFuerModulHabenEinenStartwertWeg(string modul, bool kann)

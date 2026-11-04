@@ -196,6 +196,14 @@ public sealed class SteuerungApiController : ApiControllerBase
             module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("entfeuchter", StringComparison.Ordinal)) + 1,
                 EntfeuchterZeile(instanzLive, instanz.Modul, instanz.Name, instanz.Nummer));
         }
+        // Weitere Zuluft-Steuerungen: je Instanz eine Zeile hinter der ersten, mit dem Namen aus dem Register.
+        foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "zuluft"))
+        {
+            var instanzLive = await _zuluft.Fuer(instanz.Modul).LiveAsync(ct);
+            var schwelle = F(Zahl(ZuluftSteuerungService.Kennung(ZuluftSteuerungService.Entitaeten.MindestDifferenz, instanz.Nummer)), " g/m³", "0.0");
+            module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("zuluft", StringComparison.Ordinal)) + 1,
+                ZuluftKachel.Modul(instanzLive, schwelle, instanz.Modul, instanz.Name));
+        }
         // Weitere Wasserkühler: je Instanz eine Zeile hinter dem ersten Kühler, mit dem Namen aus dem Register.
         foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "chiller"))
         {
@@ -406,36 +414,49 @@ public sealed class SteuerungApiController : ApiControllerBase
     /// </summary>
     [HttpGet("zuluft")]
     [ProducesResponseType(typeof(ZuluftSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZuluftSeiteDto>> Zuluft(CancellationToken ct)
+    public async Task<ActionResult<ZuluftSeiteDto>> Zuluft([FromQuery] string? instanz, CancellationToken ct)
     {
-        var geraete = _geraete.EntitiesFuerModul(ZuluftSteuerungService.Modul);
-        return Ok(new ZuluftSeiteDto(await _zuluft.EinstellungenAsync(ct), await _zuluft.LiveAsync(ct))
+        var dienst = ZuluftDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var geraete = _geraete.EntitiesFuerModul(dienst.ModulName);
+        return Ok(new ZuluftSeiteDto(await dienst.EinstellungenAsync(ct), await dienst.LiveAsync(ct))
         {
             // Solange nichts gespeichert ist, stehen die Werte der vorhandenen
             // Helfer in der Seite. Die Seite sagt das, damit niemand sie für
             // Werkseinstellungen haelt und blind speichert.
-            AusHomeAssistantUebernommen = _zuluft.Gespeichert is null,
+            AusHomeAssistantUebernommen = dienst.Gespeichert is null,
             GeraeteZugeordnet = geraete.Count(g => g.Value is not null),
             // Zähler und Nenner zählen dieselben Rollen: EntitiesFuerModul liefert die eigenen UND die
             // mitbenutzten (Raum-Fühler), also muss der Nenner sie auch zählen (sonst „10 / 8“).
-            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(ZuluftSteuerungService.Modul).Count,
+            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(dienst.ModulName).Count,
         });
+    }
+
+    /// <summary>Der Zuluft-Dienst: ohne Angabe der erste, sonst der einer angelegten Instanz — eine unbekannte gibt <c>null</c>.</summary>
+    private ZuluftSteuerungService? ZuluftDienst(string? instanz)
+    {
+        if (string.IsNullOrWhiteSpace(instanz) || string.Equals(instanz, ZuluftSteuerungService.Modul, StringComparison.Ordinal)) return _zuluft.Bestand();
+        return SteuerungInstanzen.Module.Contains(instanz, StringComparer.Ordinal) && InstanzModul.Art(instanz) == ZuluftSteuerungService.Modul
+            ? _zuluft.Fuer(instanz)
+            : null;
     }
 
     [HttpPut("zuluft")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(ZuluftSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ZuluftSeiteDto>> ZuluftSpeichern([FromBody] ZuluftEinstellungen request, CancellationToken ct)
+    public async Task<ActionResult<ZuluftSeiteDto>> ZuluftSpeichern([FromBody] ZuluftEinstellungen request, [FromQuery] string? instanz, CancellationToken ct)
     {
         if (request is null) return BadRequestError("zuluft_invalid", "Es wurde nichts übergeben.");
-        var (gespeichert, fehler, erreicht) = await _zuluft.SpeichernAsync(request, ct);
+        var dienst = ZuluftDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var (gespeichert, fehler, erreicht) = await dienst.SpeichernAsync(request, ct);
         if (gespeichert is null)
         {
             foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
 
-        var seite = await Zuluft(ct);
+        var seite = await Zuluft(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is ZuluftSeiteDto dto) return Ok(dto with { HaAngenommen = erreicht });
         return seite;
     }
@@ -688,7 +709,7 @@ public sealed class SteuerungApiController : ApiControllerBase
     {
         if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
         // Nur Steuerungen, deren Dienst schon mehrere Instanzen kann: sonst entstünde ein Eintrag ohne Wirkung.
-        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul))
+        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul))
             return BadRequestError("steuerung_instanz_art", "Diese Steuerung lässt sich noch nicht vervielfachen.");
         if (request.ZeltId is { } zelt && !zelteDienst.AktiveZelte().Any(t => t.Id == zelt))
             return BadRequestError("steuerung_instanz_zelt", "Dieses Zelt gibt es nicht.");
@@ -1211,13 +1232,13 @@ public sealed class SteuerungApiController : ApiControllerBase
 /// <param name="schwelleText">Die Einschaltschwelle für die Kurzzeile, schon formatiert („1,5 g/m³").</param>
 public static class ZuluftKachel
 {
-    public static SteuerungModulDto Modul(ZuluftLive zuluft, string schwelleText)
+    public static SteuerungModulDto Modul(ZuluftLive zuluft, string schwelleText, string kennung = "zuluft", string titel = "Zuluft")
     {
         var de = CultureInfo.GetCultureInfo("de-DE");
         var diff = zuluft.DifferenzRegelGm3 ?? zuluft.DifferenzGm3;
         return new(
-            Kennung: "zuluft",
-            Titel: "Zuluft",
+            Kennung: kennung,
+            Titel: titel,
             Status: zuluft.AutomatikAn == false ? "aus" : zuluft.PortAn == true ? "an" : zuluft.Zustand?.Ton == "warn" ? "warn" : "aus",
             Kurz: $"Ansaugen ab {schwelleText} · {(zuluft.AutomatikAn == true ? "Automatik an" : "Automatik aus")}",
             // Die Differenz, nach der die Regelung entscheidet — dieselbe wie auf der Detailseite. Die rohe

@@ -86,6 +86,9 @@ public sealed class SteuerungInstanzAufraeumenService
 
         plan.AddRange(katalog.Where(b => b.Art is BauteilArt.RechenSensor or BauteilArt.RechenSchalter && b.EntityId.EndsWith(endung, StringComparison.Ordinal))
             .Select(b => new Baustein("rechenwert", b.EntityId, b.Name)));
+        // Gleitende Mittelwerte sind Filter-Helfer (nicht Template): eigener Eintrag in Home Assistant, eigene Domäne beim Entfernen.
+        plan.AddRange(katalog.Where(b => b.Art == BauteilArt.Mittelwert && b.EntityId.EndsWith(endung, StringComparison.Ordinal))
+            .Select(b => new Baustein("mittelwert", b.EntityId, b.Name)));
         plan.AddRange(katalog.Where(b => SteuerungHelferService.Kann(b.Art) && b.EntityId.EndsWith(endung, StringComparison.Ordinal))
             .Select(b => new Baustein("helfer", b.EntityId, b.Name)));
         return plan;
@@ -108,7 +111,9 @@ public sealed class SteuerungInstanzAufraeumenService
         foreach (var b in plan.Where(p => p.Art == "automation")) einzeln.Add(await AutomationEntfernenAsync(client, b, ct));
 
         var rechenwerte = plan.Where(p => p.Art == "rechenwert").ToList();
-        if (rechenwerte.Count > 0) einzeln.AddRange(await RechenwerteEntfernenAsync(client, rechenwerte, ct));
+        if (rechenwerte.Count > 0) einzeln.AddRange(await RechenwerteEntfernenAsync(client, rechenwerte, "template", "rechenwert", ct));
+        var mittelwerte = plan.Where(p => p.Art == "mittelwert").ToList();
+        if (mittelwerte.Count > 0) einzeln.AddRange(await RechenwerteEntfernenAsync(client, mittelwerte, "filter", "mittelwert", ct));
 
         var helfer = plan.Where(p => p.Art == "helfer").ToList();
         var da = helfer.Where(h => vorhanden.Contains(h.Kennung)).ToList();
@@ -154,20 +159,20 @@ public sealed class SteuerungInstanzAufraeumenService
         }
     }
 
-    private async Task<IEnumerable<Teil>> RechenwerteEntfernenAsync(HttpClient client, IReadOnlyList<Baustein> rechenwerte, CancellationToken ct)
+    private async Task<IEnumerable<Teil>> RechenwerteEntfernenAsync(HttpClient client, IReadOnlyList<Baustein> rechenwerte, string domaene, string art, CancellationToken ct)
     {
         var ergebnis = new List<Teil>();
         JsonElement eintraege;
         try
         {
-            using var antwort = await client.GetAsync("api/config/config_entries/entry?domain=template", ct);
+            using var antwort = await client.GetAsync($"api/config/config_entries/entry?domain={domaene}", ct);
             if (!antwort.IsSuccessStatusCode)
-                return rechenwerte.Select(r => new Teil("rechenwert", r.Kennung, "fehler", $"Eintragsliste nicht lesbar ({(int)antwort.StatusCode})."));
+                return rechenwerte.Select(r => new Teil(art, r.Kennung, "fehler", $"Eintragsliste nicht lesbar ({(int)antwort.StatusCode})."));
             eintraege = await antwort.Content.ReadFromJsonAsync<JsonElement>(ct);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            return rechenwerte.Select(r => new Teil("rechenwert", r.Kennung, "fehler", ex.Message));
+            return rechenwerte.Select(r => new Teil(art, r.Kennung, "fehler", ex.Message));
         }
 
         foreach (var r in rechenwerte)
@@ -176,18 +181,18 @@ public sealed class SteuerungInstanzAufraeumenService
                 ? eintraege.EnumerateArray().FirstOrDefault(e => e.TryGetProperty("title", out var t) && t.GetString() == r.Titel)
                 : default;
             var kennung = eintrag.ValueKind == JsonValueKind.Object && eintrag.TryGetProperty("entry_id", out var id) ? id.GetString() : null;
-            if (kennung is null) { ergebnis.Add(new Teil("rechenwert", r.Kennung, "nicht_da", null)); continue; }
+            if (kennung is null) { ergebnis.Add(new Teil(art, r.Kennung, "nicht_da", null)); continue; }
 
             try
             {
                 using var geloescht = await client.DeleteAsync($"api/config/config_entries/entry/{Uri.EscapeDataString(kennung)}", ct);
                 ergebnis.Add(geloescht.IsSuccessStatusCode
-                    ? new Teil("rechenwert", r.Kennung, "entfernt", null)
-                    : new Teil("rechenwert", r.Kennung, "fehler", $"Entfernen: {(int)geloescht.StatusCode}."));
+                    ? new Teil(art, r.Kennung, "entfernt", null)
+                    : new Teil(art, r.Kennung, "fehler", $"Entfernen: {(int)geloescht.StatusCode}."));
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                ergebnis.Add(new Teil("rechenwert", r.Kennung, "fehler", ex.Message));
+                ergebnis.Add(new Teil(art, r.Kennung, "fehler", ex.Message));
             }
         }
 
