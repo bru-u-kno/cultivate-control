@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { indexSeiteAus, tiefenlinkAus } from './useHaTiefenlink'
+import { indexSeiteAus, startSeiteAus, tiefenlinkAus } from './useHaTiefenlink'
 
 // So schickt das HA-Frontend (20260826.7) die Route über das generische
 // App-Panel /app/<slug>/<rest>: computeRouteTail trennt Slug und Rest.
@@ -59,5 +59,16 @@ describe('indexSeiteAus', () => {
     for (const index of ['//boese.example/x', 'x?y=1', '../config', 'a b', 'javascript:alert(1)', 'a//b']) {
       expect(indexSeiteAus(`?index=${encodeURIComponent(index)}`)).toBeNull()
     }
+  })
+})
+
+describe('startSeiteAus', () => {
+  it('liest die Seite hinter dem Ingress-Pfad', () => {
+    const basis = '/api/hassio_ingress/abc'
+    expect(startSeiteAus(`${basis}/live`, basis)).toBe('/live')
+    expect(startSeiteAus(`${basis}/zelte/3/`, basis)).toBe('/zelte/3')
+    expect(startSeiteAus(`${basis}/`, basis)).toBe('/')
+    expect(startSeiteAus(basis, basis)).toBe('/')
+    expect(startSeiteAus('/aufgaben', '/')).toBe('/aufgaben')
   })
 })

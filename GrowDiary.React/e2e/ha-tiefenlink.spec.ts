@@ -243,4 +243,26 @@ test.describe('Push-Link öffnet die Seite aus der Meldung', () => {
     await page.waitForTimeout(300)
     expect(await appPfad(frame)).toBe('/grows')
   })
+
+  test('Ingress-Panel, Kaltstart: ein Link auf eine Weiterleitungs-Seite (live, sensoren) zeigt Inhalt, keine leere Seite', async ({ page }) => {
+    // hass_ingress lädt beim ersten Öffnen die Seite aus ?index= selbst in den
+    // iframe (…/live). Dort liegen Weiterleitungen (/live → /, /sensoren →
+    // /geraete): am 04.11.2026 blieb <main> leer, weil die App zusätzlich ?index=
+    // las und dieselbe Weiterleitung ein zweites Mal anstieß. Betraf jede Meldung
+    // ohne Zelt (Update, Tagesbericht, Systemwächter, Kalibrierung).
+    for (const [seite, erwartet] of [['live', '/'], ['sensoren', '/geraete']] as const) {
+      await page.goto('/icons/' + 'gibt-es-nicht.txt').catch(() => undefined)
+      await page.evaluate((s) => {
+        history.replaceState(null, '', `/growos?index=${s}`)
+        document.documentElement.innerHTML =
+          `<body style="margin:0"><iframe id="f" src="/${s}" style="width:400px;height:800px;border:0"></iframe></body>`
+      }, seite)
+      await expect.poll(() => page.frames().length).toBeGreaterThan(1)
+      const frame = page.frames().find((f) => f !== page.mainFrame())!
+      await expect.poll(() => appPfad(frame), { message: `Seite ${seite}` }).toBe(erwartet)
+      await expect(frame.locator('#inhalt')).not.toBeEmpty()
+      await expect(frame.getByRole('heading', { level: 1 }).first()).toBeVisible()
+      await expect.poll(() => page.evaluate(() => location.pathname + location.search)).toBe('/growos')
+    }
+  })
 })

@@ -779,7 +779,8 @@ public static class SteuerungBauteile
             // ein Wert mit " oder ' bricht dort aus und kann eine Automation um
             // beliebige Aktionen erweitern (Sicherheitsprüfung 01.10.2026).
             // Ein ungültiger Wert bleibt Platzhalter — die Vorschrift entfällt.
-            if (IstEntityId(entity))
+            // Einzige Ausnahme: der Link der Push-Meldung (push_ziel) ist ein HA-Pfad, kein Gerät — ebenso streng geprüft.
+            if (IstEntityId(entity) || (rolle == "push_ziel" && IstHaPfad(entity)))
             {
                 fertig = fertig.Replace($"[[{rolle}]]", entity, StringComparison.Ordinal);
             }
@@ -787,6 +788,14 @@ public static class SteuerungBauteile
 
         return fertig.Contains("[[", StringComparison.Ordinal) ? null : fertig;
     }
+
+    /// <summary>
+    /// Ist der Text ein schlichter Pfad in Home Assistant (<c>/cultivate_control?index=live</c>)? Kein Schema, kein
+    /// <c>//</c>, nur Buchstaben, Ziffern und <c>/ _ - ? = % .</c> — er wird roh in JSON-Text eingesetzt.
+    /// </summary>
+    public static bool IstHaPfad(string? wert)
+        => !string.IsNullOrEmpty(wert) && wert.Length <= 200 && wert[0] == '/' && !wert.StartsWith("//", StringComparison.Ordinal)
+           && wert.All(c => char.IsAsciiLetterOrDigit(c) || c is '/' or '_' or '-' or '?' or '=' or '%' or '.');
 
     /// <summary>
     /// Hat der Text die Form einer HA-Entity-ID (<c>domain.objekt_id</c>, nur

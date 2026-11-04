@@ -53,13 +53,27 @@ public sealed class SteuerungAutomationService
     /// <summary>Wohin gepusht wird, wenn der Fork keine Adresse kennt: die Sammelgruppe von Home Assistant.</summary>
     public const string PushRueckfall = "notify.notify";
 
+    /// <summary>
+    /// Platzhalter für den Link, den der Tipp auf eine Push-Meldung öffnet (<c>clickAction</c>): Live in
+    /// Cultivate Control, so wie bei den Meldungen der App selbst (<see cref="NotificationService.StartPfadAsync"/>).
+    /// Ohne ihn öffnete die Companion-App das Hauptdashboard von Home Assistant.
+    /// </summary>
+    public const string PushZielPlatzhalter = "push_ziel";
+
+    /// <summary>Kennt der Fork den Link nicht (kein Add-on, Supervisor stumm): die Startseite von Home Assistant, wie vorher.</summary>
+    public const string PushZielRueckfall = "/";
+
     private readonly HomeAssistantService _ha;
     private readonly ILogger<SteuerungAutomationService> _log;
     private readonly string _vorlagenWurzel;
     private readonly AppPaths _pfade;
+    private readonly NotificationService? _benachrichtigung;
 
-    public SteuerungAutomationService(HomeAssistantService ha, ILogger<SteuerungAutomationService> log, AppPaths pfade)
+    public SteuerungAutomationService(
+        HomeAssistantService ha, ILogger<SteuerungAutomationService> log, AppPaths pfade,
+        NotificationService? benachrichtigung = null)
     {
+        _benachrichtigung = benachrichtigung;
         _ha = ha;
         _log = log;
         _vorlagenWurzel = VorlagenWurzel;
@@ -170,7 +184,7 @@ public sealed class SteuerungAutomationService
                 continue;
             }
 
-            var fertig = Fuellen(vorlage, MitPushAdresse(vorlage, zuordnung));
+            var fertig = Fuellen(vorlage, await MitPushAdresseAsync(vorlage, zuordnung, ct));
             if (fertig is null)
             {
                 einzeln.Add(new Ergebnis(kennung, name, Stand.OhneGeraet,
@@ -227,9 +241,31 @@ public sealed class SteuerungAutomationService
     /// Die Push-Adresse, die der Fork kennt, als Vorlagen-Variable — nur für Vorlagen, die sie
     /// brauchen (die anderen lesen die Datenbank nicht an).
     /// </summary>
-    private IReadOnlyDictionary<string, string> MitPushAdresse(JsonObject vorlage, IReadOnlyDictionary<string, string> zuordnung)
+    private async Task<IReadOnlyDictionary<string, string>> MitPushAdresseAsync(
+        JsonObject vorlage, IReadOnlyDictionary<string, string> zuordnung, CancellationToken ct)
     {
-        if (!vorlage.ToJsonString().Contains($"[[{PushPlatzhalter}]]", StringComparison.Ordinal)) return zuordnung;
+        var text = vorlage.ToJsonString();
+        var mitZiel = zuordnung;
+        if (text.Contains($"[[{PushZielPlatzhalter}]]", StringComparison.Ordinal))
+        {
+            string? ziel = null;
+            try
+            {
+                if (_benachrichtigung is not null) ziel = await _benachrichtigung.StartPfadAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _log.LogWarning(ex, "Der Link der Push-Meldung ließ sich nicht bestimmen — die Vorlage nimmt {Rueckfall}.", PushZielRueckfall);
+            }
+
+            mitZiel = new Dictionary<string, string>(zuordnung, StringComparer.Ordinal)
+            {
+                [PushZielPlatzhalter] = PushZiel(ziel),
+            };
+        }
+
+        if (!text.Contains($"[[{PushPlatzhalter}]]", StringComparison.Ordinal)) return mitZiel;
+        zuordnung = mitZiel;
 
         string? konfiguriert = null;
         try
@@ -247,6 +283,15 @@ public sealed class SteuerungAutomationService
         };
         return mit;
     }
+
+    /// <summary>
+    /// Der Link für <c>clickAction</c>: nur ein schlichter HA-Pfad (er wird roh in die Automation geschrieben),
+    /// sonst <see cref="PushZielRueckfall"/>.
+    /// </summary>
+    public static string PushZiel(string? link)
+        => link?.Trim() is { } pfad && SteuerungBauteile.IstHaPfad(pfad)
+            ? pfad
+            : PushZielRueckfall;
 
     /// <summary>
     /// Die Push-Adresse für Vorlagen: die im Fork eingestellte, sofern sie wie ein
@@ -271,6 +316,7 @@ public sealed class SteuerungAutomationService
             .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         // Ohne eingestellte Adresse die Sammelgruppe — eine Vorlage bleibt nie wegen ihr ungefüllt.
         belegt.TryAdd(PushPlatzhalter, PushRueckfall);
+        belegt.TryAdd(PushZielPlatzhalter, PushZielRueckfall);
 
         var geputzt = Aussieben(vorlage.DeepClone(), belegt.Keys.ToHashSet(StringComparer.Ordinal));
         if (geputzt is not JsonObject rumpf) return null;

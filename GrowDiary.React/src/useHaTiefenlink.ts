@@ -21,6 +21,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ROUTER_BASENAME } from './base'
 
 /** Nur schlichte App-Pfade: „/aufgaben", „/zelte/3". Kein Schema, kein „//", keine Abfrage. */
 const APP_PFAD = /^(\/[A-Za-z0-9_-]+)+$/
@@ -56,6 +57,15 @@ export function indexSeiteAus(suche: string): string | null {
   if (!index) return null
   const pfad = `/${index.replace(/^\/+|\/+$/g, '')}`
   return APP_PFAD.test(pfad) ? pfad : null
+}
+
+/**
+ * Die Seite, auf der dieser iframe geladen wurde, relativ zur App („/live“) — oder „/“ für die Startseite.
+ * Beim ersten Öffnen eines Ingress-Panels lädt hass_ingress die Seite aus `?index=` selbst in den iframe.
+ */
+export function startSeiteAus(pfadname: string, basis: string = ROUTER_BASENAME): string {
+  const rest = basis !== '/' && pfadname.startsWith(basis) ? pfadname.slice(basis.length) : pfadname
+  return `/${rest.replace(/^\/+|\/+$/g, '')}`
 }
 
 /**
@@ -104,9 +114,14 @@ export function useHaTiefenlink(): void {
   }, [])
 
   // Ingress-Panel (hass_ingress): die Seite steht als ?index= in der HA-Adresse.
+  // Schon im ersten Render lesen: Weiterleitungs-Routen (/live → /) ändern die Adresse im ersten Effekt.
+  const startSeite = useRef<string | null>(null)
+  if (startSeite.current === null) startSeite.current = startSeiteAus(window.location.pathname)
+
   useEffect(() => {
     if (window.parent === window) return
     const eltern = window.parent
+    let erstesMal = true
     try {
       void eltern.location.search
     } catch {
@@ -120,9 +135,13 @@ export function useHaTiefenlink(): void {
 
     const pruefen = () => {
       if (eltern.location.pathname !== panelPfad) return
+      const kaltstart = erstesMal
+      erstesMal = false
       const seite = indexSeiteAus(eltern.location.search)
       if (!seite) return
-      navigateRef.current(seite, { replace: true })
+      // Beim Kaltstart steht die Seite schon im iframe. Nochmal dorthin zu navigieren stieße eine
+      // Weiterleitungs-Route (/live, /sensoren) zum zweiten Mal an — <main> blieb leer (04.11.2026).
+      if (!(kaltstart && seite === startSeite.current)) navigateRef.current(seite, { replace: true })
       // ?index= wieder entfernen: sonst öffnet ein Neuladen die alte Seite, und
       // ein zweiter Tipp auf dieselbe Art Meldung änderte die Adresse nicht.
       const adresse = new URL(eltern.location.href)

@@ -14,6 +14,13 @@
 - **Löschen:** „Löschen …“ fragt nach und entfernt die Lampe aus Cultivate Control (Seite, Einstellungen, Zuordnung, Zelt). Das Gerät selbst schaltet sich nicht um und behält Zeitplan und Stufe vom Controller. Ein Haken „Auch aus Home Assistant entfernen“ fehlt, weil es dort nichts zu entfernen gibt. Die erste Lampe lässt sich nicht löschen.
 - **Getestet:** Anlegen, Seite mit den eigenen Reitern, Umbenennen und Löschen laufen gegen die echte App (ohne `?instanz=` beim Laden wird der Test rot), dazu die Erkennung der Kennung `licht-i{n}` und die Frage, welche Arten Bausteine in Home Assistant haben.
 
+## 2.0.0-cc.330
+
+**Ein Tipp auf eine Push-Meldung führt wieder dorthin, wo die Sache steht – nicht mehr auf eine leere Seite oder in das Hauptdashboard von Home Assistant.**
+
+- **Leere Seite behoben:** Wer die App über das Ingress-Panel ohne Kopfleiste öffnet und auf eine Meldung ohne Zelt tippt (Update, Tagesüberblick, Systemwächter, Kalibrierung, Wartung), sah nur die Kopfzeile und die Leiste, aber keinen Inhalt. Das Panel lädt die Zielseite (`/live`, `/sensoren`) schon selbst in den Rahmen, und die App navigierte danach ein zweites Mal dorthin; die Weiterleitung auf die eigentliche Seite lief dadurch nicht noch einmal. Jetzt öffnet die App die Seite nur noch einmal. Gemessen am echten Home Assistant mit dem Panel-Link: vorher blieb der Inhalt leer, jetzt erscheinen Live bzw. Geräte › Inventar.
+- **Meldung „Zusatz-Entfeuchter zieht nichts“:** Diese Push-Meldung kam aus einer Automation in Home Assistant ohne Ziel, der Tipp darauf öffnete deshalb das Hauptdashboard. Die Vorlage (jetzt Fassung 3) trägt den Link auf Live in Cultivate Control mit; bestehende Automationen werden beim nächsten Anlegen bzw. Erneuern der Vorlage aktualisiert. Ist der Link nicht bekannt, bleibt es wie bisher bei der Startseite von Home Assistant.
+
 ## 2.0.0-cc.329
 
 **Steuerungen je Zelt, Teil 8a: Weitere Lampen lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**
