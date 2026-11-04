@@ -77,6 +77,38 @@ public sealed class LichtSteuerungService
     private readonly ILogger<LichtSteuerungService> _logger;
     private readonly Func<TimeSpan, CancellationToken, Task>? _warten;
 
+    // Lampen-Instanzen: Der Dienst aus der Abhängigkeits-Einspritzung gehört der ersten Lampe (Modul „licht“, Geräte-Rollen
+    // unverändert). Für eine weitere Lampe liefert Fuer() eine Kopie mit deren Modul „licht-i{n}“: Einstellungen und Geräte-Zuordnung
+    // liegen dann unter diesem Modul. Die Lampe hat keine Home-Assistant-Bausteine, also keine Kennungen zum Umstellen.
+    private string _modul = Modul;
+    private int? _nummer;
+
+    /// <summary>Das Modul dieses Dienstes: <c>licht</c> oder <c>licht-i{n}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Die Nummer der Instanz (ab 2) — <c>null</c> bei der ersten.</summary>
+    public int? Nummer => _nummer;
+
+    /// <summary>Der Dienst einer Instanz. Ein Modul, das keine weitere Lampe ist, bekommt den Dienst der ersten.</summary>
+    public LichtSteuerungService Fuer(string modul)
+    {
+        if (!string.Equals(InstanzModul.Art(modul), Modul, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return Bestand();
+        var kopie = (LichtSteuerungService)MemberwiseClone();
+        kopie._modul = modul;
+        kopie._nummer = n;
+        return kopie;
+    }
+
+    /// <summary>Der Dienst der ersten Lampe.</summary>
+    public LichtSteuerungService Bestand()
+    {
+        if (_nummer is null) return this;
+        var kopie = (LichtSteuerungService)MemberwiseClone();
+        kopie._modul = Modul;
+        kopie._nummer = null;
+        return kopie;
+    }
+
     public LichtSteuerungService(
         SteuerungRepository repo,
         HomeAssistantService ha,
@@ -99,7 +131,7 @@ public sealed class LichtSteuerungService
 
     // ----------------------------------------------------------- Einstellungen
 
-    public LichtEinstellungen Einstellungen => _repo.GetEinstellungen<LichtEinstellungen>(Modul) ?? new LichtEinstellungen();
+    public LichtEinstellungen Einstellungen => _repo.GetEinstellungen<LichtEinstellungen>(_modul) ?? new LichtEinstellungen();
 
     public static Dictionary<string, string> Pruefen(LichtEinstellungen e)
     {
@@ -133,7 +165,7 @@ public sealed class LichtSteuerungService
 
         var vorher = Einstellungen;
         var live = await LiveAsync(ct);
-        _repo.SetEinstellungen(Modul, e);
+        _repo.SetEinstellungen(_modul, e);
 
         var erreicht = true;
         var aktiv = AktivesPreset(vorher, live.EinZeit, live.AusZeit, live.Modus);
@@ -158,7 +190,7 @@ public sealed class LichtSteuerungService
         var entities = await _ha.GetEntitiesAsync(settings, ct);
         var nachId = entities.ToDictionary(x => x.EntityId, x => x, StringComparer.OrdinalIgnoreCase);
         var e = Einstellungen;
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
 
         string? Text(string? id) => id is not null && nachId.TryGetValue(id, out var s) ? s.State : null;
         string? Rolle(string rolle) => geraete.TryGetValue(rolle, out var id) && !string.IsNullOrWhiteSpace(id) ? Text(id) : null;
@@ -192,7 +224,7 @@ public sealed class LichtSteuerungService
     /// <summary>Ob ein Lichtsensor zugeordnet ist, und was er in Prozent meldet (null, wenn er nichts liefert).</summary>
     public async Task<(bool Zugeordnet, double? Prozent)> LichtSensorAsync(CancellationToken ct)
     {
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         if (!geraete.TryGetValue(Rollen.Sensor, out var id) || string.IsNullOrWhiteSpace(id)) return (false, null);
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         var stand = (await _funk.ZustandAsync(settings, id, ct))?.State;
@@ -232,7 +264,7 @@ public sealed class LichtSteuerungService
             {
                 if (stufe is not { } wert || wert is < 1 or > 10) return false;
                 e.Stufe = wert;
-                _repo.SetEinstellungen(Modul, e);
+                _repo.SetEinstellungen(_modul, e);
                 return await SchreibenAsync(new[] { (Rollen.Stufe, wert.ToString(CultureInfo.InvariantCulture)) }, e, ct);
             }
 
@@ -263,7 +295,7 @@ public sealed class LichtSteuerungService
     private async Task<bool> ZeitenErreichbarAsync(CancellationToken ct)
     {
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         foreach (var rolle in new[] { Rollen.EinZeit, Rollen.AusZeit })
         {
             if (!geraete.TryGetValue(rolle, out var id) || string.IsNullOrWhiteSpace(id)) return true; // fehlt: das meldet SchreibenAsync
@@ -284,7 +316,7 @@ public sealed class LichtSteuerungService
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         if (!settings.IsConfigured) return false;
 
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         var ziele = new List<(string EntityId, string Soll)>();
         foreach (var (rolle, soll) in auftraege)
         {

@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.329
+
+**Steuerungen je Zelt, Teil 8a: Weitere Lampen lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**
+
+- **Eigene Lampe je Zelt:** Der Licht-Dienst arbeitet jetzt je Lampe mit eigenen Einstellungen (Zeitpläne, Stufe) und eigenen Geräten (Modus, Ein- und Aus-Zeit, Stufe, Zustand). Die erste Lampe bleibt in allem, wie sie war. Eine Lampe hat keine Bausteine in Home Assistant, das Anlegen und Löschen berührt dort nichts.
+- **Zelt ruhend:** Jede weitere Lampe steht als eigenes Gerät in der Liste und geht wie die erste aus, wenn das Zelt ruht.
+- **Übersicht:** Jede weitere Lampe hat eine eigene Zeile im richtigen Zelt.
+- **Schnittstelle:** Die Licht-Seite, das Speichern und die Befehle (an, aus, Preset, Stufe) nehmen eine Angabe `instanz` an (wie die anderen Steuerungen); eine unbekannte oder fremde Instanz wird abgewiesen. Das Anlegen weiterer Steuerungen nimmt jetzt auch „Licht“ an.
+- **Noch nicht je Lampe:** Der Lichtplan (Stufe nach Plan) und der Licht-Wächter richten sich weiter nur nach der ersten Lampe.
+- **Getestet:** Der Dienst einer Lampe liest und speichert nur ihre eigenen Einstellungen (liest er die der ersten, wird ein Test rot), die Geräte liegen je Lampe getrennt, „Zelt ruhend“ kennt jede Lampe, und unbekannte oder fremde Instanzen werden abgewiesen.
+
 ## 2.0.0-cc.328
 
 **Steuerungen je Zelt, Teil 7b: Weitere Zuluft-Steuerungen lassen sich jetzt in der Oberfläche anlegen, einrichten, umbenennen und löschen — wie Wasserkühler und Entfeuchter.**

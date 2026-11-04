@@ -73,7 +73,7 @@ public sealed class SteuerungInstanzApiTests : IDisposable
     public void Anlegen_weist_Unsinn_ab_und_hinterlaesst_nichts()
     {
         Assert.IsType<BadRequestObjectResult>(Anlegen("chiller", "", _zelt1).Result);                // kein Name
-        Assert.IsType<BadRequestObjectResult>(Anlegen("licht", "Zweite Lampe", _zelt1).Result);       // Dienst kann noch nicht
+        Assert.IsType<BadRequestObjectResult>(Anlegen("entfeuchter-zusatz", "Zweiter Zusatz", _zelt1).Result);       // Dienst kann noch nicht
         Assert.IsType<BadRequestObjectResult>(Anlegen("gibt-es-nicht", "x", _zelt1).Result);
         Assert.IsType<BadRequestObjectResult>(Anlegen("chiller", "Reserve", 99999).Result);          // Zelt gibt es nicht
         Assert.IsType<BadRequestObjectResult>(_controller.InstanzAnlegen(_instanzen, _zelte, null!).Result);
@@ -161,7 +161,7 @@ public sealed class SteuerungInstanzApiTests : IDisposable
         Assert.Equal(_zelt2, _zelte.ZeltFuer("entfeuchter-i2"));
         Assert.Equal(_zelt2, SteuerungInstanzen.ZeltFuer("entfeuchter-i2"));
 
-        foreach (var art in new[] { "licht", "entfeuchter-zusatz", "quatsch" })
+        foreach (var art in new[] { "entfeuchter-zusatz", "quatsch" })
         {
             Assert.IsType<BadRequestObjectResult>(Anlegen(art, "Nein", _zelt1).Result);
         }
@@ -186,5 +186,28 @@ public sealed class SteuerungInstanzApiTests : IDisposable
         var instanz = Assert.Single(Wert(Anlegen("zuluft", "Keller 2", _zelt2)).Instanzen);
         Assert.Equal("zuluft-i2", instanz.Modul);
         Assert.Equal(_zelt2, _zelte.ZeltFuer("zuluft-i2"));
+    }
+
+    [Theory]
+    [InlineData("licht-i9")]         // Art stimmt, aber nie angelegt
+    [InlineData("chiller-i2")]       // angelegt, aber eine andere Art
+    [InlineData("zuluft-i2")]
+    [InlineData("quatsch")]
+    public async Task Die_Licht_Routen_lehnen_eine_unbekannte_oder_fremde_Instanz_ab(string instanz)
+    {
+        Anlegen("chiller", "Reserve", _zelt1);
+        Anlegen("zuluft", "Keller 2", _zelt1);
+
+        Assert.IsType<NotFoundObjectResult>((await _controller.Licht(instanz, CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.LichtSpeichern(new LichtEinstellungen(), instanz, CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.LichtBefehl(new LichtBefehlRequest("aus", null, null), instanz, CancellationToken.None)).Result);
+    }
+
+    [Fact]
+    public void Anlegen_nimmt_Lampe_an()
+    {
+        var instanz = Assert.Single(Wert(Anlegen("licht", "Lampe links", _zelt2)).Instanzen);
+        Assert.Equal("licht-i2", instanz.Modul);
+        Assert.Equal(_zelt2, _zelte.ZeltFuer("licht-i2"));
     }
 }

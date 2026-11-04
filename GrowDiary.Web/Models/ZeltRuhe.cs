@@ -95,7 +95,13 @@ public static class ZeltRuheArten
             // Weitere Zuluft-Steuerungen: wie die erste „läuft weiter“, Schalter ist ihr Port.
             .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Zuluft)
                 .Select(i => new ZeltRuheArt(i.Modul, $"Zuluft {i.Name}", i.Modul, "port_schalter", false)))
+            // Weitere Lampen: wie die erste „ausschalten“, Schalter ist ihr Modus.
+            .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Licht)
+                .Select(i => new ZeltRuheArt(i.Modul, $"Licht {i.Name}", i.Modul, "licht_modus", true)))
             .ToList();
+
+    /// <summary>Ist die Kennung eine weitere Lampe (<c>licht-i2</c>)?</summary>
+    public static bool IstLichtInstanz(string? kennung) => InstanzModul.Art(kennung) == Licht;
 
     /// <summary>Ist die Kennung eine weitere Zuluft-Steuerung (<c>zuluft-i2</c>)?</summary>
     public static bool IstZuluftInstanz(string? kennung) => InstanzModul.Art(kennung) == Zuluft;

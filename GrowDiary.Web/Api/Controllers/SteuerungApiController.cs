@@ -171,14 +171,7 @@ public sealed class SteuerungApiController : ApiControllerBase
             // stillgelegt, siehe ForkAiSchalter. Das Ziel führt der Plan.
             AbluftZeile(live, null),
             ZuluftKachel.Modul(zuluft, F(Zahl(ZuluftSteuerungService.Entitaeten.MindestDifferenz), " g/m³", "0.0")),
-            new(
-                Kennung: "licht",
-                Titel: "Licht",
-                Status: licht.Fehlgeschlagen.Count > 0 ? "warn" : licht.LichtAn == true ? "an" : "aus",
-                Kurz: LichtKurz(licht),
-                Wert: licht.LichtAn == true ? "an" : "aus",
-                Unterzeile: licht.NaechsterWechsel ?? (licht.LichtAn == true ? "Lichtphase" : "Dunkelphase"),
-                HatDetail: true),
+            LichtZeile(licht, "licht", "Licht"),
         };
 
         // Steuerungen je Zelt: Jedes weitere Zelt mit eigener CO₂-Steuerung bekommt eigene Zeilen, hinter denen des Bestand-Zeltes;
@@ -195,6 +188,13 @@ public sealed class SteuerungApiController : ApiControllerBase
             var instanzLive = await _entfeuchter.Fuer(instanz.Modul).LiveAsync(ct);
             module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("entfeuchter", StringComparison.Ordinal)) + 1,
                 EntfeuchterZeile(instanzLive, instanz.Modul, instanz.Name, instanz.Nummer));
+        }
+        // Weitere Lampen: je Instanz eine Zeile hinter der ersten, mit dem Namen aus dem Register.
+        foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "licht"))
+        {
+            var instanzLive = await _licht.Fuer(instanz.Modul).LiveAsync(ct);
+            module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("licht", StringComparison.Ordinal)) + 1,
+                LichtZeile(instanzLive, instanz.Modul, instanz.Name));
         }
         // Weitere Zuluft-Steuerungen: je Instanz eine Zeile hinter der ersten, mit dem Namen aus dem Register.
         foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "zuluft"))
@@ -709,7 +709,7 @@ public sealed class SteuerungApiController : ApiControllerBase
     {
         if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
         // Nur Steuerungen, deren Dienst schon mehrere Instanzen kann: sonst entstünde ein Eintrag ohne Wirkung.
-        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul))
+        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul or LichtSteuerungService.Modul))
             return BadRequestError("steuerung_instanz_art", "Diese Steuerung lässt sich noch nicht vervielfachen.");
         if (request.ZeltId is { } zelt && !zelteDienst.AktiveZelte().Any(t => t.Id == zelt))
             return BadRequestError("steuerung_instanz_zelt", "Dieses Zelt gibt es nicht.");
@@ -789,15 +789,36 @@ public sealed class SteuerungApiController : ApiControllerBase
 
     // ---------------------------------------------------------------- Licht
 
+    /// <summary>Die Zeile einer Lampe in der Übersicht (die erste und jede weitere).</summary>
+    public static SteuerungModulDto LichtZeile(LichtLive licht, string kennung, string titel) => new(
+        Kennung: kennung,
+        Titel: titel,
+        Status: licht.Fehlgeschlagen.Count > 0 ? "warn" : licht.LichtAn == true ? "an" : "aus",
+        Kurz: LichtKurz(licht),
+        Wert: licht.LichtAn == true ? "an" : "aus",
+        Unterzeile: licht.NaechsterWechsel ?? (licht.LichtAn == true ? "Lichtphase" : "Dunkelphase"),
+        HatDetail: true);
+
+    /// <summary>Der Licht-Dienst: ohne Angabe der erste, sonst der einer angelegten Instanz — eine unbekannte gibt <c>null</c>.</summary>
+    private LichtSteuerungService? LichtDienst(string? instanz)
+    {
+        if (string.IsNullOrWhiteSpace(instanz) || string.Equals(instanz, LichtSteuerungService.Modul, StringComparison.Ordinal)) return _licht.Bestand();
+        return SteuerungInstanzen.Module.Contains(instanz, StringComparer.Ordinal) && InstanzModul.Art(instanz) == LichtSteuerungService.Modul
+            ? _licht.Fuer(instanz)
+            : null;
+    }
+
     /// <summary>
     /// Fork AI: Die Licht-Seite — Zeitpläne, Stufe und der Zustand am Controller.
     /// </summary>
     [HttpGet("licht")]
     [ProducesResponseType(typeof(LichtSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<LichtSeiteDto>> Licht(CancellationToken ct)
+    public async Task<ActionResult<LichtSeiteDto>> Licht([FromQuery] string? instanz, CancellationToken ct)
     {
-        var geraete = _geraete.EntitiesFuerModul(LichtSteuerungService.Modul);
-        return Ok(new LichtSeiteDto(_licht.Einstellungen, await _licht.LiveAsync(ct))
+        var dienst = LichtDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var geraete = _geraete.EntitiesFuerModul(dienst.ModulName);
+        return Ok(new LichtSeiteDto(dienst.Einstellungen, await dienst.LiveAsync(ct))
         {
             GeraeteZugeordnet = geraete.Values.Count(entity => !string.IsNullOrWhiteSpace(entity)),
             GeraeteGesamt = geraete.Count,
@@ -811,16 +832,18 @@ public sealed class SteuerungApiController : ApiControllerBase
     [HttpPut("licht")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(LichtSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<LichtSeiteDto>> LichtSpeichern([FromBody] LichtEinstellungen request, CancellationToken ct)
+    public async Task<ActionResult<LichtSeiteDto>> LichtSpeichern([FromBody] LichtEinstellungen request, [FromQuery] string? instanz, CancellationToken ct)
     {
         if (request is null) return BadRequestError("licht_invalid", "Es wurde nichts übergeben.");
-        var (gespeichert, fehler, erreicht) = await _licht.SpeichernAsync(request, ct);
+        var dienst = LichtDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var (gespeichert, fehler, erreicht) = await dienst.SpeichernAsync(request, ct);
         if (gespeichert is null)
         {
             foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
-        var seite = await Licht(ct);
+        var seite = await Licht(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is LichtSeiteDto dto) return Ok(dto with { HaAngenommen = erreicht });
         return seite;
     }
@@ -886,22 +909,24 @@ public sealed class SteuerungApiController : ApiControllerBase
     [HttpPost("licht/befehl")]
     [KiStufe(KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(LichtSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<LichtSeiteDto>> LichtBefehl([FromBody] LichtBefehlRequest request, CancellationToken ct)
+    public async Task<ActionResult<LichtSeiteDto>> LichtBefehl([FromBody] LichtBefehlRequest request, [FromQuery] string? instanz, CancellationToken ct)
     {
+        var dienst = LichtDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
         var art = request?.Art?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(art)) return BadRequestError("befehl_invalid", "Es wurde kein Befehl übergeben.");
 
         if (art == "quittieren")
         {
             LichtSteuerungService.OffeneVergessen();
-            return await Licht(ct);
+            return await Licht(instanz, ct);
         }
 
         if (art is not ("aus" or "an" or "preset" or "stufe"))
             return BadRequestError("befehl_unbekannt", $"Der Befehl „{art}\" ist nicht bekannt.");
 
-        var erreicht = await _licht.BefehlAsync(art, request!.Preset, request.Stufe, ct);
-        var seite = await Licht(ct);
+        var erreicht = await dienst.BefehlAsync(art, request!.Preset, request.Stufe, ct);
+        var seite = await Licht(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is LichtSeiteDto dto) return Ok(dto with { HaAngenommen = erreicht });
         return seite;
     }
