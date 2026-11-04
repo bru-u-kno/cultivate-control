@@ -3,11 +3,13 @@ import { formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card, V1Field, V1Page, V1Section, V1Switch } from '../../components/v1'
 import { ZeltChips } from './ZeltChips'
 import { instanzEntfernen, instanzUmbenennen, instanzZeltSetzen, useZelte } from './instanzen'
-import type { SteuerungInstanz } from './steuerung-typen'
+import { INSTANZ_BEZEICHNUNG } from './steuerung-typen'
+import type { InstanzArt, SteuerungInstanz } from './steuerung-typen'
 import './steuerung.css'
 
 /** „Dieser Wasserkühler“: Name und Zelt der Instanz ändern, Löschen öffnet die Rückfrage. */
-export function InstanzBlock({ instanz, neuLaden, onGeaendert, onLoeschen }: {
+export function InstanzBlock({ art = 'chiller', instanz, neuLaden, onGeaendert, onLoeschen }: {
+  art?: InstanzArt
   instanz: SteuerungInstanz | undefined
   neuLaden: () => Promise<void>
   onGeaendert: () => void
@@ -19,13 +21,14 @@ export function InstanzBlock({ instanz, neuLaden, onGeaendert, onLoeschen }: {
   // `key`: Nach dem Speichern (neuer Name, neues Zelt) beginnt das Formular mit dem gespeicherten Stand.
   return (
     <InstanzFormular
-      key={`${instanz.name}|${instanz.zeltId}`} instanz={instanz} neuLaden={neuLaden} meldung={meldung} setMeldung={setMeldung}
+      key={`${instanz.name}|${instanz.zeltId}`} art={art} instanz={instanz} neuLaden={neuLaden} meldung={meldung} setMeldung={setMeldung}
       onGeaendert={onGeaendert} onLoeschen={onLoeschen}
     />
   )
 }
 
-function InstanzFormular({ instanz, neuLaden, meldung, setMeldung, onGeaendert, onLoeschen }: {
+function InstanzFormular({ art, instanz, neuLaden, meldung, setMeldung, onGeaendert, onLoeschen }: {
+  art: InstanzArt
   instanz: SteuerungInstanz
   neuLaden: () => Promise<void>
   meldung: string | null
@@ -33,6 +36,7 @@ function InstanzFormular({ instanz, neuLaden, meldung, setMeldung, onGeaendert, 
   onGeaendert: () => void
   onLoeschen: () => void
 }) {
+  const bezeichnung = INSTANZ_BEZEICHNUNG[art]
   const zelte = useZelte()
   const [name, setName] = useState(instanz.name)
   const [zelt, setZelt] = useState<number | null>(instanz.zeltId)
@@ -60,7 +64,7 @@ function InstanzFormular({ instanz, neuLaden, meldung, setMeldung, onGeaendert, 
   }
 
   return (
-    <V1Section title="Dieser Wasserkühler">
+    <V1Section title={`Dieser ${bezeichnung}`}>
       {fehler && <V1Alert tone="critical" message={fehler} />}
       {meldung && <V1Alert tone="ok" message={meldung} />}
       <V1Card>
@@ -83,7 +87,8 @@ function InstanzFormular({ instanz, neuLaden, meldung, setMeldung, onGeaendert, 
 }
 
 /** Die Rückfrage vor dem Löschen. Entfernt wird die Instanz aus Cultivate Control; ihre Bausteine in Home Assistant bleiben stehen. */
-export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGeloescht }: {
+export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, onAbbrechen, onGeloescht }: {
+  art?: InstanzArt
   modul: string
   titel: string
   ersterTitel: string | null
@@ -93,6 +98,7 @@ export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGelo
   const [fehler, setFehler] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
   const [ausHa, setAusHa] = useState(false)
+  const b = INSTANZ_BEZEICHNUNG[art]
 
   const loeschen = async () => {
     setArbeitet(true)
@@ -112,7 +118,7 @@ export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGelo
       <V1Section title="Wirklich löschen?">
         <V1Card>
           <p className="st-hinweis">
-            Der Wasserkühler verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
+            Der {b} verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
             {ausHa
               ? 'Seine Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.'
               : 'Seine Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.'}
@@ -121,11 +127,11 @@ export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGelo
             label="Auch aus Home Assistant entfernen"
             checked={ausHa}
             onChange={setAusHa}
-            hint="Helfer, Rechenwerte und Automationen dieses Wasserkühlers. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt der Wasserkühler stehen und du kannst es noch einmal versuchen."
+            hint={`Helfer, Rechenwerte und Automationen dieses ${b}s. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt der ${b} stehen und du kannst es noch einmal versuchen.`}
           />
         </V1Card>
         {ersterTitel && (
-          <p className="st-hinweis">Den ersten Wasserkühler („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>
+          <p className="st-hinweis">Den ersten {b} („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>
         )}
         <div className="st-knopfleiste">
           <V1Button variant="ghost" onClick={onAbbrechen}>Abbrechen</V1Button>

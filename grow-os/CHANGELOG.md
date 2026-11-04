@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.326
+
+**Steuerungen je Zelt, Teil 6c: Weitere Entfeuchter lassen sich jetzt in der Oberfläche anlegen, bedienen und löschen.**
+
+- **Anlegen:** In der Steuerungs-Übersicht steht unter jedem Zelt mit einem Entfeuchter „+ Weiteren Entfeuchter in <Zelt>“. Du gibst Name und Zelt an (bei nur einem Zelt entfällt die Zelt-Frage); danach geht es auf die Seite des neuen Entfeuchters, wo du Geräte zuordnest und die Bausteine in Home Assistant anlegst. Der erste Entfeuchter bleibt unverändert.
+- **Eigene Seite je Entfeuchter:** Ein weiterer Entfeuchter hat dieselben Reiter wie die Entfeuchtung (Überblick, Einstellungen, Einrichtung), aber nur für sich, dazu den Block „Dieser Entfeuchter“ zum Umbenennen, Zelt ändern und Löschen. Ein Zusatz-Entfeuchter gehört weiter allein zum ersten Entfeuchter.
+- **In der Übersicht:** Jeder weitere Entfeuchter hat eine eigene Zeile in seinem Zelt, mit Feuchte, Einschaltschwelle und Zustand.
+- **Löschen:** Wie beim Wasserkühler mit der Rückfrage und dem Schalter „Auch aus Home Assistant entfernen“; der erste Entfeuchter lässt sich nicht löschen.
+- **Behoben:** Die Seiten weiterer Instanzen wurden ab der Nummer 10 nicht mehr erkannt (Kennung wie „-i12“); jetzt funktionieren auch sie.
+- **Getestet:** Anlegen, Seite, Umbenennen, Zelt-Wechsel und Löschen gegen die laufende App (Demobestand mit vier Zelten), die Übersicht mit Zeile und Anlege-Link, eine nie angelegte Instanz gibt eine Fehlerseite, und die Kennungen weiterer Instanzen auch ab Nummer 10.
+
 ## 2.0.0-cc.325
 
 **Steuerungen je Zelt, Teil 6b: Ein weiterer Entfeuchter lässt sich jetzt mit allen Bausteinen in Home Assistant anlegen, folgt dem Plan seines Zeltes und kennt „Zelt ruhend“ — noch ohne Oberfläche, bei dir ändert sich nichts.**

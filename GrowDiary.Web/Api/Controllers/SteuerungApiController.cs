@@ -140,17 +140,20 @@ public sealed class SteuerungApiController : ApiControllerBase
                         HatDetail: true,
                         ZeltId: zeltId);
 
+        // Eine Entfeuchter-Zeile: der erste Entfeuchter (Nummer null) und jede weitere Instanz mit ihren eigenen Helfern.
+        SteuerungModulDto EntfeuchterZeile(EntfeuchterLive l, string kennung, string titel, int? nummer) => new(
+            Kennung: kennung,
+            Titel: titel,
+            Status: l.AutomatikAn == false ? "aus" : l.PortAn == true ? "an" : "aus",
+            Kurz: $"{(Text(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.VpdRegelung, nummer)) == "on" ? "VPD-Modus" : "Luftfeuchte")} · ein ab {F(l.EinAktivProzent, " %", "0.0")} · aus unter {F(l.AusAktivProzent, " %", "0.0")}",
+            Wert: F(l.FeuchteProzent, " %", "0.0"),
+            Unterzeile: $"{(l.PortAn == true ? "entfeuchtet" : "bereit")} · VPD {F(l.Vpd, "", "0.00")}",
+            HatDetail: true);
+
         var module = new List<SteuerungModulDto>
         {
             Co2Zeile(live, null),
-            new(
-                Kennung: "entfeuchter",
-                Titel: "Entfeuchter",
-                Status: entfeuchter.AutomatikAn == false ? "aus" : entfeuchter.PortAn == true ? "an" : "aus",
-                Kurz: $"{(Text(EntfeuchterSteuerungService.Entitaeten.VpdRegelung) == "on" ? "VPD-Modus" : "Luftfeuchte")} · ein ab {F(entfeuchter.EinAktivProzent, " %", "0.0")} · aus unter {F(entfeuchter.AusAktivProzent, " %", "0.0")}",
-                Wert: F(entfeuchter.FeuchteProzent, " %", "0.0"),
-                Unterzeile: $"{(entfeuchter.PortAn == true ? "entfeuchtet" : "bereit")} · VPD {F(entfeuchter.Vpd, "", "0.00")}",
-                HatDetail: true),
+            EntfeuchterZeile(entfeuchter, "entfeuchter", "Entfeuchter", null),
             // Fork AI (A-009): Der Zusatz-Entfeuchter (Shelly) neben dem Entfeuchter.
             // Der Titel ist der Anzeigename — kein „Port 7" fest im Text.
             new(
@@ -185,6 +188,13 @@ public sealed class SteuerungApiController : ApiControllerBase
             var zeltLive = await _co2.Fuer(zeltId).LiveAsync(ct);
             module.Insert(module.FindLastIndex(m => m.Kennung == "co2") + 1, Co2Zeile(zeltLive, zeltId));
             module.Insert(module.FindLastIndex(m => m.Kennung == "abluft") + 1, AbluftZeile(zeltLive, zeltId));
+        }
+        // Weitere Entfeuchter: je Instanz eine Zeile hinter dem Zusatz-Entfeuchter, mit dem Namen aus dem Register.
+        foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "entfeuchter"))
+        {
+            var instanzLive = await _entfeuchter.Fuer(instanz.Modul).LiveAsync(ct);
+            module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("entfeuchter", StringComparison.Ordinal)) + 1,
+                EntfeuchterZeile(instanzLive, instanz.Modul, instanz.Name, instanz.Nummer));
         }
         // Weitere Wasserkühler: je Instanz eine Zeile hinter dem ersten Kühler, mit dem Namen aus dem Register.
         foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "chiller"))

@@ -828,5 +828,12 @@ export type SteuerungZuweisung = {
 export type SteuerungInstanz = { modul: string; art: string; nummer: number; name: string; zeltId: number | null }
 export type SteuerungInstanzen = { instanzen: SteuerungInstanz[] }
 
-/** Weitere Instanzen gibt es heute nur beim Wasserkühler; die Kennung `chiller-i{n}` führt auf seine Seite. */
-export const istChillerInstanz = (modul: string | undefined): boolean => modul != null && /^chiller-i[2-9]\d*$/.test(modul)
+/** Die Kennung `chiller-i{n}` führt auf die Seite eines weiteren Wasserkühlers. */
+export const istChillerInstanz = (modul: string | undefined): boolean => modul != null && /^chiller-i(?:[2-9]|[1-9]\d+)$/.test(modul)
+
+/** Die Kennung `entfeuchter-i{n}` führt auf die Seite eines weiteren Entfeuchters (nicht des Zusatz-Entfeuchters). */
+export const istEntfeuchterInstanz = (modul: string | undefined): boolean => modul != null && /^entfeuchter-i(?:[2-9]|[1-9]\d+)$/.test(modul)
+
+/** Die Arten, von denen sich weitere Instanzen anlegen lassen, mit der Bezeichnung in der Oberfläche. */
+export type InstanzArt = 'chiller' | 'entfeuchter'
+export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter' }

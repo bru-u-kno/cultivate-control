@@ -37,7 +37,8 @@ describe('Hinweis „Home Assistant antwortet nicht" ist zentral', () => {
   it('die Stellen binden die Komponente ein (Übersicht und CO₂ stehen beide in SteuerungPage)', () => {
     const mit = dateien.filter((d) => ohneKommentare(readFileSync(join(SRC, d), 'utf8')).includes('<HaStummHinweis'))
     expect(mit.sort()).toEqual([
-      'features/steuerung/ChillerDetail.tsx', 'features/steuerung/EntfeuchtungSeite.tsx', 'features/steuerung/LichtDetail.tsx',
+      'features/steuerung/ChillerDetail.tsx', 'features/steuerung/EntfeuchterInstanzSeite.tsx', 'features/steuerung/EntfeuchtungSeite.tsx',
+      'features/steuerung/LichtDetail.tsx',
       'features/steuerung/ZuluftDetail.tsx', 'pages/SteuerungPage.tsx',
     ])
   })

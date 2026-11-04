@@ -12,7 +12,9 @@ import type { EntfeuchterEinstellungen, EntfeuchterSeite } from './steuerung-typ
  * Entwurf bleibt), beim Speichern ALLE Einstellungen schreiben und leere Felder
  * vorher sperren.
  */
-export function useEntfeuchterHaupt() {
+export function useEntfeuchterHaupt(modul = 'entfeuchter') {
+  // Ein weiterer Entfeuchter (`entfeuchter-i{n}`) hat dieselbe Schnittstelle mit der Angabe seiner Instanz.
+  const abfrage = modul === 'entfeuchter' ? '' : `?instanz=${encodeURIComponent(modul)}`
   const [seite, setSeite] = useState<EntfeuchterSeite | null>(null)
   const [entwurf, setEntwurf] = useState<EntfeuchterEinstellungen | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export function useEntfeuchterHaupt() {
 
   const auffrischen = useCallback(async () => {
     try {
-      const geladen = await apiFetch<EntfeuchterSeite>('/api/steuerung/entfeuchter')
+      const geladen = await apiFetch<EntfeuchterSeite>(`/api/steuerung/entfeuchter${abfrage}`)
       const alt = geladenRef.current
       geladenRef.current = geladen.einstellungen
       setSeite(geladen)
@@ -43,14 +45,14 @@ export function useEntfeuchterHaupt() {
     } catch {
       // Ein misslungenes Auffrischen ist kein Grund, die Seite rot zu färben.
     }
-  }, [])
+  }, [abfrage])
 
   useEffect(() => {
     const controller = new AbortController()
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<EntfeuchterSeite>('/api/steuerung/entfeuchter', { signal: controller.signal })
+        const geladen = await apiFetch<EntfeuchterSeite>(`/api/steuerung/entfeuchter${abfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) {
           geladenRef.current = geladen.einstellungen
           setSeite(geladen)
@@ -65,7 +67,7 @@ export function useEntfeuchterHaupt() {
     }
     void laden()
     return () => controller.abort()
-  }, [])
+  }, [abfrage])
 
   // Eine Minute Takt: die Regelung selbst prüft alle fünf Minuten.
   useEffect(() => {
@@ -85,7 +87,7 @@ export function useEntfeuchterHaupt() {
     if (leer) { setFeldFehler(leer); setMeldung(null); setFehler('Bitte die markierten Felder prüfen.'); return false }
     setArbeitet(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<EntfeuchterSeite>('/api/steuerung/entfeuchter', { method: 'PUT', body: JSON.stringify(entwurf) })
+      const zurueck = await apiFetch<EntfeuchterSeite>(`/api/steuerung/entfeuchter${abfrage}`, { method: 'PUT', body: JSON.stringify(entwurf) })
       geladenRef.current = zurueck.einstellungen
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(zurueck.haAngenommen === false

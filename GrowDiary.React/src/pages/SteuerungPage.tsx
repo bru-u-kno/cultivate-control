@@ -15,7 +15,8 @@ import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
 import { useEntfeuchtungEinrichtung } from '../features/steuerung/useEntfeuchtungEinrichtung'
 import { CO2_REITER, minuten, probeWerte, tagKurz, wirksameZiele } from '../features/steuerung/steuerung-typen'
-import { istChillerInstanz } from '../features/steuerung/steuerung-typen'
+import { istChillerInstanz, istEntfeuchterInstanz } from '../features/steuerung/steuerung-typen'
+import EntfeuchterInstanzSeite from '../features/steuerung/EntfeuchterInstanzSeite'
 import type { Co2Einstellungen, Co2Reiter, Co2Seite, GrenzModus, SteuerungModul, SteuerungUebersicht } from '../features/steuerung/steuerung-typen'
 import { formatNumber } from '../utils'
 import '../features/steuerung/steuerung.css'
@@ -145,6 +146,20 @@ export default function SteuerungPage() {
 
   if (modul === 'chiller-neu') {
     return <InstanzAnlegen module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
+  if (modul === 'entfeuchter-neu') {
+    return <InstanzAnlegen art="entfeuchter" module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
+  // Ein weiterer Entfeuchter: die Reiter der Entfeuchtung für genau ihn. `key`: beim Wechsel zwischen zwei Entfeuchtern fängt die Seite neu an.
+  if (istEntfeuchterInstanz(modul)) {
+    return (
+      <EntfeuchterInstanzSeite
+        key={modul} module={module} aktiv={modul!} modul={modul!} onWechsel={(k) => navigate(`/steuerung/${k}`)}
+        onInstanzGeaendert={neuLaden} onInstanzGeloescht={() => { neuLaden(); navigate('/steuerung') }}
+      />
+    )
   }
 
   // Ein weiterer Wasserkühler hat dieselbe Seite wie der erste, mit seinem Modul. `key`: beim Wechsel zwischen zwei Wasserkühlern

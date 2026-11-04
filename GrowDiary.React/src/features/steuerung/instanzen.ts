@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../../api'
-import type { SteuerungInstanz, SteuerungInstanzen, SteuerungZeltKurz, SteuerungZuweisung } from './steuerung-typen'
+import type { InstanzArt, SteuerungInstanz, SteuerungInstanzen, SteuerungZeltKurz, SteuerungZuweisung } from './steuerung-typen'
 
 /** Die Zelte, aus denen eine Instanz eines wählen kann (die aktiven; leer, solange sie nicht gelesen sind). */
 export function useZelte(): SteuerungZeltKurz[] {
@@ -31,13 +31,13 @@ export function useInstanzen(): { instanzen: SteuerungInstanz[] | null; neuLaden
   return { instanzen, neuLaden }
 }
 
-/** Einen weiteren Wasserkühler anlegen; die Antwort ist die Liste aller Instanzen, die neue ist die mit der höchsten Nummer. */
-export async function chillerAnlegen(name: string, zeltId: number | null): Promise<SteuerungInstanz> {
+/** Eine weitere Instanz anlegen; die Antwort ist die Liste aller Instanzen, die neue ist die ihrer Art mit der höchsten Nummer. */
+export async function instanzAnlegen(art: InstanzArt, name: string, zeltId: number | null): Promise<SteuerungInstanz> {
   const antwort = await apiFetch<SteuerungInstanzen>('/api/steuerung/instanzen', {
     method: 'POST',
-    body: JSON.stringify({ art: 'chiller', name, zeltId }),
+    body: JSON.stringify({ art, name, zeltId }),
   })
-  const neu = antwort.instanzen.filter((i) => i.art === 'chiller').sort((a, b) => b.nummer - a.nummer)[0]
+  const neu = antwort.instanzen.filter((i) => i.art === art).sort((a, b) => b.nummer - a.nummer)[0]
   if (!neu) throw new Error('Die neue Instanz fehlt in der Antwort.')
   return neu
 }

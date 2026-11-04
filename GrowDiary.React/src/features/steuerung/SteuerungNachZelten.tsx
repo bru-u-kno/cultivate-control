@@ -4,7 +4,7 @@ import { ModulZeile } from './ModulZeile'
 import { gliedernNachZelten, pfadFuer, zeltZusammenfassung } from './nach-zelten'
 import type { ZeltGruppe } from './nach-zelten'
 import type { SteuerungModul, SteuerungZeltKurz } from './steuerung-typen'
-import { istChillerInstanz } from './steuerung-typen'
+import { istChillerInstanz, istEntfeuchterInstanz } from './steuerung-typen'
 import './steuerung.css'
 
 /**
@@ -26,6 +26,9 @@ export function SteuerungNachZelten({ module, zelte, onOeffnen }: {
         {/* Bei einem Zelt nur, wenn es schon weitere Wasserkühler gibt — sonst steht der Weg auf der Seite des Wasserkühlers. */}
         {module.some((m) => istChillerInstanz(m.kennung)) && (
           <p className="st-fuss st-fuss-link"><Link to="/steuerung/chiller-neu">+ Weiteren Wasserkühler anlegen</Link></p>
+        )}
+        {module.some((m) => istEntfeuchterInstanz(m.kennung)) && (
+          <p className="st-fuss st-fuss-link"><Link to="/steuerung/entfeuchter-neu">+ Weiteren Entfeuchter anlegen</Link></p>
         )}
       </>
     )
@@ -63,6 +66,11 @@ function ZeltBlock({ gruppe, alle, onOeffnen }: { gruppe: ZeltGruppe; alle: Steu
       {offen && gruppe.zelt && gruppe.module.some((m) => m.kennung === 'chiller' || istChillerInstanz(m.kennung)) && (
         <p className="st-fuss st-fuss-link" style={{ margin: '-4px 0 12px 8px' }}>
           <Link to={`/steuerung/chiller-neu?zelt=${gruppe.zelt.id}`}>+ Weiteren Wasserkühler in {gruppe.zelt.name}</Link>
+        </p>
+      )}
+      {offen && gruppe.zelt && gruppe.module.some((m) => m.kennung === 'entfeuchter' || m.kennung === 'entfeuchtung' || istEntfeuchterInstanz(m.kennung)) && (
+        <p className="st-fuss st-fuss-link" style={{ margin: '-4px 0 12px 8px' }}>
+          <Link to={`/steuerung/entfeuchter-neu?zelt=${gruppe.zelt.id}`}>+ Weiteren Entfeuchter in {gruppe.zelt.name}</Link>
         </p>
       )}
     </section>
