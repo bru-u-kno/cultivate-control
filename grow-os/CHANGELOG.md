@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.322
+
+**Steuerungen je Zelt, Teil 5b: Weitere Wasserkühler lassen sich in der Oberfläche anlegen, benennen, einem Zelt zuweisen und wieder löschen.**
+
+- **Anlegen:** Unter der Steuerung führt „+ Weiteren Wasserkühler in <Zelt>“ (und auf der Seite des Wasserkühlers „+ Weiteren Wasserkühler anlegen“) zu einer Seite mit Name und — ab zwei Zelten — der Wahl des Zeltes. Mit nur einem Zelt kommt keine Zelt-Frage dazu. Danach öffnet sich die Seite des neuen Wasserkühlers.
+- **Eigene Seite je Wasserkühler:** Jeder weitere Wasserkühler hat dieselbe Seite wie der erste — mit eigenen Zieltemperaturen, eigenen Schutzwerten, eigener Geräte-Zuordnung (Rollen) und eigener Einrichtung der Bausteine in Home Assistant. Er steht in der Leiste und in der Übersicht unter seinem Namen und in seinem Zelt.
+- **Name und Zelt ändern:** Unten auf der Seite des Wasserkühlers („Dieser Wasserkühler“) lassen sich Name und Zelt ändern. Der Name gilt nur in Cultivate Control; in Home Assistant bleiben die Bezeichnungen technisch.
+- **Löschen:** „Löschen …“ fragt nach und entfernt den Wasserkühler aus Cultivate Control (Seite, Zuordnung, Zelt). Seine Regelung in Home Assistant läuft weiter, bis du sie dort entfernst. Den ersten Wasserkühler kannst du nicht löschen, nur in der Auswahl abwählen.
+- **Rollen-Seite:** Die Geräte-Zuordnung kennt jeden weiteren Wasserkühler als eigenen Eintrag („Wasserkühler · Name“); die Zuweisung der Steuerungen zu Zelten ebenso.
+- **Noch nicht:** Das Entfernen der Bausteine aus Home Assistant beim Löschen und die Pumpen-Wächter-Meldungen je Wasserkühler folgen. Entfeuchter, Zuluft und Lampe lassen sich noch nicht vervielfachen.
+- **Unverändert:** Dein erster Wasserkühler, seine Einstellungen und alle Bausteine in Home Assistant.
+- **Geprüft** an der gebauten App mit vier Zelten und mit einem Zelt: anlegen (mit Zelt), Seite öffnen, umbenennen, Zelt wechseln, löschen mit Rückfrage und Abbrechen, der erste Wasserkühler bleibt unberührt und nicht löschbar, eine gelöschte Instanz zeigt eine Fehlermeldung statt fremder Zahlen; dazu die Querschnitts-Prüfungen für Umbruch, Kontrast, Touch-Ziele und Konsole.
+
 ## 2.0.0-cc.321
 
 **Trockenzelt: Die Abluft folgt dem Trocknungsplan — neben Entfeuchter und Kühlung.**
