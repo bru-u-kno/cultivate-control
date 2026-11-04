@@ -15,7 +15,7 @@ import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
 import { useEntfeuchtungEinrichtung } from '../features/steuerung/useEntfeuchtungEinrichtung'
 import { CO2_REITER, minuten, probeWerte, tagKurz, wirksameZiele } from '../features/steuerung/steuerung-typen'
-import { istChillerInstanz, istEntfeuchterInstanz } from '../features/steuerung/steuerung-typen'
+import { istChillerInstanz, istEntfeuchterInstanz, istZuluftInstanz } from '../features/steuerung/steuerung-typen'
 import EntfeuchterInstanzSeite from '../features/steuerung/EntfeuchterInstanzSeite'
 import type { Co2Einstellungen, Co2Reiter, Co2Seite, GrenzModus, SteuerungModul, SteuerungUebersicht } from '../features/steuerung/steuerung-typen'
 import { formatNumber } from '../utils'
@@ -148,6 +148,10 @@ export default function SteuerungPage() {
     return <InstanzAnlegen module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
+  if (modul === 'zuluft-neu') {
+    return <InstanzAnlegen art="zuluft" module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
   if (modul === 'entfeuchter-neu') {
     return <InstanzAnlegen art="entfeuchter" module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
@@ -186,8 +190,14 @@ export default function SteuerungPage() {
     return <Navigate to={`/steuerung/${ENTFEUCHTUNG_KENNUNG}`} replace />
   }
 
-  if (modul === 'zuluft') {
-    return <ZuluftDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  // Eine weitere Zuluft hat dieselbe Seite wie die erste, mit ihrem Modul. `key`: beim Wechsel fängt die Seite neu an.
+  if (modul === 'zuluft' || istZuluftInstanz(modul)) {
+    return (
+      <ZuluftDetail
+        key={modul} module={module} aktiv={modul!} modul={modul!}
+        onWechsel={(k) => navigate(`/steuerung/${k}`)} onInstanzGeaendert={neuLaden} onInstanzGeloescht={() => { neuLaden(); navigate('/steuerung') }}
+      />
+    )
   }
 
   // Ein Pfad, den keine Steuerung kennt. Er landet bewusst NICHT ersatzweise

@@ -834,6 +834,11 @@ export const istChillerInstanz = (modul: string | undefined): boolean => modul !
 /** Die Kennung `entfeuchter-i{n}` führt auf die Seite eines weiteren Entfeuchters (nicht des Zusatz-Entfeuchters). */
 export const istEntfeuchterInstanz = (modul: string | undefined): boolean => modul != null && /^entfeuchter-i(?:[2-9]|[1-9]\d+)$/.test(modul)
 
+/** Die Kennung `zuluft-i{n}` führt auf die Seite einer weiteren Zuluft. */
+export const istZuluftInstanz = (modul: string | undefined): boolean => modul != null && /^zuluft-i(?:[2-9]|[1-9]\d+)$/.test(modul)
+
 /** Die Arten, von denen sich weitere Instanzen anlegen lassen, mit der Bezeichnung in der Oberfläche. */
-export type InstanzArt = 'chiller' | 'entfeuchter'
-export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter' }
+export type InstanzArt = 'chiller' | 'entfeuchter' | 'zuluft'
+/** Weibliche Bezeichnungen („diese Zuluft“) — für die Artikel und Endungen in den Texten. */
+export const INSTANZ_WEIBLICH: Record<InstanzArt, boolean> = { chiller: false, entfeuchter: false, zuluft: true }
+export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft' }

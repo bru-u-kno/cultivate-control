@@ -12,6 +12,10 @@ import { feldFehlerAus, leereZahlenfelder, ohneLuecken, zahlAusFeld } from './fe
 import { useFehlerZeigen } from './fehler-reiter'
 import { haeltGerade, haltebereich, zeigZahl } from './zuluft-haltebereich'
 import { HaltBand } from './HaltBand'
+import { BestandAbschnitt, BestandHinweis } from './Bestand'
+import { useBestand } from './bestand-laden'
+import { InstanzBlock, InstanzLoeschen } from './InstanzBlock'
+import { useInstanzen } from './instanzen'
 
 /**
  * Fork AI (forkai.76): Steuerung › Zuluft — die Kellerzuluft, die bisher als
@@ -31,11 +35,24 @@ import { HaltBand } from './HaltBand'
  * <b>Was hier NICHT geschaltet wird.</b> Die Regelung läuft in Home Assistant.
  * Diese Seite hält die Sollwerte und den Aus-Knopf; sie legt keinen Port um.
  */
-export default function ZuluftDetail({ module, aktiv, onWechsel }: {
+export default function ZuluftDetail({ module, aktiv, onWechsel, modul = 'zuluft', onInstanzGeaendert, onInstanzGeloescht }: {
   module: SteuerungModul[]
   aktiv: string
   onWechsel: (kennung: string) => void
+  /** `zuluft` (die erste) oder `zuluft-i{n}` (eine weitere Zuluft mit eigenen Einstellungen und Geräten). */
+  modul?: string
+  onInstanzGeaendert?: () => void
+  onInstanzGeloescht?: () => void
 }) {
+  const weitere = modul !== 'zuluft'
+  const abfrage = weitere ? `?instanz=${encodeURIComponent(modul)}` : ''
+  // Der Name steht im Register der Instanzen; die Übersicht kennt ihn nur, wenn die Zuluft dort ausgewählt ist.
+  const { instanzen, neuLaden: instanzenNeuLaden } = useInstanzen()
+  const instanz = instanzen?.find((i) => i.modul === modul)
+  const titel = weitere ? (instanz?.name ?? module.find((m) => m.kennung === modul)?.titel ?? 'Zuluft') : 'Zuluft'
+  const [loeschenOffen, setLoeschenOffen] = useState(false)
+  // Der Bestand nur bei einer weiteren Zuluft: dort fehlen die Bausteine nach dem Anlegen, die erste Zuluft bleibt wie sie war.
+  const { bestand, neuLaden: bestandNeuLaden } = useBestand(modul)
   const [seite, setSeite] = useState<ZuluftSeite | null>(null)
   const [entwurf, setEntwurf] = useState<ZuluftEinstellungen | null>(null)
   const [reiter, setReiter] = useState<ZuluftReiter>('regel')
@@ -50,7 +67,7 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
 
   const auffrischen = useCallback(async () => {
     try {
-      const geladen = await apiFetch<ZuluftSeite>('/api/steuerung/zuluft')
+      const geladen = await apiFetch<ZuluftSeite>(`/api/steuerung/zuluft${abfrage}`)
       setSeite(geladen)
       // Einen angefangenen Entwurf nicht überschreiben, sonst springt beim
       // Nachladen die Zahl zurück, die gerade getippt wird.
@@ -58,14 +75,14 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
     } catch {
       // Ein misslungenes Auffrischen ist kein Grund, die Seite rot zu färben.
     }
-  }, [])
+  }, [abfrage])
 
   useEffect(() => {
     const controller = new AbortController()
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<ZuluftSeite>('/api/steuerung/zuluft', { signal: controller.signal })
+        const geladen = await apiFetch<ZuluftSeite>(`/api/steuerung/zuluft${abfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) { setSeite(geladen); setEntwurf(geladen.einstellungen); setFehler(null) }
       } catch (caught) {
         if (!controller.signal.aborted) setFehler(formatApiError(caught, 'Die Zuluft-Steuerung konnte nicht geladen werden.'))
@@ -75,7 +92,7 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
     }
     void laden()
     return () => controller.abort()
-  }, [])
+  }, [abfrage])
 
   // Eine Minute Takt: schneller ändert sich nichts — die Regelung selbst prüft
   // im Minutentakt, und die Außenfeuchte springt nicht in Sekunden.
@@ -95,7 +112,7 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
     if (leer) { setFeldFehler(leer); setMeldung(null); setFehler('Bitte die markierten Felder prüfen.'); fehlerZeigen(); return }
     setArbeitet(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<ZuluftSeite>('/api/steuerung/zuluft', { method: 'PUT', body: JSON.stringify(entwurf) })
+      const zurueck = await apiFetch<ZuluftSeite>(`/api/steuerung/zuluft${abfrage}`, { method: 'PUT', body: JSON.stringify(entwurf) })
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(zurueck.haAngenommen === false
         ? 'Gespeichert — aber nicht alle Helfer haben den Wert angenommen.'
@@ -109,9 +126,20 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
     }
   }
 
-  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title="Zuluft"><V1Skeleton rows={4} tiles={4} label="Wird geladen" /></V1Page>
+  if (loeschenOffen) {
+    return (
+      <InstanzLoeschen
+        art="zuluft" modul={modul} titel={titel}
+        ersterTitel={module.find((m) => m.kennung === 'zuluft')?.titel ?? null}
+        onAbbrechen={() => setLoeschenOffen(false)}
+        onGeloescht={() => onInstanzGeloescht?.()}
+      />
+    )
+  }
+
+  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title={titel}><V1Skeleton rows={4} tiles={4} label="Wird geladen" /></V1Page>
   if (!seite || !entwurf) {
-    return <V1Page eyebrow="Steuerung" title="Zuluft">{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
+    return <V1Page eyebrow="Steuerung" title={titel} vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}>{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
   }
 
   const live = seite.live
@@ -134,7 +162,7 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
   return (
     <V1Page
       eyebrow="Steuerung"
-      title="Zuluft"
+      title={titel}
       subtitle="Außenluft ansaugen, solange sie trockener ist — geregelt in Home Assistant"
       action={geaendert ? <V1Button variant="primary" onClick={speichern} disabled={arbeitet}>{arbeitet ? 'Speichert …' : 'Speichern'}</V1Button> : undefined}
       vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}
@@ -143,6 +171,7 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
       {fehler && <V1Alert tone="critical" message={fehler} />}
       {meldung && <V1Alert tone={meldung === 'Gespeichert.' ? 'ok' : 'warn'} message={meldung} />}
       <HaStummHinweis haErreichbar={live.haErreichbar} eingerichtet={seite.geraeteZugeordnet > 0} />
+      {weitere && <BestandHinweis bestand={bestand} />}
       {live.portOnline === false && <V1Alert tone="warn" title="Controller offline" message="Der Lüfter-Port meldet sich nicht. Geschaltet wird erst, wenn er wieder da ist." />}
       {live.automatikAn === false && (
         <V1Alert
@@ -329,8 +358,15 @@ export default function ZuluftDetail({ module, aktiv, onWechsel }: {
           </b>{' '}
           zugeordnet
         </span>
-        <V1LinkButton to={rollenPfad('zuluft')} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
+        <V1LinkButton to={rollenPfad(modul)} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
       </div>
+
+      {weitere && (
+        <>
+          <BestandAbschnitt modul={modul} schaltet="den Lüfter" bestand={bestand} neuLaden={bestandNeuLaden} />
+          <InstanzBlock art="zuluft" instanz={instanz} neuLaden={instanzenNeuLaden} onGeaendert={() => onInstanzGeaendert?.()} onLoeschen={() => setLoeschenOffen(true)} />
+        </>
+      )}
 
       <V1Sheet open={rechenweg} onClose={() => setRechenweg(false)} title="Rechenweg" subtitle="Wie aus vier Messwerten eine Stufe wird">
         <div className="zl-kette">

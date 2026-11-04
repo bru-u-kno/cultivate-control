@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.328
+
+**Steuerungen je Zelt, Teil 7b: Weitere Zuluft-Steuerungen lassen sich jetzt in der Oberfläche anlegen, einrichten, umbenennen und löschen — wie Wasserkühler und Entfeuchter.**
+
+- **Weitere Zuluft anlegen:** In der Steuerungs-Übersicht steht unter dem Zelt „+ Weitere Zuluft in <Zelt>“ (bei einem einzigen Zelt erst, sobald es schon eine weitere Zuluft gibt). Name und Zelt festlegen, danach folgen Geräte und Bausteine in Home Assistant wie im Einrichtungs-Assistenten. Die erste Zuluft bleibt unverändert.
+- **Eigene Seite je Zuluft:** Jede weitere Zuluft hat dieselbe Seite wie die erste (Regel, Lüfter, Betrieb) mit ihren eigenen Werten, dazu den Abschnitt „Was in Home Assistant fehlt“ mit dem Knopf zum Anlegen und den Block „Diese Zuluft“ zum Umbenennen und Verschieben in ein anderes Zelt. Die Auswahlleiste oben führt zu ihr, die Übersicht zeigt sie mit Namen im richtigen Zelt.
+- **Löschen:** „Löschen …“ fragt nach und kann auf Wunsch Helfer, Rechenwerte, Mittelwert und Automationen dieser Zuluft auch aus Home Assistant entfernen; vorher wird gesichert. Die erste Zuluft lässt sich nicht löschen.
+- **Texte:** Die Rückfragen sprechen bei der Zuluft richtig von „diese“, „die“ und „ihre“ statt „dieser“ und „seine“.
+
 ## 2.0.0-cc.327
 
 **Steuerungen je Zelt, Teil 7a: Weitere Zuluft-Steuerungen lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**

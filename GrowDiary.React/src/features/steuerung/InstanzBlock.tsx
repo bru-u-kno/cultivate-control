@@ -3,7 +3,7 @@ import { formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card, V1Field, V1Page, V1Section, V1Switch } from '../../components/v1'
 import { ZeltChips } from './ZeltChips'
 import { instanzEntfernen, instanzUmbenennen, instanzZeltSetzen, useZelte } from './instanzen'
-import { INSTANZ_BEZEICHNUNG } from './steuerung-typen'
+import { INSTANZ_BEZEICHNUNG, INSTANZ_WEIBLICH } from './steuerung-typen'
 import type { InstanzArt, SteuerungInstanz } from './steuerung-typen'
 import './steuerung.css'
 
@@ -64,7 +64,7 @@ function InstanzFormular({ art, instanz, neuLaden, meldung, setMeldung, onGeaend
   }
 
   return (
-    <V1Section title={`Dieser ${bezeichnung}`}>
+    <V1Section title={`${INSTANZ_WEIBLICH[art] ? 'Diese' : 'Dieser'} ${bezeichnung}`}>
       {fehler && <V1Alert tone="critical" message={fehler} />}
       {meldung && <V1Alert tone="ok" message={meldung} />}
       <V1Card>
@@ -99,6 +99,10 @@ export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, on
   const [arbeitet, setArbeitet] = useState(false)
   const [ausHa, setAusHa] = useState(false)
   const b = INSTANZ_BEZEICHNUNG[art]
+  // Zuluft ist weiblich: „Die Zuluft verschwindet … Ihre Regelung“, die anderen Arten männlich.
+  const w = INSTANZ_WEIBLICH[art]
+  const der = w ? 'Die' : 'Der'
+  const sein = w ? 'Ihre' : 'Seine'
 
   const loeschen = async () => {
     setArbeitet(true)
@@ -118,20 +122,20 @@ export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, on
       <V1Section title="Wirklich löschen?">
         <V1Card>
           <p className="st-hinweis">
-            Der {b} verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
+            {der} {b} verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
             {ausHa
-              ? 'Seine Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.'
-              : 'Seine Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.'}
+              ? `${sein} Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.`
+              : `${sein} Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.`}
           </p>
           <V1Switch
             label="Auch aus Home Assistant entfernen"
             checked={ausHa}
             onChange={setAusHa}
-            hint={`Helfer, Rechenwerte und Automationen dieses ${b}s. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt der ${b} stehen und du kannst es noch einmal versuchen.`}
+            hint={`Helfer, Rechenwerte und Automationen ${w ? 'dieser' : 'dieses'} ${b}${w ? '' : 's'}. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt ${w ? 'die' : 'der'} ${b} stehen und du kannst es noch einmal versuchen.`}
           />
         </V1Card>
         {ersterTitel && (
-          <p className="st-hinweis">Den ersten {b} („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>
+          <p className="st-hinweis">{w ? 'Die erste' : 'Den ersten'} {b} („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>
         )}
         <div className="st-knopfleiste">
           <V1Button variant="ghost" onClick={onAbbrechen}>Abbrechen</V1Button>
