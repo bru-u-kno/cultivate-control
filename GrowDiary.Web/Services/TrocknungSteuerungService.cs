@@ -47,7 +47,9 @@ public sealed class TrocknungSteuerungService
         bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
         double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete);
 
-    private static readonly string[] Rollen = [TrocknungZiel.RolleEntfeuchter, TrocknungZiel.RolleKuehlung];
+    // Die Abluft hat einen Port, aber zwei Grenzen: jede ist hier eine eigene Rolle (eigener Wert, eigener Merker).
+    private static readonly string[] Rollen =
+        [TrocknungZiel.RolleEntfeuchter, TrocknungZiel.RolleKuehlung, TrocknungZiel.RolleAbluftFeuchte, TrocknungZiel.RolleAbluftTemp];
 
     /// <summary>Der Stand, wie die Seite ihn zeigt. Schreibt nichts.</summary>
     public async Task<Stand> StandAsync(int tentId, CancellationToken ct)
@@ -72,8 +74,8 @@ public sealed class TrocknungSteuerungService
         {
             merker.TryGetValue(rolle, out var m);
             var folgt = einstellung.Folgt(rolle);
-            var planGrenze = rolle == TrocknungZiel.RolleEntfeuchter ? band?.FeuchteMax : band?.TempMax;
-            if (!zuordnung.TryGetValue(rolle, out var deviceId))
+            var planGrenze = TrocknungZiel.IstFeuchte(rolle) ? band?.FeuchteMax : band?.TempMax;
+            if (!zuordnung.TryGetValue(TrocknungZiel.PortRolle(rolle), out var deviceId))
             {
                 geraete.Add(new Geraet(rolle, null, folgt, null, null, null, planGrenze, "nichtZugeordnet", m?.Vorher, m?.GesetztAtUtc));
                 continue;
@@ -126,11 +128,11 @@ public sealed class TrocknungSteuerungService
         int geschrieben = 0, gescheitert = 0;
         foreach (var rolle in Rollen)
         {
-            if (!einstellung.Folgt(rolle) || !zuordnung.TryGetValue(rolle, out var deviceId)) continue;
+            if (!einstellung.Folgt(rolle) || !zuordnung.TryGetValue(TrocknungZiel.PortRolle(rolle), out var deviceId)) continue;
             var port = ports.FirstOrDefault(p => p.DeviceId == deviceId);
             if (port is null) continue;
 
-            var planGrenze = rolle == TrocknungZiel.RolleEntfeuchter ? band?.FeuchteMax : band?.TempMax;
+            var planGrenze = TrocknungZiel.IstFeuchte(rolle) ? band?.FeuchteMax : band?.TempMax;
             var wunsch = await WunschAsync(rolle, port, planGrenze, ct);
             if (!wunsch.Setzen) continue;
 
@@ -165,12 +167,17 @@ public sealed class TrocknungSteuerungService
         foreach (var rolle in Rollen)
         {
             if (!merker.TryGetValue(rolle, out var m)) continue;
-            var port = zuordnung.TryGetValue(rolle, out var deviceId) ? ports?.FirstOrDefault(p => p.DeviceId == deviceId) : null;
-            var entity = port is null ? null : rolle == TrocknungZiel.RolleEntfeuchter ? port.FeuchteWertEntity : port.TempWertEntity;
+            var port = zuordnung.TryGetValue(TrocknungZiel.PortRolle(rolle), out var deviceId) ? ports?.FirstOrDefault(p => p.DeviceId == deviceId) : null;
+            var entity = port is null ? null : TrocknungZiel.IstFeuchte(rolle) ? port.FeuchteWertEntity : port.TempWertEntity;
             if (entity is not null && await _ziel.SetzeZahlAsync(entity, m.Vorher, ct))
             {
                 _steuerung.MerkerLoeschen(tentId, rolle);
-                einstellung = rolle == TrocknungZiel.RolleEntfeuchter ? einstellung with { EntfeuchterFolgt = false } : einstellung with { KuehlungFolgt = false };
+                einstellung = rolle switch
+                {
+                    TrocknungZiel.RolleEntfeuchter => einstellung with { EntfeuchterFolgt = false },
+                    TrocknungZiel.RolleKuehlung => einstellung with { KuehlungFolgt = false },
+                    _ => einstellung with { AbluftFolgt = false },
+                };
                 geschrieben++;
                 _logger.LogInformation("Trocknung Zelt {Zelt}: {Rolle} {Entity} zurück auf {Vorher}.", tentId, rolle, entity, m.Vorher);
             }

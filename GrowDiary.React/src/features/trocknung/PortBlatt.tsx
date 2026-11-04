@@ -7,10 +7,11 @@ interface Ports {
   erreichbar: boolean
   entfeuchter: string | null
   kuehlung: string | null
+  abluft: string | null
   verfuegbar: Array<{ deviceId: string; name: string }>
 }
 
-/** Blatt „Ports zuordnen“: welcher Port des Controllers ist am Trockenzelt der Entfeuchter, welcher die Kühlung (Steuerung › Trocknung). */
+/** Blatt „Ports zuordnen“: welcher Port des Controllers ist am Trockenzelt der Entfeuchter, welcher die Kühlung, welcher die Abluft (Steuerung › Trocknung). */
 export function PortBlatt({ open, onClose, tentId, onGespeichert }: {
   open: boolean
   onClose: () => void
@@ -20,6 +21,7 @@ export function PortBlatt({ open, onClose, tentId, onGespeichert }: {
   const [ports, setPorts] = useState<Ports | null>(null)
   const [entfeuchter, setEntfeuchter] = useState('')
   const [kuehlung, setKuehlung] = useState('')
+  const [abluft, setAbluft] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
   const [speichert, setSpeichert] = useState(false)
 
@@ -31,6 +33,7 @@ export function PortBlatt({ open, onClose, tentId, onGespeichert }: {
         setPorts(antwort)
         setEntfeuchter(antwort.entfeuchter ?? '')
         setKuehlung(antwort.kuehlung ?? '')
+        setAbluft(antwort.abluft ?? '')
       })
       .catch(() => { /* das Blatt zeigt dann „nicht erreichbar“ */ })
     return () => controller.abort()
@@ -42,7 +45,7 @@ export function PortBlatt({ open, onClose, tentId, onGespeichert }: {
     try {
       await apiFetch<Ports>(`/api/tents/${tentId}/trocknung/ports`, {
         method: 'PUT',
-        body: JSON.stringify({ entfeuchter: entfeuchter || null, kuehlung: kuehlung || null }),
+        body: JSON.stringify({ entfeuchter: entfeuchter || null, kuehlung: kuehlung || null, abluft: abluft || null }),
       })
     } catch (caught) {
       setFehler(caught instanceof ApiRequestError ? caught.message : 'Die Ports konnten nicht gespeichert werden.')
@@ -82,6 +85,7 @@ export function PortBlatt({ open, onClose, tentId, onGespeichert }: {
         {ports?.erreichbar && ports.verfuegbar.length === 0 && <p className="fe-hinweis">Home Assistant kennt keinen Port mit eigener Automatik.</p>}
         {auswahl(entfeuchter, setEntfeuchter, 'Port des Entfeuchters')}
         {auswahl(kuehlung, setKuehlung, 'Port der Kühlung')}
+        {auswahl(abluft, setAbluft, 'Port der Abluft')}
         {fehler && <p className="fe-fehler" role="alert">{fehler}</p>}
       </div>
     </V1Sheet>

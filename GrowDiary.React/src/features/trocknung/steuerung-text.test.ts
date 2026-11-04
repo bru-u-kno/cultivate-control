@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { geraetHinweis, plakette, wuerdeSchreiben, type SteuerungGeraet } from './steuerung-text'
+import { geraetHinweis, plakette, schalterVon, wuerdeSchreiben, type SteuerungGeraet } from './steuerung-text'
 
 const g = (teil: Partial<SteuerungGeraet>): SteuerungGeraet => ({
   rolle: 'kuehlung', portName: 'Port K', folgt: true, modus: 'Auto', wertAmGeraet: 24, einheit: '°C', planWert: 21,
@@ -32,5 +32,20 @@ describe('Trocknung: Steuerung', () => {
     expect(geraetHinweis(g({ modus: 'Off', urteil: 'geraetAus' }))).toContain('Sobald du den Port auf Auto stellst')
     expect(geraetHinweis(g({ modus: 'Auto' }))).toContain('nie den Modus')
     expect(plakette(g({ urteil: 'geraetAus' }), 'regeln').text).toBe('Gerät aus')
+  })
+
+  it('Abluft: ein Schalter für beide Grenzen, jede Zeile erscheint in der Rückfrage', () => {
+    expect(schalterVon('abluft-feuchte')).toBe('abluft')
+    expect(schalterVon('abluft-temp')).toBe('abluft')
+    expect(schalterVon('kuehlung')).toBe('kuehlung')
+    const geraete = [
+      g({ rolle: 'abluft-feuchte', portName: 'Port A', wertAmGeraet: 55, planWert: 62, einheit: '%' }),
+      g({ rolle: 'abluft-temp', portName: 'Port A', wertAmGeraet: 24, planWert: 21 }),
+    ]
+    expect(wuerdeSchreiben(geraete, { abluft: true })).toEqual([
+      { rolle: 'abluft-feuchte', portName: 'Port A', feld: 'Luftfeuchte-Obergrenze', von: 55, nach: 62, einheit: '%' },
+      { rolle: 'abluft-temp', portName: 'Port A', feld: 'Temperatur-Obergrenze', von: 24, nach: 21, einheit: '°C' },
+    ])
+    expect(wuerdeSchreiben(geraete, { entfeuchter: true, kuehlung: true })).toEqual([])
   })
 })
