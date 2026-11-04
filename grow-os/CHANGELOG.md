@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.321
+
+**Trockenzelt: Die Abluft folgt dem Trocknungsplan — neben Entfeuchter und Kühlung.**
+
+- **Was war:** Am Trockenzelt konnten nur der Entfeuchter (Luftfeuchte-Obergrenze) und die Kühlung (Temperatur-Obergrenze) dem Plan folgen. Die Abluft lief für sich, ihre Grenzen musstest du von Hand am Controller einstellen.
+- **Was jetzt gilt:** Unter Steuerung › Trocknung gibt es eine Karte „Abluft“ mit dem Schalter „Folgt dem Plan“. Folgt sie, setzt Cultivate Control die Luftfeuchte-Obergrenze und die Temperatur-Obergrenze am Abluft-Port auf den oberen Rand der aktuellen Etappe, beim Start und bei jedem Etappenwechsel (in der Betriebsart „Regeln“; bei „Nur melden“ wird nichts geschrieben). Beide Grenzen hängen an einem Schalter.
+- **Port zuordnen:** „Ports bearbeiten“ hat ein drittes Feld, „Port der Abluft“. Die Anzeige zählt jetzt „x / 3“ Ports.
+- **Was nie geändert wird:** der Modus des Ports. Die Grenzen wirken nur, wenn der Port auf „Auto“ steht; bei „On“ stellt der Controller keine Auslöser bereit, die Karte zeigt „ohne Automatik“, und es wird nichts geschrieben. „Alte Werte zurück“ setzt auch die beiden Abluft-Grenzen auf den Stand vor der ersten Übernahme zurück.
+- **Bestehende Anlagen:** Der neue Schalter ist zunächst aus, Entfeuchter und Kühlung bleiben, wie sie waren. Ein Aufruf der Schnittstelle ohne die neue Angabe lässt den Abluft-Schalter unverändert; das Zuordnen der Ports ersetzt wie bisher alle Rollen auf einmal, eine weggelassene Rolle wird gelöst.
+- **Geprüft** mit Tests: beide Grenzen werden gesetzt und gemerkt, Modus und Ein-Schalter der Auslöser bleiben unberührt, Modus „On“ schreibt nichts, ohne zugeordneten Port wird der Schalter abgewiesen, „Alte Werte zurück“ stellt beide Werte wieder her, und eine Datenbank aus der Zeit davor bekommt die neue Spalte nachgerüstet.
+
 ## 2.0.0-cc.320
 
 **Steuerungen je Zelt, Teil 5: Wasserkühler-Instanzen — der Unterbau für einen zweiten (dritten …) Wasserkühler. Anlegen in der Oberfläche folgt im nächsten Teil.**

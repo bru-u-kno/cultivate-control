@@ -8,8 +8,8 @@ import '../steuerung/steuerung.css'
 import './ziel.css'
 import { PortBlatt } from './PortBlatt'
 import {
-  betriebText, geraetHinweis, plakette, ROLLE, wuerdeSchreiben, zahl,
-  type Betrieb, type SteuerungGeraet, type TrocknungSteuerung,
+  betriebText, geraetHinweis, plakette, ROLLE, SCHALTER, schalterVon, wuerdeSchreiben, zahl,
+  type Betrieb, type Folgt, type SteuerungGeraet, type TrocknungSteuerung,
 } from './steuerung-text'
 
 /**
@@ -30,7 +30,7 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   const [meldung, setMeldung] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
   const [laedt, setLaedt] = useState(true)
-  const [rueckfrage, setRueckfrage] = useState<{ betrieb: Betrieb; entfeuchter: boolean; kuehlung: boolean } | null>(null)
+  const [rueckfrage, setRueckfrage] = useState<{ betrieb: Betrieb; folgt: Folgt } | null>(null)
   const [portBlatt, setPortBlatt] = useState(false)
 
   const laden = useCallback(async () => {
@@ -61,13 +61,13 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
     return () => window.clearInterval(uhr)
   }, [laden])
 
-  const setzen = async (betrieb: Betrieb, entfeuchter: boolean, kuehlung: boolean) => {
+  const setzen = async (betrieb: Betrieb, folgt: Folgt) => {
     if (zeltId == null) return
     setArbeitet(true); setMeldung(null)
     try {
       const neu = await apiFetch<TrocknungSteuerung>(`/api/tents/${zeltId}/trocknung/steuerung`, {
         method: 'PUT',
-        body: JSON.stringify({ betrieb, entfeuchterFolgt: entfeuchter, kuehlungFolgt: kuehlung }),
+        body: JSON.stringify({ betrieb, entfeuchterFolgt: folgt.entfeuchter, kuehlungFolgt: folgt.kuehlung, abluftFolgt: folgt.abluft }),
       })
       setStand(neu); setFehler(null)
       setMeldung(betrieb === 'regeln' ? 'Gespeichert. Der Fork hat die Grenzen auf den Plan gesetzt.' : 'Gespeichert.')
@@ -102,21 +102,22 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   if (laedt && !stand) return <V1Page {...kopf}><V1Skeleton rows={4} tiles={2} label="Wird geladen" /></V1Page>
   if (!stand) return <V1Page {...kopf}>{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
 
-  const folgt = {
+  const folgt: Folgt = {
     entfeuchter: stand.geraete.find((g) => g.rolle === 'entfeuchter')?.folgt ?? false,
     kuehlung: stand.geraete.find((g) => g.rolle === 'kuehlung')?.folgt ?? false,
+    abluft: stand.geraete.find((g) => schalterVon(g.rolle) === 'abluft')?.folgt ?? false,
   }
-  const zugeordnet = stand.geraete.filter((g) => g.urteil !== 'nichtZugeordnet').length
+  const zugeordnet = SCHALTER.filter((s) => stand.geraete.some((g) => schalterVon(g.rolle) === s && g.urteil !== 'nichtZugeordnet')).length
   const regeln = stand.betrieb === 'regeln'
   const hatMerker = stand.geraete.some((g) => g.vorher != null)
 
   // Wer „Regeln“ einschaltet oder im Betrieb „Regeln“ ein Gerät dazunimmt, bekommt vorher gezeigt, was geschrieben wird.
-  const anfrage = (betrieb: Betrieb, entfeuchter: boolean, kuehlung: boolean) => {
-    if (betrieb === 'regeln' && wuerdeSchreiben(stand.geraete, { entfeuchter, kuehlung }).length > 0) {
-      setRueckfrage({ betrieb, entfeuchter, kuehlung })
+  const anfrage = (betrieb: Betrieb, neu: Folgt) => {
+    if (betrieb === 'regeln' && wuerdeSchreiben(stand.geraete, neu).length > 0) {
+      setRueckfrage({ betrieb, folgt: neu })
       return
     }
-    void setzen(betrieb, entfeuchter, kuehlung)
+    void setzen(betrieb, neu)
   }
 
   const untertitel = stand.trocknet
@@ -166,33 +167,37 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
           <V1Tabs
             items={[{ value: 'melden' as Betrieb, label: 'Nur melden' }, { value: 'regeln' as Betrieb, label: 'Regeln' }]}
             active={stand.betrieb}
-            onChange={(b) => { if (b !== stand.betrieb && !arbeitet) { if (b === 'melden') void setzen('melden', folgt.entfeuchter, folgt.kuehlung); else anfrage('regeln', folgt.entfeuchter, folgt.kuehlung) } }}
+            onChange={(b) => { if (b !== stand.betrieb && !arbeitet) { if (b === 'melden') void setzen('melden', folgt); else anfrage('regeln', folgt) } }}
             label="Betriebsart"
           />
         </V1Card>
 
-        {stand.geraete.map((g) => (
-          <GeraetKarte
-            key={g.rolle}
-            g={g}
-            betrieb={stand.betrieb}
-            gesperrt={arbeitet}
-            onFolgt={(an) => {
-              const neu = { ...folgt, [g.rolle]: an }
-              if (regeln && an) anfrage('regeln', neu.entfeuchter, neu.kuehlung)
-              else void setzen(stand.betrieb, neu.entfeuchter, neu.kuehlung)
-            }}
-          />
-        ))}
+        {SCHALTER.map((schalter) => {
+          const zeilen = stand.geraete.filter((g) => schalterVon(g.rolle) === schalter)
+          if (zeilen.length === 0) return null
+          return (
+            <GeraetKarte
+              key={schalter}
+              zeilen={zeilen}
+              betrieb={stand.betrieb}
+              gesperrt={arbeitet}
+              onFolgt={(an) => {
+                const neu = { ...folgt, [schalter]: an }
+                if (regeln && an) anfrage('regeln', neu)
+                else void setzen(stand.betrieb, neu)
+              }}
+            />
+          )
+        })}
 
         <div className="zj-aktionen">
-          {!regeln && <V1Button variant="primary" disabled={arbeitet || (!folgt.entfeuchter && !folgt.kuehlung)} onClick={() => anfrage('regeln', folgt.entfeuchter, folgt.kuehlung)}>Auf „Regeln“ stellen…</V1Button>}
+          {!regeln && <V1Button variant="primary" disabled={arbeitet || !SCHALTER.some((s) => folgt[s])} onClick={() => anfrage('regeln', folgt)}>Auf „Regeln“ stellen…</V1Button>}
           {hatMerker && <V1Button variant="ghost" disabled={arbeitet} onClick={() => void zuruecksetzen()}>Alte Werte zurück</V1Button>}
         </div>
       </V1Section>
 
       <div className="st-geraete-zeile">
-        <span>Ports <b>{zugeordnet} / 2</b> zugeordnet</span>
+        <span>Ports <b>{zugeordnet} / {SCHALTER.length}</b> zugeordnet</span>
         <V1Button variant="ghost" onClick={() => setPortBlatt(true)}>Ports bearbeiten ›</V1Button>
       </div>
 
@@ -203,13 +208,13 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
         footer={(
           <>
             <button type="button" className="ls-btn" onClick={() => setRueckfrage(null)}>Abbrechen</button>
-            <button type="button" className="ls-btn is-primary" onClick={() => { const r = rueckfrage; setRueckfrage(null); if (r) void setzen(r.betrieb, r.entfeuchter, r.kuehlung) }}>Ja, Regeln einschalten</button>
+            <button type="button" className="ls-btn is-primary" onClick={() => { const r = rueckfrage; setRueckfrage(null); if (r) void setzen(r.betrieb, r.folgt) }}>Ja, Regeln einschalten</button>
           </>
         )}
       >
         <div className="zj-rueckfrage">
           <p>Das schreibt der Fork ab jetzt an den Controller:</p>
-          {rueckfrage && wuerdeSchreiben(stand.geraete, { entfeuchter: rueckfrage.entfeuchter, kuehlung: rueckfrage.kuehlung }).map((w) => (
+          {rueckfrage && wuerdeSchreiben(stand.geraete, rueckfrage.folgt).map((w) => (
             <div key={w.rolle} className="zj-wert" data-audit={`rueckfrage-${w.rolle}`}>
               <span>{w.portName} · {w.feld}</span>
               <strong>{zahl(w.von)} → {zahl(w.nach)} {w.einheit}</strong>
@@ -232,13 +237,16 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   )
 }
 
-function GeraetKarte({ g, betrieb, gesperrt, onFolgt }: { g: SteuerungGeraet; betrieb: Betrieb; gesperrt: boolean; onFolgt: (an: boolean) => void }) {
+/** Eine Karte je Gerät. Die Abluft hat zwei Zeilen (Feuchte- und Temperatur-Obergrenze), die anderen eine. */
+function GeraetKarte({ zeilen, betrieb, gesperrt, onFolgt }: { zeilen: SteuerungGeraet[]; betrieb: Betrieb; gesperrt: boolean; onFolgt: (an: boolean) => void }) {
+  // Kopf, Plakette und Hinweis zeigen die Zeile, die vom Plan abweicht — sonst die erste.
+  const g = zeilen.find((z) => z.urteil === 'weichtAb') ?? zeilen[0]
   const r = ROLLE[g.rolle]
   const p = plakette(g, betrieb)
   const nichtZugeordnet = g.urteil === 'nichtZugeordnet'
   return (
     <V1Card>
-      <div className="st-feldzeile" data-audit={`trocknung-${g.rolle}`}>
+      <div className="st-feldzeile" data-audit={`trocknung-${schalterVon(g.rolle)}`}>
         <span className="st-etikett">
           {r.titel}
           <small>{g.portName ? `${g.portName}${g.modus ? ` · ${g.modus === 'Off' ? 'Modus Aus' : g.modus}` : ''}` : 'kein Port zugeordnet'}</small>
@@ -248,14 +256,18 @@ function GeraetKarte({ g, betrieb, gesperrt, onFolgt }: { g: SteuerungGeraet; be
       {!nichtZugeordnet && (
         <>
           <V1Switch label="Folgt dem Plan" checked={g.folgt} onChange={gesperrt ? () => undefined : onFolgt} hint={geraetHinweis(g)} />
-          <div className="st-feldzeile">
-            <span className="st-etikett">{r.feld} am Gerät</span>
-            <span className="st-nurlesen">{g.wertAmGeraet == null ? '–' : `${zahl(g.wertAmGeraet)} ${r.einheit}`}</span>
-          </div>
-          <div className="st-feldzeile">
-            <span className="st-etikett">Plan (oben im Band)</span>
-            <span className="st-nurlesen">{g.planWert == null ? '–' : `${zahl(g.planWert)} ${r.einheit}`}</span>
-          </div>
+          {zeilen.map((z) => (
+            <div key={z.rolle}>
+              <div className="st-feldzeile">
+                <span className="st-etikett">{ROLLE[z.rolle].feld} am Gerät</span>
+                <span className="st-nurlesen">{z.wertAmGeraet == null ? '–' : `${zahl(z.wertAmGeraet)} ${ROLLE[z.rolle].einheit}`}</span>
+              </div>
+              <div className="st-feldzeile">
+                <span className="st-etikett">Plan (oben im Band)</span>
+                <span className="st-nurlesen">{z.planWert == null ? '–' : `${zahl(z.planWert)} ${ROLLE[z.rolle].einheit}`}</span>
+              </div>
+            </div>
+          ))}
           {g.zuletztGesetzt && (
             <div className="st-feldzeile">
               <span className="st-etikett">Zuletzt gesetzt<small>{g.vorher != null ? `vorher ${zahl(g.vorher)} ${r.einheit} (gemerkt)` : null}</small></span>

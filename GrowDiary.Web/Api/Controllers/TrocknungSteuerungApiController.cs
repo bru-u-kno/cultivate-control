@@ -43,7 +43,7 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// Betriebsart und „Folgt dem Plan“ je Gerät setzen. Das PUT ersetzt alle drei Angaben. Bei „regeln“ zieht der Fork die
+    /// Betriebsart und „Folgt dem Plan“ je Gerät setzen. Das PUT ersetzt alle Angaben; nur „abluftFolgt“ darf fehlen (dann bleibt es). Bei „regeln“ zieht der Fork die
     /// Grenzen sofort nach (danach alle fünf Minuten); bei „melden“ schreibt er nichts. Ändert nur die Grenzwerte der Auslöser,
     /// nie den Modus des Ports.
     /// </summary>
@@ -66,7 +66,12 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         if (request.KuehlungFolgt && !zuordnung.ContainsKey(TrocknungZiel.RolleKuehlung))
             return BadRequestError("kein_port", "Der Kühlung ist noch kein Port zugeordnet.");
 
-        _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt));
+        // Ein Aufruf ohne „abluftFolgt“ (ältere Clients) lässt den Schalter der Abluft, wie er ist.
+        var abluftFolgt = request.AbluftFolgt ?? _steuerung.Get(tentId).AbluftFolgt;
+        if (abluftFolgt && !zuordnung.ContainsKey(TrocknungZiel.RolleAbluft))
+            return BadRequestError("kein_port", "Der Abluft ist noch kein Port zugeordnet.");
+
+        _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt, abluftFolgt));
         // Sofort nachziehen, nicht erst im nächsten Takt: Wer „Regeln“ einschaltet, will das Ergebnis sehen.
         await _dienst.AbgleichenAsync(tentId, ct);
         return Ok(Dto(await _dienst.StandAsync(tentId, ct)));
@@ -104,6 +109,11 @@ public sealed class TrocknungSteuerungRequest
 
     /// <summary>Folgt die Temperatur-Obergrenze am Kühlungs-Port dem Plan?</summary>
     public bool KuehlungFolgt { get; set; }
+
+    /// <summary>
+    /// Folgen die Luftfeuchte- und die Temperatur-Obergrenze am Abluft-Port dem Plan? Fehlt die Angabe, bleibt der Schalter.
+    /// </summary>
+    public bool? AbluftFolgt { get; set; }
 }
 
 public sealed record TrocknungSteuerungGeraetDto(

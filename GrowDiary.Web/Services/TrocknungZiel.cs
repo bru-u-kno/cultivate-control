@@ -22,6 +22,20 @@ public static partial class TrocknungZiel
     public const string RolleEntfeuchter = "entfeuchter";
     public const string RolleKuehlung = "kuehlung";
 
+    /// <summary>
+    /// Die Abluft hat EINEN Port, aber zwei Grenzen (Luftfeuchte und Temperatur). Die Zuordnung (Port) heißt <c>abluft</c>;
+    /// beim Abgleich zählt jede Grenze als eigene Rolle mit eigenem Merker.
+    /// </summary>
+    public const string RolleAbluft = "abluft";
+    public const string RolleAbluftFeuchte = "abluft-feuchte";
+    public const string RolleAbluftTemp = "abluft-temp";
+
+    /// <summary>Misst diese Rolle die Luftfeuchte (sonst die Temperatur)?</summary>
+    public static bool IstFeuchte(string rolle) => rolle is RolleEntfeuchter or RolleAbluftFeuchte;
+
+    /// <summary>Die Rolle, unter der der Port zugeordnet ist (beide Abluft-Grenzen hängen am Port „abluft“).</summary>
+    public static string PortRolle(string rolle) => rolle is RolleAbluftFeuchte or RolleAbluftTemp ? RolleAbluft : rolle;
+
     /// <summary>Ein Port des Controllers mit den Entitäten, die der Vergleich braucht.</summary>
     public sealed record Port(
         string DeviceId,
@@ -120,7 +134,7 @@ public static partial class TrocknungZiel
         if (!string.Equals(modus, "Auto", StringComparison.OrdinalIgnoreCase))
             return new Vergleich(rolle, port.Name, modus, null, null, planOberGrenze, Urteil.OhneAutomatik);
 
-        var feuchte = rolle == RolleEntfeuchter;
+        var feuchte = IstFeuchte(rolle);
         var wertEntity = feuchte ? port.FeuchteWertEntity : port.TempWertEntity;
         var aktivEntity = feuchte ? port.FeuchteAktivEntity : port.TempAktivEntity;
         var wertState = wertEntity is null ? null : zustand(wertEntity);
@@ -162,7 +176,7 @@ public static partial class TrocknungZiel
     {
         var modusState = zustand(port.ModusEntity);
         var modus = IstNichtLesbar(modusState) ? null : modusState!.State;
-        var feuchte = rolle == RolleEntfeuchter;
+        var feuchte = IstFeuchte(rolle);
         var wertEntity = feuchte ? port.FeuchteWertEntity : port.TempWertEntity;
         if (wertEntity is null) return new Wunsch(rolle, null, modus, null, null, null, "keinAusloeser");
 

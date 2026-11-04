@@ -153,9 +153,9 @@ public sealed class TrocknungApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// Ports zuordnen: welcher Port des Controllers ist am Trockenzelt der Entfeuchter, welcher die Kühlung. Leer löst die
+    /// Ports zuordnen: welcher Port des Controllers ist am Trockenzelt der Entfeuchter, welcher die Kühlung, welcher die Abluft. Leer löst die
     /// Zuordnung. Es werden nur Ports angenommen, die Home Assistant gerade als Ports mit eigener Automatik kennt.
-    /// <b>Das PUT ersetzt beide Rollen:</b> Eine weggelassene Rolle wird gelöst, nicht beibehalten.
+    /// <b>Das PUT ersetzt alle drei Rollen:</b> Eine weggelassene Rolle wird gelöst, nicht beibehalten.
     /// </summary>
     [HttpPut("{tentId:int}/trocknung/ports")]
     [KiStufe(KiStufe.Verwaltung)]
@@ -170,15 +170,17 @@ public sealed class TrocknungApiController : ApiControllerBase
 
         var entfeuchter = string.IsNullOrWhiteSpace(request.Entfeuchter) ? null : request.Entfeuchter.Trim();
         var kuehlung = string.IsNullOrWhiteSpace(request.Kuehlung) ? null : request.Kuehlung.Trim();
-        if (entfeuchter is not null && entfeuchter == kuehlung)
-            return BadRequestError("port_doppelt", "Entfeuchter und Kühlung können nicht derselbe Port sein.");
+        var abluft = string.IsNullOrWhiteSpace(request.Abluft) ? null : request.Abluft.Trim();
+        var gewaehlt = new[] { entfeuchter, kuehlung, abluft }.Where(d => d is not null).ToList();
+        if (gewaehlt.Count != gewaehlt.Distinct().Count())
+            return BadRequestError("port_doppelt", "Entfeuchter, Kühlung und Abluft können nicht derselbe Port sein.");
 
-        if (entfeuchter is not null || kuehlung is not null)
+        if (gewaehlt.Count > 0)
         {
             var ports = await _ziel.PortsAsync(frisch: true, ct);
             if (ports is null)
                 return BadRequestError("ha_nicht_erreichbar", "Home Assistant ist gerade nicht erreichbar — die Ports lassen sich nicht prüfen.");
-            foreach (var deviceId in new[] { entfeuchter, kuehlung }.Where(d => d is not null))
+            foreach (var deviceId in gewaehlt)
             {
                 if (ports.All(p => p.DeviceId != deviceId))
                     return BadRequestError("port_unbekannt", "Dieser Port ist Home Assistant nicht als Port mit eigener Automatik bekannt.");
@@ -187,6 +189,7 @@ public sealed class TrocknungApiController : ApiControllerBase
 
         _ports.Set(tentId, TrocknungZiel.RolleEntfeuchter, entfeuchter);
         _ports.Set(tentId, TrocknungZiel.RolleKuehlung, kuehlung);
+        _ports.Set(tentId, TrocknungZiel.RolleAbluft, abluft);
         _ziel.Vergessen();
         return Ok(await PortsDtoAsync(tentId, frisch: true, ct));
     }
@@ -199,6 +202,7 @@ public sealed class TrocknungApiController : ApiControllerBase
             ports is not null,
             zuordnung.GetValueOrDefault(TrocknungZiel.RolleEntfeuchter),
             zuordnung.GetValueOrDefault(TrocknungZiel.RolleKuehlung),
+            zuordnung.GetValueOrDefault(TrocknungZiel.RolleAbluft),
             (ports ?? []).Select(p => new PortAuswahlDto(p.DeviceId, p.Name)).ToList());
     }
 
@@ -280,11 +284,14 @@ public sealed class PortsRequest
 
     /// <summary>Geräte-Id des Ports der Kühlung (leer = lösen).</summary>
     public string? Kuehlung { get; set; }
+
+    /// <summary>Geräte-Id des Ports der Abluft (leer = lösen).</summary>
+    public string? Abluft { get; set; }
 }
 
 public sealed record PortAuswahlDto(string DeviceId, string Name);
 
-public sealed record PortsDto(bool Erreichbar, string? Entfeuchter, string? Kuehlung, IReadOnlyList<PortAuswahlDto> Verfuegbar);
+public sealed record PortsDto(bool Erreichbar, string? Entfeuchter, string? Kuehlung, string? Abluft, IReadOnlyList<PortAuswahlDto> Verfuegbar);
 
 public sealed record ZielGeraetDto(string Rolle, string Urteil, string? PortName, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert);
 

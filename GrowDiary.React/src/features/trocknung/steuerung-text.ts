@@ -5,7 +5,7 @@ export type Betrieb = 'melden' | 'regeln'
 export type SteuerungUrteil = 'nichtZugeordnet' | 'unbekannt' | 'geraetAus' | 'ohneAutomatik' | 'keinAusloeser' | 'keinPlan' | 'passt' | 'weichtAb'
 
 export interface SteuerungGeraet {
-  rolle: 'entfeuchter' | 'kuehlung'
+  rolle: 'entfeuchter' | 'kuehlung' | 'abluft-feuchte' | 'abluft-temp'
   portName: string | null
   folgt: boolean
   modus: string | null
@@ -36,7 +36,15 @@ export const zahl = (wert: number) => formatNumber(wert, Number.isInteger(wert) 
 export const ROLLE = {
   entfeuchter: { titel: 'Entfeuchter', feld: 'Luftfeuchte-Obergrenze', einheit: '%' },
   kuehlung: { titel: 'Kühlung', feld: 'Temperatur-Obergrenze', einheit: '°C' },
+  'abluft-feuchte': { titel: 'Abluft', feld: 'Luftfeuchte-Obergrenze', einheit: '%' },
+  'abluft-temp': { titel: 'Abluft', feld: 'Temperatur-Obergrenze', einheit: '°C' },
 } as const
+
+/** Ein Schalter „Folgt dem Plan“ je Gerät. Die Abluft hat zwei Grenzen (Feuchte, Temperatur), aber nur einen Schalter. */
+export type Schalter = 'entfeuchter' | 'kuehlung' | 'abluft'
+export type Folgt = Record<Schalter, boolean>
+export const SCHALTER: Schalter[] = ['entfeuchter', 'kuehlung', 'abluft']
+export const schalterVon = (rolle: SteuerungGeraet['rolle']): Schalter => (rolle === 'abluft-feuchte' || rolle === 'abluft-temp' ? 'abluft' : rolle)
 
 /** Plakette je Gerät: Text und Ton (warn = gelb, ok = grün). Hängt von Betriebsart und Schalter ab. */
 export function plakette(g: SteuerungGeraet, betrieb: Betrieb): { text: string; ton?: 'warn' | 'ok' } {
@@ -52,9 +60,9 @@ export function plakette(g: SteuerungGeraet, betrieb: Betrieb): { text: string; 
 }
 
 /** Was beim Einschalten von „Regeln“ geschrieben würde: eine Zeile je Gerät, das folgt und abweicht. */
-export function wuerdeSchreiben(geraete: SteuerungGeraet[], folgt: { entfeuchter: boolean; kuehlung: boolean }) {
+export function wuerdeSchreiben(geraete: SteuerungGeraet[], folgt: Partial<Folgt>) {
   return geraete
-    .filter((g) => folgt[g.rolle] && g.urteil === 'weichtAb' && g.planWert != null && g.wertAmGeraet != null)
+    .filter((g) => folgt[schalterVon(g.rolle)] && g.urteil === 'weichtAb' && g.planWert != null && g.wertAmGeraet != null)
     .map((g) => ({
       rolle: g.rolle,
       portName: g.portName ?? ROLLE[g.rolle].titel,

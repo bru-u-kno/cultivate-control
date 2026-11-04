@@ -31,6 +31,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
     [
         new("dev-dehumi", "Testport Entfeuchter", "C", 5, "select.dehumi_modus", "number.dehumi_feuchte", "switch.dehumi_feuchte_an", null, null),
         new("dev-clima", "Testport Kühlung", "C", 4, "select.clima_modus", null, null, "number.clima_temp", "switch.clima_temp_an"),
+        new("dev-abluft", "Testport Abluft", "C", 1, "select.abluft_modus", "number.abluft_feuchte", "switch.abluft_feuchte_an", "number.abluft_temp", "switch.abluft_temp_an"),
     ];
 
     public TrocknungSteuerungTests()
@@ -288,5 +289,120 @@ public sealed class TrocknungSteuerungTests : IDisposable
         _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", false, true));
         Assert.Equal(1, await worker.EinmalAsync(default));
         Assert.Equal("21", _ha["number.clima_temp"].State);
+    }
+
+    private void AbluftEinrichten(string modus = "Auto")
+    {
+        _ports.Set(_trockenZelt.Id, "abluft", "dev-abluft");
+        ZustandSetzen("select.abluft_modus", modus);
+        var bereit = modus == "Auto";
+        ZustandSetzen("number.abluft_feuchte", bereit ? "55" : "unavailable", bereit ? "%" : null);
+        ZustandSetzen("switch.abluft_feuchte_an", "on");
+        ZustandSetzen("number.abluft_temp", bereit ? "24" : "unavailable", bereit ? "°C" : null);
+        ZustandSetzen("switch.abluft_temp_an", "on");
+    }
+
+    [Fact]
+    public async Task Die_Abluft_folgt_mit_einem_Schalter_ihren_beiden_Grenzen_und_der_Modus_bleibt()
+    {
+        AbluftEinrichten();
+        ErnteImTrockenzelt();
+        var c = Controller();
+
+        var stand = Wert(await c.Setzen(_trockenZelt.Id,
+            new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftFolgt = true }, default));
+
+        Assert.Contains(("number.abluft_feuchte", 62.0), _gesetzt);   // Band oben: 62 % wie beim Entfeuchter
+        Assert.Contains(("number.abluft_temp", 21.0), _gesetzt);      // Band oben: 21 °C wie bei der Kühlung
+        Assert.Equal(2, _gesetzt.Count);                              // Entfeuchter und Kühlung folgen nicht
+        Assert.Equal("Auto", _ha["select.abluft_modus"].State);       // Modus unverändert
+        Assert.Equal("on", _ha["switch.abluft_feuchte_an"].State);    // Schalter unverändert
+        var feuchte = stand.Geraete.Single(g => g.Rolle == "abluft-feuchte");
+        var temp = stand.Geraete.Single(g => g.Rolle == "abluft-temp");
+        Assert.Equal((55, 24), (feuchte.Vorher, temp.Vorher));        // beide Werte davor gemerkt
+        Assert.True(feuchte.Folgt && temp.Folgt);
+        Assert.Equal("Testport Abluft", feuchte.PortName);
+    }
+
+    [Fact]
+    public async Task Steht_die_Abluft_auf_On_gibt_es_keine_Grenzen_und_es_wird_nichts_geschrieben()
+    {
+        // Echter Controller: Modus On → die Auslöser-Entitäten sind „unavailable“.
+        AbluftEinrichten("On");
+        ErnteImTrockenzelt();
+        var c = Controller();
+
+        var stand = Wert(await c.Setzen(_trockenZelt.Id,
+            new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftFolgt = true }, default));
+
+        Assert.Empty(_gesetzt);
+        Assert.All(stand.Geraete.Where(g => g.Rolle.StartsWith("abluft")), g => Assert.Equal("ohneAutomatik", g.Urteil));
+        Assert.Equal("On", _ha["select.abluft_modus"].State);
+    }
+
+    [Fact]
+    public async Task Ein_Aufruf_ohne_abluftFolgt_laesst_den_Schalter_der_Abluft_und_ohne_Port_wird_abgewiesen()
+    {
+        var c = Controller();
+        Assert.IsType<BadRequestObjectResult>((await c.Setzen(_trockenZelt.Id,
+            new TrocknungSteuerungRequest { Betrieb = "melden", AbluftFolgt = true }, default)).Result);
+
+        AbluftEinrichten();
+        Wert(await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "melden", AbluftFolgt = true }, default));
+        // Älterer Client: kennt „abluftFolgt“ nicht.
+        var stand = Wert(await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "melden", EntfeuchterFolgt = true }, default));
+
+        Assert.True(stand.Geraete.Single(g => g.Rolle == "abluft-feuchte").Folgt);
+        Assert.True(_steuerung.Get(_trockenZelt.Id).AbluftFolgt);
+    }
+
+    [Fact]
+    public async Task Alte_Werte_zurueck_setzt_auch_die_Grenzen_der_Abluft_zurueck()
+    {
+        AbluftEinrichten();
+        ErnteImTrockenzelt();
+        var c = Controller();
+        await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftFolgt = true }, default);
+
+        var zurueck = Wert(await c.Zuruecksetzen(_trockenZelt.Id, default));
+
+        Assert.Equal(2, zurueck.Zurueck);
+        Assert.Equal("55", _ha["number.abluft_feuchte"].State);
+        Assert.Equal("24", _ha["number.abluft_temp"].State);
+        Assert.False(_steuerung.Get(_trockenZelt.Id).AbluftFolgt);
+        Assert.Empty(_steuerung.Merkers(_trockenZelt.Id));
+    }
+
+    [Fact]
+    public void Eine_Datenbank_aus_der_Zeit_vor_der_Abluft_bekommt_die_Spalte_nachgeruestet()
+    {
+        var wurzel = Path.Combine(Path.GetTempPath(), "TrocknungAlt_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(wurzel);
+        try
+        {
+            var paths = new AppPaths(wurzel);
+            using (var verbindung = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={paths.DatabasePath}"))
+            {
+                verbindung.Open();
+                using var befehl = verbindung.CreateCommand();
+                befehl.CommandText = """
+                    CREATE TABLE ForkTrocknungSteuerung (TentId INTEGER NOT NULL PRIMARY KEY, Betrieb TEXT NOT NULL,
+                        EntfeuchterFolgt INTEGER NOT NULL, KuehlungFolgt INTEGER NOT NULL, UpdatedAtUtc TEXT NOT NULL);
+                    INSERT INTO ForkTrocknungSteuerung VALUES (7, 'regeln', 1, 0, '2026-11-01T00:00:00Z');
+                    """;
+                befehl.ExecuteNonQuery();
+            }
+
+            var repo = new TrocknungSteuerungRepository(paths);
+            var alt = repo.Get(7);
+            Assert.Equal(new TrocknungSteuerungRepository.Einstellung("regeln", true, false, false), alt);
+            repo.Set(7, alt with { AbluftFolgt = true });
+            Assert.True(repo.Get(7).AbluftFolgt);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            try { Directory.Delete(wurzel, recursive: true); } catch { }
+        }
     }
 }
