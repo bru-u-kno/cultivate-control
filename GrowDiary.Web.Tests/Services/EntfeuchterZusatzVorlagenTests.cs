@@ -330,6 +330,20 @@ public sealed class EntfeuchterZusatzVorlagenTests
         Assert.Contains("\"url\":", mit);
     }
 
+    [Fact]
+    public void Meldung_PushZiel_LaesstNurSchlichtePfadeUndNurUnterSeinerRolleDurch()
+    {
+        // Ein Pfad mit Anführungszeichen bleibt Platzhalter — die Vorlage entfällt, statt Text in die Automation zu lassen.
+        var boese = Rollen();
+        boese["push_ziel"] = "/x\" ; drop";
+        Assert.Null(SteuerungAutomationService.Fuellen(Laden("meldung"), boese));
+
+        // Der Pfad-Ausnahme gehört nur push_ziel: unter einer anderen Rolle zählt weiter nur eine Entity-ID.
+        var fremd = Rollen();
+        fremd["push_dienst"] = "/cultivate_control?index=live";
+        Assert.Null(SteuerungAutomationService.Fuellen(Laden("meldung"), fremd));
+    }
+
     [Theory]
     [InlineData("/cultivate_control?index=live", "/cultivate_control?index=live")]
     [InlineData("/app/00d580e3_cultivate_control/live", "/app/00d580e3_cultivate_control/live")]
