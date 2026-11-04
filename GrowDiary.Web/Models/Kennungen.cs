@@ -103,6 +103,9 @@ public static class Kennungen
     private static readonly IReadOnlyDictionary<string, Altkennung> NachNeuerId =
         Tabelle.ToDictionary(a => a.NeueId, StringComparer.Ordinal);
 
+    private static readonly IReadOnlyDictionary<string, Altkennung> NachAlterId =
+        Tabelle.ToDictionary(a => a.AlteId, StringComparer.Ordinal);
+
     // Längste zuerst: „…_feuchte_ein“ ist Vorspann von „…_feuchte_ein_aktiv“; die Grenzen im Muster
     // (kein Buchstabe, Ziffer oder Unterstrich davor/danach) trennen sie, die Sortierung hält es robust.
     //
@@ -126,6 +129,14 @@ public static class Kennungen
 
     /// <summary>Die Entity-ID im aktuellen Raum — Kennungen, die der Katalog nicht umbenennt, kommen unverändert zurück.</summary>
     public static string Id(string neueId) => Id(neueId, _raum);
+
+    /// <summary>
+    /// Die Kennung im neuen Namensraum zu einer Entity-ID, wie sie im aktuellen Raum heißt. Weitere Instanzen einer Steuerung
+    /// (<see cref="InstanzModul"/>) tragen ihre Kennungen nur im neuen Raum — auch in einer Anlage mit alten Namen.
+    /// Unbekannte Kennungen kommen unverändert zurück.
+    /// </summary>
+    public static string NeueId(string idImRaum)
+        => _raum == KennungsRaum.Bestand && NachAlterId.TryGetValue(idImRaum, out var a) ? a.NeueId : idImRaum;
 
     /// <summary>Die Entity-ID im angegebenen Raum.</summary>
     public static string Id(string neueId, KennungsRaum raum)

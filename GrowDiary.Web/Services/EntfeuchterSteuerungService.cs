@@ -36,6 +36,8 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         public const string PortZustand = "port_zustand";
         public const string PortStatus = "port_status";
         public const string LichtZustand = "licht_zustand";
+        public const string ZuluftBedarf = "zuluft_bedarf";
+        public const string ZuluftStufe = "zuluft_stufe_ist";
     }
 
     /// <summary>Die Objekte der Steuerung selbst — sie gehören keinem Gerät.</summary>
@@ -87,6 +89,74 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     private readonly WochenplanSyncService _wochenplan;
     private readonly HelferBereichService _bereiche;
     private readonly ILogger<EntfeuchterSteuerungService> _logger;
+    private readonly SteuerungZeltService? _zelte;
+
+    // Entfeuchter-Instanzen: Der Dienst aus der Abhängigkeits-Einspritzung gehört der ersten Instanz (Modul „entfeuchter“, alle
+    // Kennungen unverändert, auch die alten eines Bestands). Für eine weitere Instanz liefert Fuer() eine Kopie mit deren Modul;
+    // jede Kennung wandert dann über E() auf den neuen Namensraum plus Endung _i{n}.
+    private string _modul = Modul;
+    private int? _nummer;
+
+    /// <summary>Das Modul dieses Dienstes: <c>entfeuchter</c> oder <c>entfeuchter-i{n}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Die Nummer der Instanz (ab 2) — <c>null</c> bei der ersten.</summary>
+    public int? Nummer => _nummer;
+
+    /// <summary>Der Dienst einer Instanz. Ein Modul, das keine weitere Entfeuchter-Instanz ist, bekommt den Dienst der ersten.</summary>
+    public EntfeuchterSteuerungService Fuer(string modul)
+    {
+        if (!string.Equals(InstanzModul.Art(modul), Modul, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return Bestand();
+        var kopie = (EntfeuchterSteuerungService)MemberwiseClone();
+        kopie._modul = modul;
+        kopie._nummer = n;
+        return kopie;
+    }
+
+    /// <summary>Der Dienst der ersten Instanz.</summary>
+    public EntfeuchterSteuerungService Bestand()
+    {
+        if (_nummer is null) return this;
+        var kopie = (EntfeuchterSteuerungService)MemberwiseClone();
+        kopie._modul = Modul;
+        kopie._nummer = null;
+        return kopie;
+    }
+
+    /// <summary>
+    /// Die Kennung eines Objekts der Instanz <paramref name="nummer"/> (<c>null</c> = erste Instanz, Kennung unverändert). Eine
+    /// weitere Instanz heißt immer wie die Kennung im NEUEN Namensraum plus <c>_i{n}</c> — auch in einer Anlage mit alten Namen.
+    /// </summary>
+    /// <param name="idImRaum">Die Kennung, wie sie in dieser Installation heißt (<see cref="Entitaeten"/>).</param>
+    public static string Kennung(string idImRaum, int? nummer)
+        => nummer is { } n ? InstanzModul.Id(Kennungen.NeueId(idImRaum), n) : idImRaum;
+
+    private string E(string idImRaum) => Kennung(idImRaum, _nummer);
+
+    /// <summary>Das Zelt, dessen Plan diese Instanz führt (<c>null</c> bei der ersten und bei einem einzigen aktiven Zelt: dann gilt der eine Durchgang).</summary>
+    private int? PlanZeltId => _nummer is null ? null : _wochenplan.PlanZelt(_modul);
+
+    /// <summary>
+    /// Das Zelt, dessen CO₂-Helfer diese Instanz liest — <c>null</c> für die ersten Kennungen (Bestand-Zelt). Eine weitere Instanz liest
+    /// das CO₂ ihres EIGENEN Zeltes; hat das Zelt keins, zeigt der Verweis ins Leere und es gilt der Ersatz (kein Deckel, Plan-Wert).
+    /// </summary>
+    private int? Co2ZeltId
+    {
+        get
+        {
+            if (_nummer is null || _zelte?.ZeltFuer(_modul) is not { } zelt) return null;
+            return zelt == Co2Zelte.Aktuell.BestandZeltId ? null : zelt;
+        }
+    }
+
+    private string Co2(string bestandId) => Co2Modul.Id(bestandId, Co2ZeltId);
+
+    /// <summary>Das Modul der CO₂-Steuerung des eigenen Zeltes — <c>null</c>, wenn das Zelt keine hat.</summary>
+    private string? Co2ModulName()
+    {
+        if (_nummer is null) return Co2SteuerungService.Modul;
+        return _zelte?.ZeltFuer(_modul) is { } zelt && Co2Zelte.Aktuell.ZeltIds.Contains(zelt) ? Co2Zelte.ModulFuer(zelt) : null;
+    }
 
     public EntfeuchterSteuerungService(
         SteuerungRepository repo,
@@ -95,8 +165,10 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         SteuerungGeraeteService geraete,
         WochenplanSyncService wochenplan,
         HelferBereichService bereiche,
-        ILogger<EntfeuchterSteuerungService> logger)
+        ILogger<EntfeuchterSteuerungService> logger,
+        SteuerungZeltService? zelte = null)
     {
+        _zelte = zelte;
         _repo = repo;
         _ha = ha;
         _haSettings = haSettings;
@@ -109,7 +181,7 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     // ----------------------------------------------------------- Einstellungen
 
     /// <summary>Der gespeicherte Stand — null, solange nie gespeichert wurde.</summary>
-    public EntfeuchterEinstellungen? Gespeichert => _repo.GetEinstellungen<EntfeuchterEinstellungen>(Modul);
+    public EntfeuchterEinstellungen? Gespeichert => _repo.GetEinstellungen<EntfeuchterEinstellungen>(_modul);
 
     public async Task<EntfeuchterEinstellungen> EinstellungenAsync(CancellationToken ct)
     {
@@ -121,12 +193,12 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         var entities = await _ha.GetEntitiesAsync(settings, ct);
         var uebernommen = AusHomeAssistant(entities.ToDictionary(
             x => x.EntityId, x => (string?)x.State, StringComparer.OrdinalIgnoreCase),
-            AutomatikKennungen(entities));
+            AutomatikKennungen(entities, _nummer), _nummer);
         // Fork AI (forkai.139, F-035): Beim ersten Aufruf übernimmt der Fork die
         // Werte aus Home Assistant sofort als eigenen Stand — gespeichert wird nur
         // im Fork, nach HA wird nichts geschrieben. Nur mit echter Antwort von HA,
         // sonst stünden die Werkseinstellungen als „übernommen" da.
-        if (entities.Count > 0) _repo.SetEinstellungen(Modul, uebernommen);
+        if (entities.Count > 0) _repo.SetEinstellungen(_modul, uebernommen);
         return uebernommen;
     }
 
@@ -138,14 +210,15 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     /// </summary>
     /// <param name="zustaende">Entität → Zustand aus Home Assistant.</param>
     /// <param name="automatiken">Die Regelungen, die es dort wirklich gibt (<see cref="AutomatikKennungen"/>); ohne Angabe die Katalog-Kennung.</param>
+    /// <param name="nummer">Die Instanz (ab 2); <c>null</c> = die erste, deren Kennungen unverändert gelten.</param>
     public static EntfeuchterEinstellungen AusHomeAssistant(
-        IReadOnlyDictionary<string, string?> zustaende, IReadOnlyList<string>? automatiken = null)
+        IReadOnlyDictionary<string, string?> zustaende, IReadOnlyList<string>? automatiken = null, int? nummer = null)
     {
         var e = new EntfeuchterEinstellungen();
 
-        double? Zahl(string id) => zustaende.TryGetValue(id, out var s)
+        double? Zahl(string id) => zustaende.TryGetValue(Kennung(id, nummer), out var s)
             ? Zahlenlesen.Maschine(s) : null;
-        bool? An(string id) => zustaende.TryGetValue(id, out var s) && s is "on" or "off" or "On" or "Off"
+        bool? An(string id) => zustaende.TryGetValue(Kennung(id, nummer), out var s) && s is "on" or "off" or "On" or "Off"
             ? s is "on" or "On" : null;
 
         if (An(Entitaeten.VpdRegelung) is { } vpd) e.VpdRegelung = vpd;
@@ -161,7 +234,10 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         if (Zahl(Entitaeten.FeuchteAusTag) is { } fat) e.FeuchteAusTag = fat;
         if (Zahl(Entitaeten.FeuchteEinNacht) is { } fen) e.FeuchteEinNacht = fen;
         if (Zahl(Entitaeten.FeuchteAusNacht) is { } fan) e.FeuchteAusNacht = fan;
-        var an = (automatiken ?? [Entitaeten.Automatik]).Select(An).OfType<bool>().ToList();
+        // Die Regelungen kommen schon unter ihrer Kennung (AutomatikKennungen) — hier nicht noch einmal übersetzen.
+        bool? Regelung(string id) => zustaende.TryGetValue(id, out var s) && s is "on" or "off" or "On" or "Off"
+            ? s is "on" or "On" : null;
+        var an = (automatiken ?? [Kennung(Entitaeten.Automatik, nummer)]).Select(Regelung).OfType<bool>().ToList();
         if (an.Count > 0) e.AutomatikAktiv = an.Any(x => x);
         return e;
     }
@@ -173,10 +249,12 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     /// Regelung ging „Automatik aus" an einer Entität vorbei, die es nicht gibt, und die Seite zeigte nie ihren Zustand.
     /// </summary>
     /// <returns>Ohne Entitätenliste (Home Assistant stumm) die Katalog-Kennung; sonst nur, was es wirklich gibt.</returns>
-    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle)
+    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle, int? nummer = null)
     {
-        if (alle.Count == 0) return [Entitaeten.Automatik];
-        var regelung = SteuerungBauteile.FuerModul(Modul).Single(b => b.EntityId == Entitaeten.Automatik);
+        var kennung = Kennung(Entitaeten.Automatik, nummer);
+        if (alle.Count == 0) return [kennung];
+        var modul = nummer is { } n ? InstanzModul.Fuer(Modul, n) : Modul;
+        var regelung = SteuerungBauteile.FuerModul(modul).Single(b => b.EntityId == kennung);
         return SteuerungBauteile.AutomationFinden(regelung, alle);
     }
 
@@ -282,7 +360,7 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
 
         // Bei „Arbeitsbereich aus dem Plan" stehen im gespeicherten Stand die gerechneten Schwellen, nicht die alten festen —
         // sonst zeigte die Seite nach dem Speichern etwas anderes, als in Home Assistant liegt.
-        if (ArbeitsbereichAusPlan(e, await RhObergrenzeAsync(ct), _wochenplan.PlanFeuchte()?.RhNacht) is { } plan)
+        if (ArbeitsbereichAusPlan(e, await RhObergrenzeAsync(ct), _wochenplan.PlanFeuchte(PlanZeltId)?.RhNacht) is { } plan)
         {
             e.FeuchteEinTag = plan.EinTag;
             e.FeuchteAusTag = plan.AusTag;
@@ -290,7 +368,7 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             e.FeuchteAusNacht = plan.AusNacht;
         }
 
-        _repo.SetEinstellungen(Modul, e);
+        _repo.SetEinstellungen(_modul, e);
         var erreicht = await NachHomeAssistantSchreibenAsync(e, ct);
         return (e, fehler, erreicht);
     }
@@ -301,7 +379,9 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         if (!settings.IsConfigured) return null;
         var entities = await _ha.GetEntitiesAsync(settings, ct);
-        return Zahlenlesen.Maschine(entities.FirstOrDefault(x => string.Equals(x.EntityId, Entitaeten.RhObergrenze, StringComparison.OrdinalIgnoreCase))?.State);
+        var helfer = Zahlenlesen.Maschine(entities.FirstOrDefault(x => string.Equals(x.EntityId, Co2(Entitaeten.RhObergrenze), StringComparison.OrdinalIgnoreCase))?.State);
+        // Eine weitere Instanz in einem Zelt ohne CO₂: es gibt keinen Helfer, der Plan gilt direkt.
+        return helfer ?? (_nummer is null ? null : _wochenplan.PlanFeuchte(PlanZeltId)?.RhTag);
     }
 
     /// <summary>
@@ -310,22 +390,22 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     /// </summary>
     private async Task<(string Entity, double Wert)[]> SollZahlenAsync(EntfeuchterEinstellungen e, CancellationToken ct)
     {
-        var plan = _wochenplan.PlanLuft();
+        var plan = _wochenplan.PlanLuft(PlanZeltId);
         // „Arbeitsbereich aus dem Plan": EIN und AUS kommen aus der Plan-Obergrenze, nicht aus den gespeicherten festen Werten.
-        var bereich = ArbeitsbereichAusPlan(e, await RhObergrenzeAsync(ct), _wochenplan.PlanFeuchte()?.RhNacht);
+        var bereich = ArbeitsbereichAusPlan(e, await RhObergrenzeAsync(ct), _wochenplan.PlanFeuchte(PlanZeltId)?.RhNacht);
         return new (string Entity, double Wert)[]
         {
-            (Entitaeten.Hysterese, e.HystereseProzent),
-            (Entitaeten.Mindestlaufzeit, e.MindestlaufzeitMin),
-            (Entitaeten.Einschaltverzoegerung, e.EinschaltverzoegerungMin),
-            (Entitaeten.WartezeitAussenluft, e.WartezeitAussenluftMin),
-            (Entitaeten.TempMaxTag, TempMaxFuer(Entitaeten.TempMaxTag, e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan?.LuftTagC)),
-            (Entitaeten.TempMaxNacht, TempMaxFuer(Entitaeten.TempMaxNacht, e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan?.LuftNachtC)),
-            (Entitaeten.NachtUebergang, e.NachtUebergangMin),
-            (Entitaeten.FeuchteEinTag, bereich?.EinTag ?? e.FeuchteEinTag),
-            (Entitaeten.FeuchteAusTag, bereich?.AusTag ?? e.FeuchteAusTag),
-            (Entitaeten.FeuchteEinNacht, bereich?.EinNacht ?? e.FeuchteEinNacht),
-            (Entitaeten.FeuchteAusNacht, bereich?.AusNacht ?? e.FeuchteAusNacht),
+            (E(Entitaeten.Hysterese), e.HystereseProzent),
+            (E(Entitaeten.Mindestlaufzeit), e.MindestlaufzeitMin),
+            (E(Entitaeten.Einschaltverzoegerung), e.EinschaltverzoegerungMin),
+            (E(Entitaeten.WartezeitAussenluft), e.WartezeitAussenluftMin),
+            (E(Entitaeten.TempMaxTag), TempMaxFuer(E(Entitaeten.TempMaxTag), e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan?.LuftTagC)),
+            (E(Entitaeten.TempMaxNacht), TempMaxFuer(E(Entitaeten.TempMaxNacht), e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan?.LuftNachtC)),
+            (E(Entitaeten.NachtUebergang), e.NachtUebergangMin),
+            (E(Entitaeten.FeuchteEinTag), bereich?.EinTag ?? e.FeuchteEinTag),
+            (E(Entitaeten.FeuchteAusTag), bereich?.AusTag ?? e.FeuchteAusTag),
+            (E(Entitaeten.FeuchteEinNacht), bereich?.EinNacht ?? e.FeuchteEinNacht),
+            (E(Entitaeten.FeuchteAusNacht), bereich?.AusNacht ?? e.FeuchteAusNacht),
         };
     }
 
@@ -352,11 +432,11 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     ];
 
     /// <summary>Anzeigename und Einheit eines Helfers; unbekannt: die Entity-ID selbst, ohne Einheit.</summary>
-    public static (string Name, string Einheit) BeschriftungFuer(string entity)
+    public static (string Name, string Einheit) BeschriftungFuer(string entity, int? nummer = null)
     {
         foreach (var (neueId, name, einheit) in Beschriftung)
         {
-            if (string.Equals(Kennungen.Id(neueId), entity, StringComparison.OrdinalIgnoreCase)) return (name, einheit);
+            if (string.Equals(Kennung(Kennungen.Id(neueId), nummer), entity, StringComparison.OrdinalIgnoreCase)) return (name, einheit);
         }
         return (entity, string.Empty);
     }
@@ -384,21 +464,21 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             var soll = SteuerungBauteile.AufSpanne(entity, wert);
             if (Math.Abs(soll - ha) <= 0.05) continue;
 
-            var (name, einheit) = BeschriftungFuer(entity);
+            var (name, einheit) = BeschriftungFuer(entity, _nummer);
             liste.Add(new Abweichung(entity, name, soll, ha, einheit));
         }
 
         return liste;
     }
 
-    string IStartwertDienst.StartModul => Modul;
+    string IStartwertDienst.StartModul => _modul;
 
     async Task<object> IStartwertDienst.StandFesthaltenAsync(CancellationToken ct) => await EinstellungenAsync(ct);
 
     async Task<(int Geschrieben, bool Alles)> IStartwertDienst.StartwerteSchreibenAsync(object stand, IReadOnlySet<string> neuAngelegt, CancellationToken ct)
     {
         var e = (EntfeuchterEinstellungen)stand;
-        var umfang = Schreibumfang(await SollZahlenAsync(e, ct), neuAngelegt);
+        var umfang = Schreibumfang(await SollZahlenAsync(e, ct), neuAngelegt, _nummer);
         var anzahl = umfang.Zahlen.Count + (umfang.VpdRegelung ? 1 : 0) + (umfang.Tagbetrieb ? 1 : 0);
         if (anzahl == 0) return (0, true);
 
@@ -414,13 +494,13 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     /// dazu die Regelung schalten) oder nur die genannten (frisch angelegte; die Regelung bleibt unberührt). Eine reine
     /// Entscheidung ohne Home Assistant — damit prüfbar, dass ein bestehender Helfer nicht überschrieben wird.
     /// </summary>
-    public static Umfang Schreibumfang(IReadOnlyList<(string Entity, double Wert)> zahlen, IReadOnlySet<string>? nur)
+    public static Umfang Schreibumfang(IReadOnlyList<(string Entity, double Wert)> zahlen, IReadOnlySet<string>? nur, int? nummer = null)
     {
         bool Gewollt(string entity) => nur is null || nur.Contains(entity);
         return new Umfang(
             zahlen.Where(z => Gewollt(z.Entity)).ToArray(),
-            Gewollt(Entitaeten.VpdRegelung),
-            Gewollt(Entitaeten.Tagbetrieb),
+            Gewollt(Kennung(Entitaeten.VpdRegelung, nummer)),
+            Gewollt(Kennung(Entitaeten.Tagbetrieb, nummer)),
             nur is null);
     }
 
@@ -437,7 +517,7 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
         if (!settings.IsConfigured) return false;
 
-        var umfang = Schreibumfang(await SollZahlenAsync(e, ct), nur);
+        var umfang = Schreibumfang(await SollZahlenAsync(e, ct), nur, _nummer);
         var zahlen = umfang.Zahlen;
 
         // Ein von Hand angelegter Helfer kann engere Grenzen tragen als der Katalog (Nacht-EIN stand auf 50–85, gewollt war 48): Home
@@ -454,15 +534,15 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         }
 
         if (umfang.VpdRegelung)
-            alles &= await _ha.CallEntityServiceAsync(settings, "input_boolean", e.VpdRegelung ? "turn_on" : "turn_off", Entitaeten.VpdRegelung, ct);
+            alles &= await _ha.CallEntityServiceAsync(settings, "input_boolean", e.VpdRegelung ? "turn_on" : "turn_off", E(Entitaeten.VpdRegelung), ct);
         if (umfang.Tagbetrieb)
-            alles &= await _ha.CallEntityServiceAsync(settings, "input_boolean", e.TagbetriebErlauben ? "turn_on" : "turn_off", Entitaeten.Tagbetrieb, ct);
+            alles &= await _ha.CallEntityServiceAsync(settings, "input_boolean", e.TagbetriebErlauben ? "turn_on" : "turn_off", E(Entitaeten.Tagbetrieb), ct);
         // Die Regelung unter der Kennung schalten, unter der sie wirklich steht. Gibt es keine, bleibt das Speichern
         // der Sollwerte trotzdem ein Erfolg: sie lassen sich auch vor dem Anlegen der Regelung eintragen.
         // Beim Schreiben einzelner Helfer (nur) bleibt die Regelung unberührt.
         if (umfang.RegelungSchalten)
         {
-            foreach (var automatik in AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct)))
+            foreach (var automatik in AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct), _nummer))
             {
                 alles &= await _ha.CallEntityServiceAsync(settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", automatik, ct);
             }
@@ -507,12 +587,12 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             if (angenommen) geschrieben++;
         }
 
-        if (temperaturPlan && _wochenplan.PlanLuft() is { } plan)
+        if (temperaturPlan && _wochenplan.PlanLuft(PlanZeltId) is { } plan)
         {
             foreach (var (modus, entity, soll) in new[]
                      {
-                         (e.TempMaxTagModus, Entitaeten.TempMaxTag, TempMaxFuer(Entitaeten.TempMaxTag, e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan.LuftTagC)),
-                         (e.TempMaxNachtModus, Entitaeten.TempMaxNacht, TempMaxFuer(Entitaeten.TempMaxNacht, e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan.LuftNachtC)),
+                         (e.TempMaxTagModus, E(Entitaeten.TempMaxTag), TempMaxFuer(E(Entitaeten.TempMaxTag), e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan.LuftTagC)),
+                         (e.TempMaxNachtModus, E(Entitaeten.TempMaxNacht), TempMaxFuer(E(Entitaeten.TempMaxNacht), e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan.LuftNachtC)),
                      })
             {
                 if (modus != TempMaxModus.Plan) continue;
@@ -520,12 +600,12 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             }
         }
 
-        if (bereichPlan && ArbeitsbereichAusPlan(e, Ist(Entitaeten.RhObergrenze), _wochenplan.PlanFeuchte()?.RhNacht) is { } bereich)
+        if (bereichPlan && ArbeitsbereichAusPlan(e, Ist(Co2(Entitaeten.RhObergrenze)) ?? (_nummer is null ? null : _wochenplan.PlanFeuchte(PlanZeltId)?.RhTag), _wochenplan.PlanFeuchte(PlanZeltId)?.RhNacht) is { } bereich)
         {
             foreach (var (entity, soll) in new[]
                      {
-                         (Entitaeten.FeuchteEinTag, bereich.EinTag), (Entitaeten.FeuchteAusTag, bereich.AusTag),
-                         (Entitaeten.FeuchteEinNacht, bereich.EinNacht), (Entitaeten.FeuchteAusNacht, bereich.AusNacht),
+                         (E(Entitaeten.FeuchteEinTag), bereich.EinTag), (E(Entitaeten.FeuchteAusTag), bereich.AusTag),
+                         (E(Entitaeten.FeuchteEinNacht), bereich.EinNacht), (E(Entitaeten.FeuchteAusNacht), bereich.AusNacht),
                      })
             {
                 await SchreibenFallsAbweichendAsync(entity, soll);
@@ -539,7 +619,7 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
                 e.FeuchteAusTag = bereich.AusTag;
                 e.FeuchteEinNacht = bereich.EinNacht;
                 e.FeuchteAusNacht = bereich.AusNacht;
-                _repo.SetEinstellungen(Modul, e);
+                _repo.SetEinstellungen(_modul, e);
             }
         }
 
@@ -559,18 +639,22 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         double? Zahl(string id) => Zahlenlesen.Maschine(Text(id));
         bool? An(string id) => Text(id) is { } t && t is not ("unknown" or "unavailable") ? t is "on" or "On" : null;
 
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         string? Rolle(string rolle) => geraete.TryGetValue(rolle, out var id) ? id : null;
         double? ZahlRolle(string rolle) => Rolle(rolle) is { } id ? Zahl(id) : null;
         bool? AnRolle(string rolle) => Rolle(rolle) is { } id ? An(id) : null;
 
-        var automatiken = AutomatikKennungen(entities);
+        var automatiken = AutomatikKennungen(entities, _nummer);
         var e = Gespeichert ?? AusHomeAssistant(
-            nachId.ToDictionary(x => x.Key, x => (string?)x.Value.State, StringComparer.OrdinalIgnoreCase), automatiken);
-        var plan = _wochenplan.PlanLuft();
+            nachId.ToDictionary(x => x.Key, x => (string?)x.Value.State, StringComparer.OrdinalIgnoreCase), automatiken, _nummer);
+        var plan = _wochenplan.PlanLuft(PlanZeltId);
+        var planFeuchte = _wochenplan.PlanFeuchte(PlanZeltId);
 
-        var rhMax = Zahl(Entitaeten.RhObergrenze);
-        var deckel = rhMax is { } r ? r - (Zahl(Entitaeten.KlimaHysterese) ?? 3) : (double?)null;
+        // Die Plan-Obergrenze steht im CO₂-Helfer des Zeltes. Eine weitere Instanz liest den ihres EIGENEN Zeltes; hat das keinen,
+        // gilt der Plan direkt (kein Deckel aus der Klima-Hysterese).
+        var rhHelfer = Zahl(Co2(Entitaeten.RhObergrenze));
+        var rhMax = rhHelfer ?? (_nummer is null ? null : planFeuchte?.RhTag);
+        var deckel = rhHelfer is { } r ? r - (Zahl(Co2(Entitaeten.KlimaHysterese)) ?? 3) : (double?)null;
 
         // Der Port-Schalter bei AC Infinity ist ein Auswahlpunkt (On/Off/Auto …):
         // „läuft" liest die Seite am Zustand, nicht am Modus.
@@ -578,12 +662,15 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
 
         // Die lange Wartezeit gilt nur, wenn die Zuluft läuft UND die Außenluft
         // trocknet — dieselbe Bedingung wie in der HA-Automation.
-        bool? vorrang = An(Entitaeten.ZuluftBedarf) is { } bedarf
-            ? bedarf && (ZuluftLaeuft(nachId) ?? false)
-            : null;
+        bool? vorrang = _nummer is null
+            ? (An(Entitaeten.ZuluftBedarf) is { } bedarf ? bedarf && (ZuluftLaeuft(nachId) ?? false) : null)
+            // Eine weitere Instanz: Bedarf und laufende Stufe aus ihren eigenen Rollen; ohne Bedarf-Rolle gibt es keinen Vorrang.
+            : (AnRolle(Rollen.ZuluftBedarf) is { } eigenerBedarf
+                ? eigenerBedarf && (ZahlRolle(Rollen.ZuluftStufe) is { } stufe ? stufe >= 1 : true)
+                : null);
 
         // Welche Plan-Obergrenze gerade gilt: nachts die eigene des Plans, sonst die des Tages.
-        var rhNacht = _wochenplan.PlanFeuchte()?.RhNacht ?? rhMax;
+        var rhNacht = planFeuchte?.RhNacht ?? rhMax;
         var tagPhase = AnRolle(Rollen.LichtZustand);
         var grenze = tagPhase == false ? rhNacht : rhMax;
         var feuchte = ZahlRolle(Rollen.ZeltFeuchte);
@@ -602,21 +689,23 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
         }
 
         // Die Drosselung der CO₂-Steuerung wirkt nur bei Licht und wenn der Abluft-Port wirklich unter seiner normalen Stufe steht.
-        var co2Rollen = _geraete.EntitiesFuerModul(Co2SteuerungService.Modul);
+        var co2Modul = Co2ModulName();
+        var co2Rollen = co2Modul is null ? new Dictionary<string, string?>() : _geraete.EntitiesFuerModul(co2Modul);
         var abluftStufe = co2Rollen.TryGetValue("abluft_stufe", out var abluftId) && abluftId is not null ? Zahl(abluftId) : null;
         var drosselungWirkt = EntfeuchterBremsen.DrosselungWirkt(
-            An(Entitaeten.Co2Drosseln), tagPhase, abluftStufe, Zahl(Co2SteuerungService.Entitaeten.T6Normal));
+            An(Co2(Entitaeten.Co2Drosseln)), tagPhase, abluftStufe, Zahl(Co2(Co2SteuerungService.Entitaeten.T6Normal)));
 
         // Der Zusatz-Schalter: nur lesen, wenn es einen Zusatz gibt (Rolle zugeordnet); sonst bleibt die Sperre stumm.
-        var zusatzSchalter = _geraete.Entity(EntfeuchterZusatzSteuerungService.Modul, EntfeuchterZusatzSteuerungService.Rollen.ZusatzSchalter);
+        // Der Zusatz-Entfeuchter hängt am ersten Entfeuchter; eine weitere Instanz hat keinen.
+        var zusatzSchalter = _nummer is null ? _geraete.Entity(EntfeuchterZusatzSteuerungService.Modul, EntfeuchterZusatzSteuerungService.Rollen.ZusatzSchalter) : null;
         var zusatzAn = zusatzSchalter is not null ? An(zusatzSchalter) : null;
 
         var bremsen = EntfeuchterBremsen.Pruefen(new BremsEingabe(
             FeuchteProzent: feuchte,
             GrenzeProzent: grenze,
-            EinProzent: Zahl(Entitaeten.EinAktiv),
+            EinProzent: Zahl(E(Entitaeten.EinAktiv)),
             TempC: ZahlRolle(Rollen.ZeltTemp),
-            TempMaxC: Zahl(Entitaeten.TempMaxAktiv),
+            TempMaxC: Zahl(E(Entitaeten.TempMaxAktiv)),
             TagPhase: tagPhase,
             TagbetriebErlaubt: e.TagbetriebErlauben,
             AutomatikAn: automatiken.Select(An).OfType<bool>().ToList() is { Count: > 0 } aktiv ? aktiv.Any(x => x) : null,
@@ -628,8 +717,8 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             UeberGrenzeSeitMin: ueberSeit,
             LaeuftSeitMin: laeuftSeit,
             ZusatzAn: zusatzAn,
-            ZusatzWiederEinC: Zahl(EntfeuchterZusatzSteuerungService.Entitaeten.WiederEinTemperatur),
-            ZusatzAutomatikAn: EntfeuchterZusatzSteuerungService.AutomatikAn(entities),
+            ZusatzWiederEinC: _nummer is null ? Zahl(EntfeuchterZusatzSteuerungService.Entitaeten.WiederEinTemperatur) : null,
+            ZusatzAutomatikAn: _nummer is null ? EntfeuchterZusatzSteuerungService.AutomatikAn(entities) : null,
             ZusatzNachVpd: tagPhase == true && e.VpdRegelung));
 
         return new EntfeuchterLive(
@@ -638,20 +727,20 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
             TempC: ZahlRolle(Rollen.ZeltTemp),
             Vpd: ZahlRolle(Rollen.ZeltVpd),
             TagPhase: AnRolle(Rollen.LichtZustand),
-            EinAktivProzent: Zahl(Entitaeten.EinAktiv),
-            AusAktivProzent: Zahl(Entitaeten.AusAktiv),
-            TempMaxAktivC: Zahl(Entitaeten.TempMaxAktiv),
+            EinAktivProzent: Zahl(E(Entitaeten.EinAktiv)),
+            AusAktivProzent: Zahl(E(Entitaeten.AusAktiv)),
+            TempMaxAktivC: Zahl(E(Entitaeten.TempMaxAktiv)),
             RhObergrenzeProzent: rhMax,
             DeckelProzent: deckel,
-            VpdUnten: Zahl(Entitaeten.VpdUnten),
-            VpdOben: Zahl(Entitaeten.VpdOben),
-            BlattOffsetC: Zahl(Entitaeten.BlattOffset),
+            VpdUnten: Zahl(E(Entitaeten.VpdUnten)),
+            VpdOben: Zahl(E(Entitaeten.VpdOben)),
+            BlattOffsetC: Zahl(E(Entitaeten.BlattOffset)),
             PlanWoche: plan?.Woche,
             PlanLuftTagC: plan?.LuftTagC,
             PlanLuftNachtC: plan?.LuftNachtC,
-            TempMaxTagC: TempMaxFuer(Entitaeten.TempMaxTag, e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan?.LuftTagC),
-            TempMaxNachtC: TempMaxFuer(Entitaeten.TempMaxNacht, e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan?.LuftNachtC),
-            Co2CanopyGrenzeC: Zahl(Entitaeten.CanopyObergrenze),
+            TempMaxTagC: TempMaxFuer(E(Entitaeten.TempMaxTag), e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan?.LuftTagC),
+            TempMaxNachtC: TempMaxFuer(E(Entitaeten.TempMaxNacht), e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan?.LuftNachtC),
+            Co2CanopyGrenzeC: Zahl(Co2(Entitaeten.CanopyObergrenze)),
             PortAn: portAn,
             PortOnline: AnRolle(Rollen.PortStatus),
             AutomatikAn: automatiken.Select(An).OfType<bool>().ToList() is { Count: > 0 } laeuft ? laeuft.Any(x => x) : null,

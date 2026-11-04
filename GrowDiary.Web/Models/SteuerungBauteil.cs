@@ -874,7 +874,8 @@ public static class SteuerungBauteile
     private static IReadOnlyList<Bauteil> FuerInstanz(string modul, string art, int nummer)
         => InstanzListen.GetOrAdd(modul, _ =>
         {
-            var basis = Alle.Where(b => string.Equals(b.Modul, art, StringComparison.OrdinalIgnoreCase)).ToList();
+            // Immer vom neuen Namensraum aus: eine weitere Instanz trägt nie die alten Kennungen einer Anlage.
+            var basis = FuerRaum(KennungsRaum.Neu).Where(b => string.Equals(b.Modul, art, StringComparison.OrdinalIgnoreCase)).ToList();
             var kennungen = basis.Select(b => b.EntityId).ToList();
             return basis.Select(b => b with
             {

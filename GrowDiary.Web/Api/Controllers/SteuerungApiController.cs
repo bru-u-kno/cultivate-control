@@ -438,33 +438,46 @@ public sealed class SteuerungApiController : ApiControllerBase
     /// </summary>
     [HttpGet("entfeuchter")]
     [ProducesResponseType(typeof(EntfeuchterSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<EntfeuchterSeiteDto>> Entfeuchter(CancellationToken ct)
+    public async Task<ActionResult<EntfeuchterSeiteDto>> Entfeuchter([FromQuery] string? instanz, CancellationToken ct)
     {
-        var geraete = _geraete.EntitiesFuerModul(EntfeuchterSteuerungService.Modul);
-        var einstellungen = await _entfeuchter.EinstellungenAsync(ct);
-        return Ok(new EntfeuchterSeiteDto(einstellungen, await _entfeuchter.LiveAsync(ct))
+        var dienst = EntfeuchterDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var geraete = _geraete.EntitiesFuerModul(dienst.ModulName);
+        var einstellungen = await dienst.EinstellungenAsync(ct);
+        return Ok(new EntfeuchterSeiteDto(einstellungen, await dienst.LiveAsync(ct))
         {
-            Abweichungen = await _entfeuchter.AbweichungenAsync(einstellungen, ct),
-            AusHomeAssistantUebernommen = _entfeuchter.Gespeichert is null,
+            Abweichungen = await dienst.AbweichungenAsync(einstellungen, ct),
+            AusHomeAssistantUebernommen = dienst.Gespeichert is null,
             GeraeteZugeordnet = geraete.Count(g => g.Value is not null),
-            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(EntfeuchterSteuerungService.Modul).Count,
+            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(dienst.ModulName).Count,
         });
+    }
+
+    /// <summary>Der Entfeuchter-Dienst: ohne Angabe der erste, sonst der einer angelegten Instanz — eine unbekannte gibt <c>null</c>.</summary>
+    private EntfeuchterSteuerungService? EntfeuchterDienst(string? instanz)
+    {
+        if (string.IsNullOrWhiteSpace(instanz) || string.Equals(instanz, EntfeuchterSteuerungService.Modul, StringComparison.Ordinal)) return _entfeuchter.Bestand();
+        return SteuerungInstanzen.Module.Contains(instanz, StringComparer.Ordinal) && InstanzModul.Art(instanz) == EntfeuchterSteuerungService.Modul
+            ? _entfeuchter.Fuer(instanz)
+            : null;
     }
 
     [HttpPut("entfeuchter")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(EntfeuchterSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<EntfeuchterSeiteDto>> EntfeuchterSpeichern([FromBody] EntfeuchterEinstellungen request, CancellationToken ct)
+    public async Task<ActionResult<EntfeuchterSeiteDto>> EntfeuchterSpeichern([FromBody] EntfeuchterEinstellungen request, [FromQuery] string? instanz, CancellationToken ct)
     {
         if (request is null) return BadRequestError("entfeuchter_invalid", "Es wurde nichts übergeben.");
-        var (gespeichert, fehler, erreicht) = await _entfeuchter.SpeichernAsync(request, ct);
+        var dienst = EntfeuchterDienst(instanz);
+        if (dienst is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var (gespeichert, fehler, erreicht) = await dienst.SpeichernAsync(request, ct);
         if (gespeichert is null)
         {
             foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
 
-        var seite = await Entfeuchter(ct);
+        var seite = await Entfeuchter(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is EntfeuchterSeiteDto dto) return Ok(dto with { HaAngenommen = erreicht });
         return seite;
     }

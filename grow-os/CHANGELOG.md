@@ -5,6 +5,16 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.324
+
+**Steuerungen je Zelt, Teil 6a: Der Dienst der Entfeuchtung kann jetzt mehrere Entfeuchter führen — noch ohne Oberfläche, bei dir ändert sich nichts.**
+
+- **Vorbereitung (noch nicht sichtbar):** Der Entfeuchter-Dienst arbeitet jetzt je Entfeuchter mit dessen eigenen Einstellungen, Helfern und Geräten. Der erste Entfeuchter bleibt in allem, wie er war: gleiche Einstellungen, gleiche Helfer in Home Assistant, auch mit den älteren Namen einer bestehenden Anlage. Ein weiterer Entfeuchter bekommt immer die neuen Namen mit der Endung seiner Nummer — nie die alten.
+- **Das CO₂ und die Zuluft des eigenen Zeltes:** Ein weiterer Entfeuchter liest die Feuchte-Obergrenze, die Klima-Hysterese und die Drosselung vom CO₂ seines eigenen Zeltes, nie von dem eines anderen. Hat sein Zelt kein CO₂, gilt die Obergrenze direkt aus dem Plan und es gibt keinen Deckel. Die Zuluft kommt aus den Geräten, die du diesem Entfeuchter zuordnest; ohne sie gilt „kein Bedarf“.
+- **Plan und Startwerte:** Die Plan-Temperatur und die Plan-Feuchte kommen aus dem Durchgang im Zelt des jeweiligen Entfeuchters. Frisch angelegte Helfer eines weiteren Entfeuchters bekommen ihre Startwerte wie beim Wasserkühler.
+- **Schnittstelle:** Die Entfeuchter-Seite nimmt jetzt eine Angabe `instanz` an (wie der Wasserkühler); eine unbekannte oder fremde Instanz wird abgewiesen. Ohne Angabe antwortet sie wie bisher.
+- **Getestet:** Jede Kennung des Dienstes steht im Katalog der Instanz (auch in einer Anlage mit alten Namen), ein Entfeuchter liest nie das CO₂ eines fremden Zeltes (ohne den Zelt-Bezug werden vier Tests rot), die Zuluft kommt nur aus den eigenen Rollen, und das Speichern schreibt nur die Helfer der Instanz.
+
 ## 2.0.0-cc.323
 
 **Steuerungen je Zelt, Teil 5c: Beim Löschen eines weiteren Wasserkühlers lassen sich auf Wunsch auch seine Bausteine aus Home Assistant entfernen — und der ganze Weg ist an einer echten Home-Assistant-Anlage durchgespielt.**

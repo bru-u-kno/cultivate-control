@@ -700,9 +700,9 @@ public sealed class WochenplanSyncService
     /// Die Nacht nennt der Plan nur mit Grow-Plan (<see cref="GrowPlan.NachtWerte"/>); sonst und bei „Nacht wie Tag" gilt der
     /// Tageswert. <c>null</c>, solange kein einzelner Durchgang mit Wochen-Zielen läuft oder die Woche keine Obergrenze nennt.
     /// </remarks>
-    public (double RhTag, double RhNacht)? PlanFeuchte()
+    public (double RhTag, double RhNacht)? PlanFeuchte(int? zeltId = null)
     {
-        if (Spalte(PlanZelt(ArtEntfeuchter)) is not { } jetzt || jetzt.Spalte.RhMax is not { } tag) return null;
+        if (Spalte(zeltId ?? PlanZelt(ArtEntfeuchter)) is not { } jetzt || jetzt.Spalte.RhMax is not { } tag) return null;
         var nacht = GrowPlanRegister.Inhalt(jetzt.Grow.Id)?.NachtWerte(jetzt.Spalte).RhMax ?? tag;
         return (tag, nacht);
     }

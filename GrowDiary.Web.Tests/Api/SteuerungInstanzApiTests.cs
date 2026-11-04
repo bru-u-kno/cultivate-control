@@ -137,4 +137,17 @@ public sealed class SteuerungInstanzApiTests : IDisposable
         var instanz = Assert.Single(Wert(_controller.Instanzen(_instanzen, _zelte)).Instanzen);
         Assert.Equal(_zelt2, instanz.ZeltId);
     }
+
+    [Theory]
+    [InlineData("entfeuchter-i9")]   // Art stimmt, aber nie angelegt
+    [InlineData("chiller-i2")]       // angelegt, aber eine andere Art
+    [InlineData("zuluft-i2")]
+    [InlineData("quatsch")]
+    public async Task Die_Entfeuchter_Routen_lehnen_eine_unbekannte_oder_fremde_Instanz_ab(string instanz)
+    {
+        Anlegen("chiller", "Reserve", _zelt1);
+
+        Assert.IsType<NotFoundObjectResult>((await _controller.Entfeuchter(instanz, CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.EntfeuchterSpeichern(new EntfeuchterEinstellungen(), instanz, CancellationToken.None)).Result);
+    }
 }

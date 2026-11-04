@@ -107,6 +107,13 @@ public sealed class ZusatzPruefstand : IDisposable
         => new(Repo, Ha(), new HomeAssistantSettingsRepository(_pfade), new SteuerungGeraeteService(Repo), Wochenplan(),
             new HelferBereichService(NullLogger<HelferBereichService>.Instance), NullLogger<EntfeuchterSteuerungService>.Instance);
 
+    /// <summary>Der Entfeuchter-Dienst mit Zelt-Zuweisung — nötig, sobald eine weitere Instanz ihr Zelt kennen muss.</summary>
+    public EntfeuchterSteuerungService Entfeuchter(SteuerungZeltService zelte)
+        => new(Repo, Ha(), new HomeAssistantSettingsRepository(_pfade), new SteuerungGeraeteService(Repo), Wochenplan(),
+            new HelferBereichService(NullLogger<HelferBereichService>.Instance), NullLogger<EntfeuchterSteuerungService>.Instance, zelte);
+
+    public AppPaths Pfade => _pfade;
+
     public EntfeuchterZusatzSteuerungService Zusatz()
         => new(Repo, Ha(), new HomeAssistantSettingsRepository(_pfade), new SteuerungGeraeteService(Repo), Wochenplan(),
             Entfeuchter(), NullLogger<EntfeuchterZusatzSteuerungService>.Instance);
