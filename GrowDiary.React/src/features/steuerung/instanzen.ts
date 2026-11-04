@@ -45,8 +45,9 @@ export async function chillerAnlegen(name: string, zeltId: number | null): Promi
 export const instanzUmbenennen = (modul: string, name: string) =>
   apiFetch<SteuerungInstanzen>(`/api/steuerung/instanzen/${encodeURIComponent(modul)}`, { method: 'PUT', body: JSON.stringify({ name }) })
 
-export const instanzEntfernen = (modul: string) =>
-  apiFetch<SteuerungInstanzen>(`/api/steuerung/instanzen/${encodeURIComponent(modul)}`, { method: 'DELETE' })
+/** `ausHa`: auch Automationen, Rechenwerte und Helfer der Instanz aus Home Assistant entfernen (nur wenn das ganz gelingt, verschwindet die Instanz). */
+export const instanzEntfernen = (modul: string, ausHa = false) =>
+  apiFetch<SteuerungInstanzen>(`/api/steuerung/instanzen/${encodeURIComponent(modul)}${ausHa ? '?ausHa=true' : ''}`, { method: 'DELETE' })
 
 export const instanzZeltSetzen = (modul: string, zeltId: number) =>
   apiFetch<SteuerungZuweisung>('/api/steuerung/zuweisung', { method: 'PUT', body: JSON.stringify({ zuordnungen: { [modul]: zeltId } }) })

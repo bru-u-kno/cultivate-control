@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.323
+
+**Steuerungen je Zelt, Teil 5c: Beim Löschen eines weiteren Wasserkühlers lassen sich auf Wunsch auch seine Bausteine aus Home Assistant entfernen — und der ganze Weg ist an einer echten Home-Assistant-Anlage durchgespielt.**
+
+- **Neu beim Löschen:** Die Rückfrage hat jetzt den Schalter „Auch aus Home Assistant entfernen“ (aus, solange du ihn nicht einschaltest). Eingeschaltet entfernt Cultivate Control die Automationen, Rechenwerte und Helfer dieses einen Wasserkühlers aus Home Assistant und danach den Wasserkühler selbst. Ausgeschaltet bleibt alles wie in der vorigen Version: Die Regelung in Home Assistant läuft weiter, bis du sie dort entfernst.
+- **Sicher gemacht:** Entfernt wird nur, was zu dieser Instanz gehört (Kennungen mit der Endung der Instanz) — nie etwas vom ersten Wasserkühler, und für den ersten Wasserkühler gibt es den Weg gar nicht. Die Automationen werden vorher als Datei gesichert; eine Automation ohne die Herkunftsmarke von Cultivate Control (von Hand gebaut) bleibt stehen. Antwortet Home Assistant nicht, wird nichts angefasst.
+- **Alles oder nichts für die Instanz:** Gelingt das Entfernen nicht ganz, bleibt der Wasserkühler in Cultivate Control stehen, die Meldung nennt, was nicht ging, und du kannst es noch einmal versuchen (schon Entferntes ist dann kein Fehler mehr).
+- **Geprüft an einer echten Test-Home-Assistant (Docker):** Zweiten Wasserkühler anlegen, Geräte zuordnen, Helfer (7), Rechenwerte (2) und Automationen (3) anlegen — dabei bekommen die neuen Helfer ihre Startwerte, die Seite des zweiten Wasserkühlers zeigt 20/18 °C — dann Löschen mit dem Schalter: alle 12 Entitäten und die 3 Automationen der Instanz sind aus Home Assistant verschwunden, der erste Wasserkühler (12 Entitäten, 2 Rechenwerte, seine Automationen) ist Zeichen für Zeichen unverändert, das Register ist leer.
+- **Getestet:** Der Plan enthält für keine Steuerungsart eine Kennung der ersten Instanz (ohne den Endungs-Filter werden Tests rot), Handgebautes bleibt stehen (ohne die Prüfung der Herkunftsmarke wird ein Test rot), ohne Antwort von Home Assistant wird nichts gelöscht, eine fehlgeschlagene Sicherung verhindert das Entfernen der Automation.
+- **Noch nicht:** Die Pumpen-Wächter-Meldungen je Wasserkühler. Der Wächter in Home Assistant, der bei stummem Wasserfühler abschaltet, gehört dagegen zu jedem weiteren Wasserkühler. Entfeuchter, Zuluft und Lampe lassen sich noch nicht vervielfachen.
+
 ## 2.0.0-cc.322
 
 **Steuerungen je Zelt, Teil 5b: Weitere Wasserkühler lassen sich in der Oberfläche anlegen, benennen, einem Zelt zuweisen und wieder löschen.**

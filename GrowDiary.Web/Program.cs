@@ -186,6 +186,7 @@ builder.Services.AddScoped<SteuerungRechenwertService>();
 builder.Services.AddScoped<SteuerungMittelwertService>();
 // Fork AI (forkai.72): legt die Automationen an - nur auf ausdrueckliche Zustimmung.
 builder.Services.AddScoped<SteuerungAutomationService>();
+builder.Services.AddScoped<SteuerungInstanzAufraeumenService>(); // Etappe 2: Bausteine einer Instanz aus Home Assistant entfernen
 builder.Services.AddScoped<SteuerungAbsicherungService>();
 // Fork AI (forkai.73): schaltet das Ventil beim Einrichten kurz zur Probe.
 builder.Services.AddScoped<SteuerungProbeService>();

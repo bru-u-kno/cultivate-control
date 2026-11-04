@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatApiError } from '../../api'
-import { V1Alert, V1Button, V1Card, V1Field, V1Page, V1Section } from '../../components/v1'
+import { V1Alert, V1Button, V1Card, V1Field, V1Page, V1Section, V1Switch } from '../../components/v1'
 import { ZeltChips } from './ZeltChips'
 import { instanzEntfernen, instanzUmbenennen, instanzZeltSetzen, useZelte } from './instanzen'
 import type { SteuerungInstanz } from './steuerung-typen'
@@ -92,12 +92,13 @@ export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGelo
 }) {
   const [fehler, setFehler] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
+  const [ausHa, setAusHa] = useState(false)
 
   const loeschen = async () => {
     setArbeitet(true)
     setFehler(null)
     try {
-      await instanzEntfernen(modul)
+      await instanzEntfernen(modul, ausHa)
       onGeloescht()
     } catch (caught) {
       setFehler(formatApiError(caught, 'Löschen fehlgeschlagen.'))
@@ -111,9 +112,17 @@ export function InstanzLoeschen({ modul, titel, ersterTitel, onAbbrechen, onGelo
       <V1Section title="Wirklich löschen?">
         <V1Card>
           <p className="st-hinweis">
-            Der Wasserkühler verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt. Seine Regelung in Home Assistant läuft weiter,
-            bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.
+            Der Wasserkühler verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
+            {ausHa
+              ? 'Seine Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.'
+              : 'Seine Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.'}
           </p>
+          <V1Switch
+            label="Auch aus Home Assistant entfernen"
+            checked={ausHa}
+            onChange={setAusHa}
+            hint="Helfer, Rechenwerte und Automationen dieses Wasserkühlers. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt der Wasserkühler stehen und du kannst es noch einmal versuchen."
+          />
         </V1Card>
         {ersterTitel && (
           <p className="st-hinweis">Den ersten Wasserkühler („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>

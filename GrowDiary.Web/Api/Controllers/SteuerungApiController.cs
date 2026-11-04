@@ -700,19 +700,39 @@ public sealed class SteuerungApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// Eine Instanz aus dem Fork entfernen. Ihre Bausteine in Home Assistant bleiben stehen; die Nummer wird nie wieder vergeben.
-    /// Die erste Instanz gibt es hier nicht — sie ist nicht löschbar, nur abwählbar.
+    /// Eine Instanz aus dem Fork entfernen. Ohne <c>ausHa</c> bleiben ihre Bausteine in Home Assistant stehen; mit <c>ausHa=true</c>
+    /// werden Automationen (vorher als Datei gesichert), Rechenwerte und Helfer der Instanz dort zuerst entfernt — und nur wenn das
+    /// ganz gelingt, verschwindet die Instanz aus dem Fork (sonst lässt sich das Entfernen wiederholen). Die Nummer wird nie wieder
+    /// vergeben. Die erste Instanz gibt es hier nicht — sie ist nicht löschbar, nur abwählbar.
     /// </summary>
     [HttpDelete("instanzen/{modul}")]
     [KiStufe(KiStufe.Verwaltung)]
     [KiSicherungVorher]
     [ProducesResponseType(typeof(SteuerungInstanzenDto), StatusCodes.Status200OK)]
-    public ActionResult<SteuerungInstanzenDto> InstanzEntfernen(
-        string modul, [FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst)
+    public async Task<ActionResult<SteuerungInstanzenDto>> InstanzEntfernen(
+        string modul, [FromServices] SteuerungInstanzService instanzen, [FromServices] SteuerungZeltService zelteDienst,
+        [FromServices] SteuerungInstanzAufraeumenService aufraeumen, CancellationToken ct, [FromQuery] bool ausHa = false)
     {
+        if (!instanzen.Liste().Any(i => i.Modul == modul)) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+
+        SteuerungInstanzAufraeumenService.Bilanz? bilanz = null;
+        if (ausHa)
+        {
+            bilanz = await aufraeumen.EntfernenAsync(modul, _haSettings.GetEffectiveHomeAssistantSettings(), ct);
+            if (!bilanz.Erreichbar)
+                return ConflictError("home_assistant_stumm", "Home Assistant antwortet nicht — es wurde nichts entfernt. Die Instanz bleibt stehen.");
+            if (!bilanz.Vollstaendig)
+            {
+                var misslungen = bilanz.Einzeln.Where(t => t.Stand == "fehler").ToList();
+                var beispiele = string.Join("; ", misslungen.Take(3).Select(t => $"{t.Kennung}: {t.Hinweis}"));
+                return ConflictError("steuerung_instanz_ha_teilweise",
+                    $"Nicht alles ließ sich aus Home Assistant entfernen ({misslungen.Count} von {bilanz.Einzeln.Count} Bausteinen — {beispiele}{(misslungen.Count > 3 ? "; …" : "")}). Die Instanz bleibt stehen; das Entfernen lässt sich wiederholen.");
+            }
+        }
+
         var fehler = instanzen.Entfernen(modul);
         if (fehler is not null) return NotFoundError("steuerung_instanz_unbekannt", fehler);
-        return Ok(InstanzenDto(instanzen, zelteDienst));
+        return Ok(InstanzenDto(instanzen, zelteDienst) with { HaEntfernt = bilanz?.Entfernt });
     }
 
     private static SteuerungInstanzenDto InstanzenDto(SteuerungInstanzService instanzen, SteuerungZeltService zelteDienst)
@@ -1271,7 +1291,8 @@ public sealed record EntfeuchterSeiteDto(EntfeuchterEinstellungen Einstellungen,
 /// <summary>Eine weitere Instanz einer Steuerung für die Oberfläche.</summary>
 public sealed record SteuerungInstanzDto(string Modul, string Art, int Nummer, string Name, int? ZeltId);
 
-public sealed record SteuerungInstanzenDto(IReadOnlyList<SteuerungInstanzDto> Instanzen);
+/// <param name="HaEntfernt">Nach dem Entfernen mit <c>ausHa</c>: wie viele Bausteine aus Home Assistant verschwunden sind; sonst <c>null</c>.</param>
+public sealed record SteuerungInstanzenDto(IReadOnlyList<SteuerungInstanzDto> Instanzen, int? HaEntfernt = null);
 
 public sealed class SteuerungInstanzAnlegen
 {

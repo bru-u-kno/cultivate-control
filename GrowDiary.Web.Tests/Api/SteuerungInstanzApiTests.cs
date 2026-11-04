@@ -113,17 +113,17 @@ public sealed class SteuerungInstanzApiTests : IDisposable
     }
 
     [Fact]
-    public void Entfernen_nimmt_die_Instanz_aus_dem_Fork_und_vergibt_die_Nummer_nie_wieder()
+    public async Task Entfernen_nimmt_die_Instanz_aus_dem_Fork_und_vergibt_die_Nummer_nie_wieder()
     {
         Anlegen("chiller", "Reserve", _zelt1);
 
-        Assert.Empty(Wert(_controller.InstanzEntfernen("chiller-i2", _instanzen, _zelte)).Instanzen);
+        Assert.Empty(Wert(await _controller.InstanzEntfernen("chiller-i2", _instanzen, _zelte, null!, CancellationToken.None)).Instanzen);
         Assert.Empty(SteuerungInstanzen.Module);
         Assert.Null(ZeltRuheArten.Finden("chiller-i2"));
 
-        Assert.IsType<NotFoundObjectResult>(_controller.InstanzEntfernen("chiller-i2", _instanzen, _zelte).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.InstanzEntfernen("chiller-i2", _instanzen, _zelte, null!, CancellationToken.None)).Result);
         // Die erste Instanz ist nicht löschbar: sie steht nicht im Register.
-        Assert.IsType<NotFoundObjectResult>(_controller.InstanzEntfernen("chiller", _instanzen, _zelte).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.InstanzEntfernen("chiller", _instanzen, _zelte, null!, CancellationToken.None)).Result);
 
         Assert.Equal("chiller-i3", Wert(Anlegen("chiller", "Neu", _zelt1)).Instanzen.Single().Modul);
     }

@@ -110,3 +110,28 @@ test('Mit einem Zelt kommt keine Zelt-Frage dazu', async ({ page, request }) => 
   // Die Anfrage nennt kein Zelt (das Backend hat vier; die Antwort zeigt sein Standardzelt).
   expect(gesendet).toMatchObject({ art: 'chiller', name: 'Ein zweiter', zeltId: null })
 })
+
+test('Löschen mit „Auch aus Home Assistant entfernen“: wenn Home Assistant nicht antwortet, bleibt die Instanz stehen und sagt warum', async ({ page, request }) => {
+  await alleEntfernen(request)
+  const angelegt = await request.post('/api/steuerung/instanzen', { data: { art: 'chiller', name: 'Zum Löschen', zeltId: null } })
+  expect(angelegt.ok()).toBe(true)
+  const modul = (await angelegt.json()).instanzen[0].modul as string
+
+  await page.goto(`/steuerung/${modul}`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Löschen …' }).click()
+  // Ohne den Haken bleibt der Text beim Alten: die Regelung in Home Assistant läuft weiter.
+  await expect(page.getByText('läuft weiter, bis du sie dort entfernst')).toBeVisible()
+  await page.getByRole('checkbox', { name: /Auch aus Home Assistant entfernen/ }).check()
+  await expect(page.getByText('werden auch aus Home Assistant entfernt')).toBeVisible()
+  await page.getByRole('button', { name: 'Löschen', exact: true }).click()
+
+  // Der Demobestand hat kein erreichbares Home Assistant: nichts wird entfernt, die Instanz bleibt, die Meldung nennt den Grund.
+  await expect(page.getByText(/Nicht alles ließ sich aus Home Assistant entfernen/)).toBeVisible()
+  expect((await (await request.get('/api/steuerung/instanzen')).json()).instanzen).toMatchObject([{ modul }])
+
+  // Wiederholen ohne Haken entfernt sie aus Cultivate Control.
+  await page.getByRole('checkbox', { name: /Auch aus Home Assistant entfernen/ }).uncheck()
+  await page.getByRole('button', { name: 'Löschen', exact: true }).click()
+  await expect(page).toHaveURL(/\/steuerung$/)
+  expect((await (await request.get('/api/steuerung/instanzen')).json()).instanzen).toEqual([])
+})
