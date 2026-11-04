@@ -678,7 +678,7 @@ public sealed class SteuerungApiController : ApiControllerBase
     {
         if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
         // Nur Steuerungen, deren Dienst schon mehrere Instanzen kann: sonst entstünde ein Eintrag ohne Wirkung.
-        if (!string.Equals(request.Art, ChillerSteuerungService.Modul, StringComparison.Ordinal))
+        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul))
             return BadRequestError("steuerung_instanz_art", "Diese Steuerung lässt sich noch nicht vervielfachen.");
         if (request.ZeltId is { } zelt && !zelteDienst.AktiveZelte().Any(t => t.Id == zelt))
             return BadRequestError("steuerung_instanz_zelt", "Dieses Zelt gibt es nicht.");

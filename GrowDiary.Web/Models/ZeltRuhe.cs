@@ -88,12 +88,19 @@ public static class ZeltRuheArten
     /// </summary>
     public static IReadOnlyList<ZeltRuheArt> Instanzen()
         => GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Chiller)
-            .Select(i => new ZeltRuheArt(i.Modul, $"Wasserkühler {i.Name}", i.Modul, "steckdose", true)).ToList();
+            .Select(i => new ZeltRuheArt(i.Modul, $"Wasserkühler {i.Name}", i.Modul, "steckdose", true))
+            // Weitere Entfeuchter: wie der erste ohne Auswahl „läuft weiter“, Schalter ist ihr Port.
+            .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Entfeuchter)
+                .Select(i => new ZeltRuheArt(i.Modul, $"Entfeuchter {i.Name}", i.Modul, "port_schalter", false)))
+            .ToList();
+
+    /// <summary>Ist die Kennung ein weiterer Entfeuchter (<c>entfeuchter-i2</c>)?</summary>
+    public static bool IstEntfeuchterInstanz(string? kennung) => InstanzModul.Art(kennung) == Entfeuchter;
 
     /// <summary>Ist die Kennung ein weiterer Wasserkühler (<c>chiller-i2</c>)?</summary>
     public static bool IstKuehlerInstanz(string? kennung) => InstanzModul.Art(kennung) == Chiller;
 
-    /// <summary>Alle Arten: die festen und die weiteren Wasserkühler.</summary>
+    /// <summary>Alle Arten: die festen und die weiteren Wasserkühler und Entfeuchter.</summary>
     public static IReadOnlyList<ZeltRuheArt> AlleMitInstanzen() => Alle.Concat(Instanzen()).ToList();
 
     public static ZeltRuheArt? Finden(string? kennung)

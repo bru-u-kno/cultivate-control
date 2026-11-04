@@ -150,4 +150,20 @@ public sealed class SteuerungInstanzApiTests : IDisposable
         Assert.IsType<NotFoundObjectResult>((await _controller.Entfeuchter(instanz, CancellationToken.None)).Result);
         Assert.IsType<NotFoundObjectResult>((await _controller.EntfeuchterSpeichern(new EntfeuchterEinstellungen(), instanz, CancellationToken.None)).Result);
     }
+
+    [Fact]
+    public void Anlegen_nimmt_Entfeuchter_an_und_lehnt_Steuerungen_ohne_Instanz_Dienst_ab()
+    {
+        var liste = Wert(Anlegen("entfeuchter", "Zelt B", _zelt2)).Instanzen;
+
+        var instanz = Assert.Single(liste);
+        Assert.Equal("entfeuchter-i2", instanz.Modul);
+        Assert.Equal(_zelt2, _zelte.ZeltFuer("entfeuchter-i2"));
+        Assert.Equal(_zelt2, SteuerungInstanzen.ZeltFuer("entfeuchter-i2"));
+
+        foreach (var art in new[] { "zuluft", "licht", "entfeuchter-zusatz", "quatsch" })
+        {
+            Assert.IsType<BadRequestObjectResult>(Anlegen(art, "Nein", _zelt1).Result);
+        }
+    }
 }

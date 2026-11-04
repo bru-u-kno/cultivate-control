@@ -23,6 +23,19 @@ public static class SteuerungInstanzen
 
     /// <summary>Die Module aller weiteren Instanzen.</summary>
     public static IReadOnlyList<string> Module => _liste.Select(i => i.Modul).ToList();
+
+    private static volatile IReadOnlyDictionary<string, int> _zelte = new Dictionary<string, int>();
+
+    /// <summary>
+    /// Das Zelt jeder weiteren Instanz, wie die Zuweisung es gerade nennt. Prozessweit wie das Register selbst: der Katalog einer
+    /// Entfeuchter-Instanz braucht es, um auf das CO₂ des richtigen Zeltes zu zeigen, ohne eine Datenbank anzufassen.
+    /// Gesetzt von <see cref="SteuerungZeltService"/>.
+    /// </summary>
+    public static void ZelteFestlegen(IReadOnlyDictionary<string, int?> zuordnung)
+        => _zelte = zuordnung.Where(p => p.Value is not null && InstanzModul.IstInstanz(p.Key)).ToDictionary(p => p.Key, p => p.Value!.Value, StringComparer.Ordinal);
+
+    /// <summary>Das Zelt einer weiteren Instanz — <c>null</c>, solange es nicht bekannt ist.</summary>
+    public static int? ZeltFuer(string modul) => _zelte.TryGetValue(modul, out var zelt) ? zelt : null;
 }
 
 /// <summary>Anlegen, Umbenennen und Entfernen weiterer Instanzen. Sie entstehen nur dadurch — ein Bestand ohne Instanz bleibt, wie er ist.</summary>

@@ -88,7 +88,13 @@ public sealed class WochenplanSyncWorker : BackgroundService
 
         // Fork AI (forkai.129): Temperatur max. des Entfeuchters folgt, wo so
         // eingestellt, der Plan-Luft — zum selben Takt wie die übrigen Sollwerte.
-        geschrieben += await scope.ServiceProvider.GetRequiredService<EntfeuchterSteuerungService>().PlanNachziehenAsync(ct);
+        var entfeuchter = scope.ServiceProvider.GetRequiredService<EntfeuchterSteuerungService>();
+        geschrieben += await entfeuchter.PlanNachziehenAsync(ct);
+        // Weitere Entfeuchter folgen dem Plan ihres Zeltes auf demselben Weg.
+        foreach (var modul in SteuerungInstanzen.ModuleVon(EntfeuchterSteuerungService.Modul))
+        {
+            geschrieben += await entfeuchter.Fuer(modul).PlanNachziehenAsync(ct);
+        }
         if (tageslaufFaellig) _letzterTageslauf = jetzt;
 
         if (geschrieben > 0)

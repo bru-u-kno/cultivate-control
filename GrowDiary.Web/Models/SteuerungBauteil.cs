@@ -872,7 +872,11 @@ public static class SteuerungBauteile
     /// (<see cref="InstanzModul"/>). Die erste Instanz bleibt beim Modul der Art und seinen Kennungen.
     /// </summary>
     private static IReadOnlyList<Bauteil> FuerInstanz(string modul, string art, int nummer)
-        => InstanzListen.GetOrAdd(modul, _ =>
+    {
+        // Eine Entfeuchter-Instanz liest das CO₂ ihres EIGENEN Zeltes: die Rechenwerte zeigen auf dessen Helfer. Der Katalog hängt
+        // damit vom Zelt ab — und wird je Zelt gemerkt.
+        var co2Zelt = art == "entfeuchter" ? Services.EntfeuchterSteuerungService.Co2ZeltFuer(SteuerungInstanzen.ZeltFuer(modul)) : null;
+        return InstanzListen.GetOrAdd($"{modul}|{co2Zelt}", _ =>
         {
             // Immer vom neuen Namensraum aus: eine weitere Instanz trägt nie die alten Kennungen einer Anlage.
             var basis = FuerRaum(KennungsRaum.Neu).Where(b => string.Equals(b.Modul, art, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -882,10 +886,11 @@ public static class SteuerungBauteile
                 Modul = modul,
                 EntityId = InstanzModul.Id(b.EntityId, nummer),
                 Name = InstanzModul.Name(b.Name, nummer, b.EntityId),
-                Vorlage = b.Vorlage is null ? null : InstanzModul.Text(b.Vorlage, nummer, kennungen),
-                Verfuegbarkeit = b.Verfuegbarkeit is null ? null : InstanzModul.Text(b.Verfuegbarkeit, nummer, kennungen),
+                Vorlage = b.Vorlage is null ? null : Co2Modul.Text(InstanzModul.Text(b.Vorlage, nummer, kennungen), co2Zelt),
+                Verfuegbarkeit = b.Verfuegbarkeit is null ? null : Co2Modul.Text(InstanzModul.Text(b.Verfuegbarkeit, nummer, kennungen), co2Zelt),
             }).ToList();
         });
+    }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<Bauteil>> ZeltListen = new();
 

@@ -83,6 +83,7 @@ public sealed class SteuerungZeltService
                 ? wahl
                 : standard;
         }
+        SteuerungInstanzen.ZelteFestlegen(ergebnis);
         return ergebnis;
     }
 
@@ -119,6 +120,7 @@ public sealed class SteuerungZeltService
             neu.Zelte["entfeuchter-zusatz"] = haupt;
         }
         _repo.SetEinstellungen(Modul, neu);
+        Zuordnung(); // das Register der Instanz-Zelte nachziehen
         return null;
     }
 }

@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.325
+
+**Steuerungen je Zelt, Teil 6b: Ein weiterer Entfeuchter lässt sich jetzt mit allen Bausteinen in Home Assistant anlegen, folgt dem Plan seines Zeltes und kennt „Zelt ruhend“ — noch ohne Oberfläche, bei dir ändert sich nichts.**
+
+- **Eigene Bausteine in Home Assistant:** Für einen weiteren Entfeuchter entstehen Helfer (17), Rechenwerte (4) und Automationen (2), alle mit der Endung seiner Nummer. Die Anlage ist an einer echten Test-Home-Assistant durchgespielt: Startwerte werden geschrieben, die Seite des zweiten Entfeuchters zeigt eigene Werte, und das Löschen mit „Auch aus Home Assistant entfernen“ räumt genau diese 23 Bausteine weg — der erste Entfeuchter bleibt unverändert.
+- **Rechnet mit dem CO₂ seines Zeltes:** Die Rechenwerte eines weiteren Entfeuchters lesen die Feuchte-Obergrenze und die Klima-Hysterese vom CO₂ des Zeltes, dem er zugewiesen ist (gemessen: Obergrenze 45 % im zweiten Zelt gegen 70 % im ersten — der Deckel der Instanz liegt bei 42 %, der des ersten bei 67 %). Wechselt der Entfeuchter das Zelt, folgt der Katalog; bereits angelegte Rechenwerte bleiben, bis sie neu angelegt werden.
+- **Folgt dem Plan seines Zeltes:** VPD-Band und Blatt-Offset kommen aus der laufenden Woche des Durchgangs im Zelt des Entfeuchters, und der tägliche Abgleich zieht Höchsttemperatur und Arbeitsbereich auch für weitere Entfeuchter nach. Die Alarm-Grenzen des Zeltes bleiben beim ersten Entfeuchter.
+- **Zelt ruhend:** Jeder weitere Entfeuchter steht als eigenes Gerät in der Liste, wie der erste mit „läuft weiter“, bis du ihn ankreuzt.
+- **Anlegen:** Die Schnittstelle zum Anlegen weiterer Steuerungen nimmt jetzt auch „Entfeuchter“ an; eine Bedienung in der Oberfläche folgt im nächsten Teil.
+- **Getestet:** Ohne den Zelt-Bezug zeigen die Rechenwerte auf das falsche CO₂ (drei Tests werden rot), ohne die Art-Prüfung führt die Instanz die Helfer des Wasserkühlers (Test wird rot); der Plan führt je Instanz nur ihre eigenen Helfer.
+
 ## 2.0.0-cc.324
 
 **Steuerungen je Zelt, Teil 6a: Der Dienst der Entfeuchtung kann jetzt mehrere Entfeuchter führen — noch ohne Oberfläche, bei dir ändert sich nichts.**

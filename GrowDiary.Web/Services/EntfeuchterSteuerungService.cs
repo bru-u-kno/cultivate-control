@@ -140,14 +140,14 @@ public sealed class EntfeuchterSteuerungService : IStartwertDienst
     /// Das Zelt, dessen CO₂-Helfer diese Instanz liest — <c>null</c> für die ersten Kennungen (Bestand-Zelt). Eine weitere Instanz liest
     /// das CO₂ ihres EIGENEN Zeltes; hat das Zelt keins, zeigt der Verweis ins Leere und es gilt der Ersatz (kein Deckel, Plan-Wert).
     /// </summary>
-    private int? Co2ZeltId
-    {
-        get
-        {
-            if (_nummer is null || _zelte?.ZeltFuer(_modul) is not { } zelt) return null;
-            return zelt == Co2Zelte.Aktuell.BestandZeltId ? null : zelt;
-        }
-    }
+    private int? Co2ZeltId => _nummer is null ? null : Co2ZeltFuer(_zelte?.ZeltFuer(_modul));
+
+    /// <summary>
+    /// Das Zelt, auf dessen CO₂-Kennungen eine Entfeuchter-Instanz in <paramref name="zeltId"/> zeigt: <c>null</c> = die Kennungen des
+    /// Bestand-Zeltes (<c>co2_…</c>), sonst das Zelt (<c>co2_z{id}_…</c>). Hat das Zelt kein CO₂, zeigt der Verweis ins Leere.
+    /// </summary>
+    public static int? Co2ZeltFuer(int? zeltId)
+        => zeltId is { } z && z != Co2Zelte.Aktuell.BestandZeltId ? z : null;
 
     private string Co2(string bestandId) => Co2Modul.Id(bestandId, Co2ZeltId);
 

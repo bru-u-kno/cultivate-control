@@ -256,6 +256,11 @@ KennungsRaumWahl.BeimStart(app.Services.GetRequiredService<SteuerungRepository>(
 // CO₂ je Zelt: welches Zelt gehört dem vorhandenen CO₂-Objektsatz, und welche Zelte haben eine eigene CO₂-Steuerung?
 Co2ZeltWahl.Aktualisieren(app.Services.GetRequiredService<TentRepository>(), app.Services.GetRequiredService<SteuerungRepository>(), app.Logger);
 SteuerungInstanzService.Aktualisieren(app.Services.GetRequiredService<SteuerungRepository>());
+// Das Zelt jeder weiteren Instanz (für den CO₂-Bezug der Entfeuchter-Instanzen). Nur mit Instanzen: sonst gibt es nichts zu lesen.
+if (SteuerungInstanzen.Aktuell.Count > 0)
+{
+    new SteuerungZeltService(app.Services.GetRequiredService<SteuerungRepository>(), app.Services.GetRequiredService<TentRepository>(), app.Services.GetRequiredService<GrowRepository>()).Zuordnung();
+}
 // Fork AI: Pflanzen abgeschlossener Grows stehen „geerntet" und ihre Abweichungs-Risiken sind geschlossen (bis cc.294 setzte der Abschluss beides nicht). Idempotent: beim zweiten Start 0.
 try
 {

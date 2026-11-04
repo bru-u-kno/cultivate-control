@@ -120,6 +120,14 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
             }),
+            _ when ZeltRuheArten.IstEntfeuchterInstanz(kennung) => Aus(async () => (await _entfeuchter.Fuer(kennung).EinstellungenAsync(ct)).AutomatikAktiv, async an =>
+            {
+                var entfeuchter = _entfeuchter.Fuer(kennung);
+                var e = await entfeuchter.EinstellungenAsync(ct);
+                e.AutomatikAktiv = an;
+                var (g, _, erreicht) = await entfeuchter.SpeichernAsync(e, ct);
+                return g is not null && erreicht;
+            }),
             _ when ZeltRuheArten.IstKuehlerInstanz(kennung) => Aus(async () => (await _chiller.Fuer(kennung).EinstellungenAsync(ct)).AutomatikAktiv, async an =>
             {
                 var kuehler = _chiller.Fuer(kennung);
@@ -169,6 +177,14 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
             {
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
+            }),
+            _ when ZeltRuheArten.IstEntfeuchterInstanz(kennung) => An(async an =>
+            {
+                var entfeuchter = _entfeuchter.Fuer(kennung);
+                var e = await entfeuchter.EinstellungenAsync(ct);
+                e.AutomatikAktiv = an;
+                var (g, _, erreicht) = await entfeuchter.SpeichernAsync(e, ct);
+                return g is not null && erreicht;
             }),
             _ when ZeltRuheArten.IstKuehlerInstanz(kennung) => An(async an =>
             {
