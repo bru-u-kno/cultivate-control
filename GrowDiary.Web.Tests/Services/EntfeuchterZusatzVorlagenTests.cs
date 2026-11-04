@@ -309,6 +309,39 @@ public sealed class EntfeuchterZusatzVorlagenTests
     }
 
     [Fact]
+    public void Meldung_Push_TrägtEinZiel_DerTippOeffnetDieApp()
+    {
+        // Ohne clickAction öffnet die Companion-App das Hauptdashboard von Home Assistant (04.11.2026).
+        var roh = File.ReadAllText(Path.Combine(SteuerungAutomationService.VorlagenWurzel, Modul, "meldung.json"));
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(roh, "\"clickAction\": \"\\[\\[push_ziel\\]\\]\"").Count);
+
+        // Kein Link bekannt: die Startseite von Home Assistant, wie vorher — die Vorlage bleibt nie ungefüllt.
+        var ohne = Gefuellt("meldung").ToJsonString();
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(ohne, "\"clickAction\":\"/\"").Count);
+        Assert.DoesNotContain("[[", ohne);
+
+        // Mit Link: genau dieser, für Android (clickAction) und iOS (url).
+        var rollen = Rollen();
+        rollen["push_ziel"] = "/cultivate_control?index=live";
+        var mit = SteuerungAutomationService.Fuellen(Laden("meldung"), rollen)!.ToJsonString();
+        // Zwei Push-Aktionen, je clickAction (Android) und url (iOS).
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(mit, "/cultivate_control").Count);
+        Assert.DoesNotContain("[[", mit);
+        Assert.Contains("\"url\":", mit);
+    }
+
+    [Theory]
+    [InlineData("/cultivate_control?index=live", "/cultivate_control?index=live")]
+    [InlineData("/app/00d580e3_cultivate_control/live", "/app/00d580e3_cultivate_control/live")]
+    [InlineData(null, "/")]
+    [InlineData("", "/")]
+    [InlineData("//boese.example/x", "/")]
+    [InlineData("https://boese.example", "/")]
+    [InlineData("/x\" ; drop", "/")]
+    public void PushZiel_NurSchlichteHaPfade(string? link, string erwartet)
+        => Assert.Equal(erwartet, SteuerungAutomationService.PushZiel(link));
+
+    [Fact]
     public void Meldung_PushAdresse_IstEineVariable_FehltSieGiltDieSammelgruppe()
     {
         // In der Vorlagen-Datei steht der Platzhalter, keine feste Adresse.
