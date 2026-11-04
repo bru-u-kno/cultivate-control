@@ -54,7 +54,7 @@ export function InstanzAnlegen({ art = 'chiller', module, onAngelegt, onWechsel 
       <V1Section title={`${w ? 'Neue' : 'Neuer'} ${bezeichnung}`}>
         <V1Card>
           <V1Field label="Name" hint={`So heißt ${w ? 'sie' : 'er'} in der Übersicht`} wide>
-            <input type="text" aria-label="Name" value={name} maxLength={60} placeholder={art === 'chiller' ? 'z. B. Wasserkühler Reserve' : art === 'zuluft' ? 'z. B. Zuluft Zelt B' : 'z. B. Entfeuchter Zelt B'} onChange={(e) => setName(e.target.value)} />
+            <input type="text" aria-label="Name" value={name} maxLength={60} placeholder={art === 'chiller' ? 'z. B. Wasserkühler Reserve' : art === 'zuluft' ? 'z. B. Zuluft Zelt B' : art === 'licht' ? 'z. B. Lampe Zelt B' : 'z. B. Entfeuchter Zelt B'} onChange={(e) => setName(e.target.value)} />
           </V1Field>
           {mehrereZelte && (
             <div className="st-feldzeile" style={{ display: 'block' }}>
@@ -63,7 +63,9 @@ export function InstanzAnlegen({ art = 'chiller', module, onAngelegt, onWechsel 
             </div>
           )}
         </V1Card>
-        {art === 'zuluft' ? (
+        {art === 'licht' ? (
+          <p className="st-hinweis">Sie bekommt eigene Geräte (Controller, Modus, Zeiten, Stufe) und eigene Einstellungen. In Home Assistant wird nichts angelegt — eine Lampe hat dort keine Bausteine. Die erste Lampe bleibt unverändert.</p>
+        ) : art === 'zuluft' ? (
           <p className="st-hinweis">Sie bekommt eigene Geräte, eigene Einstellungen und eigene Bausteine in Home Assistant. Die erste Zuluft bleibt unverändert.</p>
         ) : art === 'chiller' ? (
           <p className="st-hinweis">Er bekommt eigene Geräte, eigene Zieltemperaturen und eigene Bausteine in Home Assistant. Der erste Wasserkühler bleibt unverändert.</p>
@@ -73,7 +75,9 @@ export function InstanzAnlegen({ art = 'chiller', module, onAngelegt, onWechsel 
             <p className="st-hinweis">Er richtet sich nach dem Plan und dem CO₂ seines Zeltes. Hat das Zelt kein CO₂, gilt allein der Plan; ohne Zuluft gilt „kein Bedarf“.</p>
           </>
         )}
-        <p className="st-hinweis">Danach: Geräte zuordnen und Bausteine anlegen — wie im Einrichtungs-Assistenten, nur für genau {w ? 'diese' : 'diesen'} {bezeichnung}.</p>
+        <p className="st-hinweis">{art === 'licht'
+          ? 'Danach: die Geräte dieser Lampe zuordnen (Rollen bearbeiten).'
+          : `Danach: Geräte zuordnen und Bausteine anlegen — wie im Einrichtungs-Assistenten, nur für genau ${w ? 'diese' : 'diesen'} ${bezeichnung}.`}</p>
         <div className="st-knopfleiste">
           <V1Button variant="ghost" onClick={() => navigate('/steuerung')}>Abbrechen</V1Button>
           <V1Button variant="primary" disabled={arbeitet || name.trim().length === 0} onClick={() => void weiter()}>{arbeitet ? 'Legt an …' : 'Weiter'}</V1Button>

@@ -15,7 +15,7 @@ import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
 import { useEntfeuchtungEinrichtung } from '../features/steuerung/useEntfeuchtungEinrichtung'
 import { CO2_REITER, minuten, probeWerte, tagKurz, wirksameZiele } from '../features/steuerung/steuerung-typen'
-import { istChillerInstanz, istEntfeuchterInstanz, istZuluftInstanz } from '../features/steuerung/steuerung-typen'
+import { istChillerInstanz, istEntfeuchterInstanz, istLichtInstanz, istZuluftInstanz } from '../features/steuerung/steuerung-typen'
 import EntfeuchterInstanzSeite from '../features/steuerung/EntfeuchterInstanzSeite'
 import type { Co2Einstellungen, Co2Reiter, Co2Seite, GrenzModus, SteuerungModul, SteuerungUebersicht } from '../features/steuerung/steuerung-typen'
 import { formatNumber } from '../utils'
@@ -140,12 +140,22 @@ export default function SteuerungPage() {
     return <Co2Detail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
-  if (modul === 'licht') {
-    return <LichtDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  // Eine weitere Lampe hat dieselbe Seite wie die erste, mit ihrem Modul. `key`: beim Wechsel fängt die Seite neu an.
+  if (modul === 'licht' || istLichtInstanz(modul)) {
+    return (
+      <LichtDetail
+        key={modul} module={module} aktiv={modul!} modul={modul!}
+        onWechsel={(k) => navigate(`/steuerung/${k}`)} onInstanzGeaendert={neuLaden} onInstanzGeloescht={() => { neuLaden(); navigate('/steuerung') }}
+      />
+    )
   }
 
   if (modul === 'chiller-neu') {
     return <InstanzAnlegen module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
+  if (modul === 'licht-neu') {
+    return <InstanzAnlegen art="licht" module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
   if (modul === 'zuluft-neu') {

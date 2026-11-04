@@ -5,6 +5,8 @@ import { HaStummHinweis } from './HaStummHinweis'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Tabs } from '../../components/v1'
+import { InstanzBlock, InstanzLoeschen } from './InstanzBlock'
+import { useInstanzen } from './instanzen'
 import { LICHT_MODI, LICHT_REITER } from './steuerung-typen'
 import type { LichtEinstellungen, LichtReiter, LichtSeite, SteuerungModul } from './steuerung-typen'
 import './steuerung.css'
@@ -30,11 +32,22 @@ import type { ModusZiel, StufenZiel } from './licht-bedienung'
  * beim Laden des Livebilds und schreibt notfalls nach — ohne regelmäßiges
  * Nachladen fände diese Prüfung nie statt.
  */
-export default function LichtDetail({ module, aktiv, onWechsel }: {
+export default function LichtDetail({ module, aktiv, onWechsel, modul = 'licht', onInstanzGeaendert, onInstanzGeloescht }: {
   module: SteuerungModul[]
   aktiv: string
   onWechsel: (kennung: string) => void
+  /** `licht` (die erste) oder `licht-i{n}` (eine weitere Lampe mit eigenen Einstellungen und Geräten). */
+  modul?: string
+  onInstanzGeaendert?: () => void
+  onInstanzGeloescht?: () => void
 }) {
+  const weitere = modul !== 'licht'
+  const abfrage = weitere ? `?instanz=${encodeURIComponent(modul)}` : ''
+  // Der Name steht im Register der Instanzen; die Übersicht kennt ihn nur, wenn die Lampe dort ausgewählt ist.
+  const { instanzen, neuLaden: instanzenNeuLaden } = useInstanzen()
+  const instanz = instanzen?.find((i) => i.modul === modul)
+  const titel = weitere ? (instanz?.name ?? module.find((m) => m.kennung === modul)?.titel ?? 'Lampe') : 'Licht'
+  const [loeschenOffen, setLoeschenOffen] = useState(false)
   const [seite, setSeite] = useState<LichtSeite | null>(null)
   const [entwurf, setEntwurf] = useState<LichtEinstellungen | null>(null)
   const [reiter, setReiter] = useState<LichtReiter>('betrieb')
@@ -58,7 +71,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
   /** Nachladen im Takt — hier steht nur das Auffrischen, nicht der erste Abruf. */
   const auffrischen = useCallback(async () => {
     try {
-      const geladen = await apiFetch<LichtSeite>('/api/steuerung/licht')
+      const geladen = await apiFetch<LichtSeite>(`/api/steuerung/licht${abfrage}`)
       setSeite(geladen)
       // Hat der Livewert sich bewegt, ist das gemerkte Stufenziel erledigt — sonst
       // käme es wieder zum Zug, wenn die Stufe zufällig auf den alten Wert zurückgeht.
@@ -71,14 +84,14 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
       // Ein misslungenes Auffrischen ist kein Grund, die Seite rot zu faerben —
       // beim naechsten Takt in zehn Sekunden steht es wieder.
     }
-  }, [])
+  }, [abfrage])
 
   useEffect(() => {
     const controller = new AbortController()
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<LichtSeite>('/api/steuerung/licht', { signal: controller.signal })
+        const geladen = await apiFetch<LichtSeite>(`/api/steuerung/licht${abfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) { setSeite(geladen); setEntwurf(geladen.einstellungen); setFehler(null) }
       } catch (caught) {
         if (!controller.signal.aborted) setFehler(formatApiError(caught, 'Die Licht-Steuerung konnte nicht geladen werden.'))
@@ -88,7 +101,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     }
     void laden()
     return () => controller.abort()
-  }, [])
+  }, [abfrage])
 
   // Alle zehn Sekunden nachsehen: uebernommen, noch offen, oder endgueltig
   // nicht angekommen. Das ist zugleich der Takt, in dem das Backend seine
@@ -118,7 +131,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     if (leer) { setFeldFehler(leer); setMeldung(null); setFehler('Bitte die markierten Felder prüfen.'); fehlerZeigen(); return }
     setArbeitet(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<LichtSeite>('/api/steuerung/licht', { method: 'PUT', body: JSON.stringify(entwurf) })
+      const zurueck = await apiFetch<LichtSeite>(`/api/steuerung/licht${abfrage}`, { method: 'PUT', body: JSON.stringify(entwurf) })
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(speicherMeldung(zurueck.haAngenommen))
     } catch (caught) {
@@ -134,7 +147,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     setArbeitet(true); setMeldung(null)
     const stufeVorher = seite?.live.stufe ?? null
     try {
-      const zurueck = await apiFetch<LichtSeite>('/api/steuerung/licht/befehl', {
+      const zurueck = await apiFetch<LichtSeite>(`/api/steuerung/licht/befehl${abfrage}`, {
         method: 'POST',
         body: JSON.stringify({ art, preset: daten?.preset ?? null, stufe: daten?.stufe ?? null }),
       })
@@ -157,9 +170,20 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     }
   }
 
-  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title="Licht"><V1Skeleton rows={5} label="Wird geladen" /></V1Page>
+  if (loeschenOffen) {
+    return (
+      <InstanzLoeschen
+        art="licht" modul={modul} titel={titel}
+        ersterTitel={module.find((m) => m.kennung === 'licht')?.titel ?? null}
+        onAbbrechen={() => setLoeschenOffen(false)}
+        onGeloescht={() => onInstanzGeloescht?.()}
+      />
+    )
+  }
+
+  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title={titel}><V1Skeleton rows={5} label="Wird geladen" /></V1Page>
   if (!seite || !entwurf) {
-    return <V1Page eyebrow="Steuerung" title="Licht">{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
+    return <V1Page eyebrow="Steuerung" title={titel} vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}>{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
   }
 
   const live = anzeigeLive(seite.live, modusZiel)
@@ -176,6 +200,10 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
     setStufeText(null)
     if (wert !== stufeJetzt) void befehl('stufe', { stufe: wert })
   }
+  // Lichtplan (Stufe nach Plan) und Wächter richten sich nur nach der ersten Lampe: eine weitere hat nur die Zeiten, ohne beides.
+  const reiterListe = weitere
+    ? LICHT_REITER.filter((r) => r.value !== 'waechter').map((r) => (r.value === 'zeitplan' ? { ...r, label: 'Zeiten' } : r))
+    : LICHT_REITER
   const offen = live.unbestaetigt.length > 0
   const gescheitert = live.fehlgeschlagen.length > 0
 
@@ -188,7 +216,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
   return (
     <V1Page
       eyebrow="Steuerung"
-      title="Licht"
+      title={titel}
       subtitle="Zeitplan läuft im Gerät (Controller)"
       action={geaendert ? <V1Button variant="primary" onClick={speichern} disabled={arbeitet}>{arbeitet ? 'Speichert …' : 'Speichern'}</V1Button> : undefined}
       vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}
@@ -202,7 +230,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
           </b>{' '}
           zugeordnet
         </span>
-        <V1LinkButton to={rollenPfad('licht')} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
+        <V1LinkButton to={rollenPfad(modul)} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
       </div>
 
       {fehler && <V1Alert tone="critical" message={fehler} />}
@@ -241,7 +269,7 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
         </div>
       </V1Card>
 
-      <V1Tabs items={LICHT_REITER} active={reiter} onChange={setReiter} label="Bereich" insBild />
+      <V1Tabs items={reiterListe} active={reiter} onChange={setReiter} label="Bereich" insBild />
 
       {reiter === 'betrieb' && (
         <V1Section title="Betrieb">
@@ -325,13 +353,13 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
               <Zeit label="Blüte · Licht an um" wert={entwurf.blueteEin} onChange={(v) => setEntwurf({ ...entwurf, blueteEin: v, ...(/^\d{1,2}:\d{2}$/.test(v) ? { blueteAus: ausZeitAus(v, lichtStunden(entwurf.blueteEin, entwurf.blueteAus)) } : {}) })} fehler={feldFehler.BlueteEin} />
               <Stunden label="Blüte · Stunden an" aus={entwurf.blueteAus} ein={entwurf.blueteEin} onChange={(h) => setz('blueteAus', ausZeitAus(entwurf.blueteEin, h))} fehler={feldFehler.BlueteAus} />
               <p className="st-hinweis">
-                Hier stehen die Zeiten einmal; die Steuerung schreibt sie beim Anwenden in den Controller, der Wächter prüft ohne eigenen Lichtplan am Zelt gegen sie. Die Phase (Vegetativ oder Blüte) kommt aus dem Grow-Plan.
+                Hier stehen die Zeiten einmal; die Steuerung schreibt sie beim Anwenden in den Controller{weitere ? '' : ', der Wächter prüft ohne eigenen Lichtplan am Zelt gegen sie'}. Die Phase (Vegetativ oder Blüte) kommt aus dem Grow-Plan.
                 Gespeichert wird im Fork. Der Controller bekommt die Zeiten, wenn du den Zeitplan anwendest —
                 und sofort, wenn du den gerade aktiven Zeitplan bearbeitest.
               </p>
             </V1Card>
           </V1Section>
-          <LichtPlan />
+          {!weitere && <LichtPlan />}
         </>
       )}
 
@@ -367,6 +395,8 @@ export default function LichtDetail({ module, aktiv, onWechsel }: {
           </V1Card>
         </V1Section>
       )}
+
+      {weitere && <InstanzBlock art="licht" instanz={instanz} neuLaden={instanzenNeuLaden} onGeaendert={() => onInstanzGeaendert?.()} onLoeschen={() => setLoeschenOffen(true)} />}
 
       <p className="st-fuss">Der Zeitplan läuft im Controller — der Fork schickt nur Änderungen</p>
     </V1Page>

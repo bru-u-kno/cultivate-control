@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.331
+
+**Steuerungen je Zelt, Teil 8b: Weitere Lampen lassen sich jetzt in der Oberfläche anlegen, einrichten, umbenennen und löschen — wie Wasserkühler, Entfeuchter und Zuluft.**
+
+- **Weitere Lampe anlegen:** In der Steuerungs-Übersicht steht unter dem Zelt „+ Weitere Lampe in <Zelt>“ (bei einem einzigen Zelt erst, sobald es schon eine weitere Lampe gibt). Name und Zelt festlegen, danach die Geräte der Lampe zuordnen („Rollen bearbeiten“). In Home Assistant wird nichts angelegt, eine Lampe hat dort keine Bausteine. Die erste Lampe bleibt unverändert.
+- **Eigene Seite je Lampe:** Jede weitere Lampe hat dieselbe Seite wie die erste (Betriebsart, Zeitplan anwenden, Leistungsstufe) mit ihren eigenen Werten, dazu den Reiter „Zeiten“ und den Block „Diese Lampe“ zum Umbenennen und Verschieben in ein anderes Zelt. Die Reiter „Lichtplan“ (Stufe nach Plan) und „Wächter“ gibt es nur bei der ersten Lampe: Sie richten sich weiter nur nach ihr.
+- **Löschen:** „Löschen …“ fragt nach und entfernt die Lampe aus Cultivate Control (Seite, Einstellungen, Zuordnung, Zelt). Das Gerät selbst schaltet sich nicht um und behält Zeitplan und Stufe vom Controller. Ein Haken „Auch aus Home Assistant entfernen“ fehlt, weil es dort nichts zu entfernen gibt. Die erste Lampe lässt sich nicht löschen.
+- **Getestet:** Anlegen, Seite mit den eigenen Reitern, Umbenennen und Löschen laufen gegen die echte App (ohne `?instanz=` beim Laden wird der Test rot), dazu die Erkennung der Kennung `licht-i{n}` und die Frage, welche Arten Bausteine in Home Assistant haben.
+
 ## 2.0.0-cc.329
 
 **Steuerungen je Zelt, Teil 8a: Weitere Lampen lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**

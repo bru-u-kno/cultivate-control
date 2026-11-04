@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INSTANZ_BEZEICHNUNG, INSTANZ_WEIBLICH, istChillerInstanz, istEntfeuchterInstanz, istZuluftInstanz } from './steuerung-typen'
+import { INSTANZ_BEZEICHNUNG, INSTANZ_MIT_HA, INSTANZ_WEIBLICH, istChillerInstanz, istEntfeuchterInstanz, istLichtInstanz, istZuluftInstanz } from './steuerung-typen'
 
 describe('Kennungen weiterer Instanzen', () => {
   it('erkennt weitere Entfeuchter, aber weder den ersten noch den Zusatz-Entfeuchter noch Wasserkühler', () => {
@@ -18,8 +18,8 @@ describe('Kennungen weiterer Instanzen', () => {
   })
 
   it('nennt jede Art mit ihrem Wort', () => {
-    expect(INSTANZ_BEZEICHNUNG).toEqual({ chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft' })
-    expect(INSTANZ_WEIBLICH).toEqual({ chiller: false, entfeuchter: false, zuluft: true })
+    expect(INSTANZ_BEZEICHNUNG).toEqual({ chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' })
+    expect(INSTANZ_WEIBLICH).toEqual({ chiller: false, entfeuchter: false, zuluft: true, licht: true })
   })
 
   it('erkennt weitere Zuluft, aber weder die erste noch andere Arten', () => {
@@ -30,5 +30,20 @@ describe('Kennungen weiterer Instanzen', () => {
     }
     expect(istChillerInstanz('zuluft-i2')).toBe(false)
     expect(istEntfeuchterInstanz('zuluft-i2')).toBe(false)
+  })
+
+  it('erkennt weitere Lampen, aber weder die erste noch andere Arten', () => {
+    expect(istLichtInstanz('licht-i2')).toBe(true)
+    expect(istLichtInstanz('licht-i12')).toBe(true)
+    for (const nein of ['licht', 'licht-i1', 'licht-i', 'licht-neu', 'zuluft-i2', 'chiller-i2', undefined]) {
+      expect(istLichtInstanz(nein)).toBe(false)
+    }
+    expect(istZuluftInstanz('licht-i2')).toBe(false)
+    expect(istChillerInstanz('licht-i2')).toBe(false)
+    expect(istEntfeuchterInstanz('licht-i2')).toBe(false)
+  })
+
+  it('weiß, welche Arten Bausteine in Home Assistant haben', () => {
+    expect(INSTANZ_MIT_HA).toEqual({ chiller: true, entfeuchter: true, zuluft: true, licht: false })
   })
 })

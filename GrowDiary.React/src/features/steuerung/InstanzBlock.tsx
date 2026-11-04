@@ -3,7 +3,7 @@ import { formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card, V1Field, V1Page, V1Section, V1Switch } from '../../components/v1'
 import { ZeltChips } from './ZeltChips'
 import { instanzEntfernen, instanzUmbenennen, instanzZeltSetzen, useZelte } from './instanzen'
-import { INSTANZ_BEZEICHNUNG, INSTANZ_WEIBLICH } from './steuerung-typen'
+import { INSTANZ_BEZEICHNUNG, INSTANZ_MIT_HA, INSTANZ_WEIBLICH } from './steuerung-typen'
 import type { InstanzArt, SteuerungInstanz } from './steuerung-typen'
 import './steuerung.css'
 
@@ -103,6 +103,8 @@ export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, on
   const w = INSTANZ_WEIBLICH[art]
   const der = w ? 'Die' : 'Der'
   const sein = w ? 'Ihre' : 'Seine'
+  // Die Lampe hat keine Bausteine in Home Assistant: kein Haken, kein Satz über deren Regelung.
+  const mitHa = INSTANZ_MIT_HA[art]
 
   const loeschen = async () => {
     setArbeitet(true)
@@ -122,17 +124,19 @@ export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, on
       <V1Section title="Wirklich löschen?">
         <V1Card>
           <p className="st-hinweis">
-            {der} {b} verschwindet aus Cultivate Control: Seite, Zuordnung und Zelt.{' '}
-            {ausHa
+            {der} {b} verschwindet aus Cultivate Control: Seite, {mitHa ? '' : 'Einstellungen, '}Zuordnung und Zelt.{' '}
+            {!mitHa
+              ? 'Das Gerät selbst schaltet sich nicht um — es behält Zeitplan und Stufe, die zuletzt am Controller standen.'
+              : ausHa
               ? `${sein} Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.`
               : `${sein} Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.`}
           </p>
-          <V1Switch
+          {mitHa && <V1Switch
             label="Auch aus Home Assistant entfernen"
             checked={ausHa}
             onChange={setAusHa}
             hint={`Helfer, Rechenwerte und Automationen ${w ? 'dieser' : 'dieses'} ${b}${w ? '' : 's'}. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt ${w ? 'die' : 'der'} ${b} stehen und du kannst es noch einmal versuchen.`}
-          />
+          />}
         </V1Card>
         {ersterTitel && (
           <p className="st-hinweis">{w ? 'Die erste' : 'Den ersten'} {b} („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>

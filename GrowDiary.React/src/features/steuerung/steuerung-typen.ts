@@ -837,8 +837,13 @@ export const istEntfeuchterInstanz = (modul: string | undefined): boolean => mod
 /** Die Kennung `zuluft-i{n}` führt auf die Seite einer weiteren Zuluft. */
 export const istZuluftInstanz = (modul: string | undefined): boolean => modul != null && /^zuluft-i(?:[2-9]|[1-9]\d+)$/.test(modul)
 
+/** Die Kennung `licht-i{n}` führt auf die Seite einer weiteren Lampe. */
+export const istLichtInstanz = (modul: string | undefined): boolean => modul != null && /^licht-i(?:[2-9]|[1-9]\d+)$/.test(modul)
+
 /** Die Arten, von denen sich weitere Instanzen anlegen lassen, mit der Bezeichnung in der Oberfläche. */
-export type InstanzArt = 'chiller' | 'entfeuchter' | 'zuluft'
+export type InstanzArt = 'chiller' | 'entfeuchter' | 'zuluft' | 'licht'
 /** Weibliche Bezeichnungen („diese Zuluft“) — für die Artikel und Endungen in den Texten. */
-export const INSTANZ_WEIBLICH: Record<InstanzArt, boolean> = { chiller: false, entfeuchter: false, zuluft: true }
-export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft' }
+export const INSTANZ_WEIBLICH: Record<InstanzArt, boolean> = { chiller: false, entfeuchter: false, zuluft: true, licht: true }
+export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' }
+/** Hat die Art Bausteine in Home Assistant (Helfer, Rechenwerte, Automationen)? Die Lampe nicht: dort gibt es beim Löschen nichts zu entfernen. */
+export const INSTANZ_MIT_HA: Record<InstanzArt, boolean> = { chiller: true, entfeuchter: true, zuluft: true, licht: false }
