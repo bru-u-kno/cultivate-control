@@ -8,12 +8,14 @@ import { V1Alert, V1Button, V1Card, V1Empty, V1LinkButton, V1Page, V1Section, V1
 import LichtDetail from '../features/steuerung/LichtDetail'
 import ZuluftDetail from '../features/steuerung/ZuluftDetail'
 import ChillerDetail from '../features/steuerung/ChillerDetail'
+import { InstanzAnlegen } from '../features/steuerung/InstanzAnlegen'
 import TrocknungDetail from '../features/trocknung/TrocknungDetail'
 import EntfeuchtungSeite from '../features/steuerung/EntfeuchtungSeite'
 import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
 import { useEntfeuchtungEinrichtung } from '../features/steuerung/useEntfeuchtungEinrichtung'
 import { CO2_REITER, minuten, probeWerte, tagKurz, wirksameZiele } from '../features/steuerung/steuerung-typen'
+import { istChillerInstanz } from '../features/steuerung/steuerung-typen'
 import type { Co2Einstellungen, Co2Reiter, Co2Seite, GrenzModus, SteuerungModul, SteuerungUebersicht } from '../features/steuerung/steuerung-typen'
 import { formatNumber } from '../utils'
 import '../features/steuerung/steuerung.css'
@@ -141,8 +143,19 @@ export default function SteuerungPage() {
     return <LichtDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
-  if (modul === 'chiller') {
-    return <ChillerDetail module={module} aktiv={modul} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  if (modul === 'chiller-neu') {
+    return <InstanzAnlegen module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
+  // Ein weiterer Wasserkühler hat dieselbe Seite wie der erste, mit seinem Modul. `key`: beim Wechsel zwischen zwei Wasserkühlern
+  // fängt die Seite neu an (sonst bliebe der Entwurf des vorigen stehen).
+  if (modul === 'chiller' || istChillerInstanz(modul)) {
+    return (
+      <ChillerDetail
+        key={modul} module={module} aktiv={modul ?? 'chiller'} modul={modul ?? 'chiller'} onWechsel={(k) => navigate(`/steuerung/${k}`)}
+        onInstanzGeaendert={neuLaden} onInstanzGeloescht={() => { neuLaden(); navigate('/steuerung') }}
+      />
+    )
   }
 
   if (modul === 'trocknung') {

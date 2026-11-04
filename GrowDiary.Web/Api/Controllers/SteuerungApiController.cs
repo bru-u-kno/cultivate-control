@@ -289,10 +289,10 @@ public sealed class SteuerungApiController : ApiControllerBase
         var gewaehlt = auswahl.Gewaehlt();
         var jetzt = zelteDienst.Zuordnung();
         var eintraege = SteuerungZeltService.Zuweisbar
-            .Select(k => (Kennung: k, Art: SteuerungAuswahlService.Alle.FirstOrDefault(a => a.Uebersicht.Contains(k, StringComparer.Ordinal))))
+            .Select(k => (Kennung: k, Art: SteuerungAuswahlService.Alle.FirstOrDefault(a => a.Uebersicht.Contains(InstanzModul.Art(k) ?? k, StringComparer.Ordinal))))
             // Der Zusatz-Entfeuchter folgt dem Entfeuchter: eine Zeile für beide.
             .Where(x => x.Art is not null && gewaehlt.Contains(x.Art.Kennung) && x.Kennung != "entfeuchter-zusatz")
-            .Select(x => new SteuerungZuweisungEintragDto(x.Kennung, ModulTitel(x.Kennung), jetzt.GetValueOrDefault(x.Kennung)))
+            .Select(x => new SteuerungZuweisungEintragDto(x.Kennung, InstanzTitel(x.Kennung), jetzt.GetValueOrDefault(x.Kennung)))
             .ToList();
         return new SteuerungZuweisungDto(zelteDienst.AktiveZelte().Select(t => new SteuerungZeltKurzDto(t.Id, t.Name)).ToList(), eintraege);
     }
@@ -1067,7 +1067,7 @@ public sealed class SteuerungApiController : ApiControllerBase
 
         var module = new List<SteuerungGeraeteModulDto>();
         // Die Zelt-Module der CO₂-Steuerung (co2-z{id}) stehen hinter den festen Modulen — das Bestand-Zelt bleibt „co2“.
-        foreach (var modul in SteuerungGeraeteRollen.Module.Concat(Co2Zelte.Module.Where(m => m != Co2Modul.Basis)))
+        foreach (var modul in SteuerungGeraeteRollen.Module.Concat(Co2Zelte.Module.Where(m => m != Co2Modul.Basis)).Concat(SteuerungInstanzen.Module))
         {
             var gespeichert = _geraete.Gespeichert(modul);
             var aufgeloest = _geraete.EntitiesFuerModul(modul);
@@ -1084,7 +1084,7 @@ public sealed class SteuerungApiController : ApiControllerBase
                     rolle.Pflicht, rolle.Domains, rolle.Vorgabe, roh, ziel, Wert(ziel),
                     ziel is not null && nachId.ContainsKey(ziel));
             }).ToList();
-            module.Add(new SteuerungGeraeteModulDto(modul, Co2Modul.ZeltId(modul) is { } zeltId ? $"{ModulTitel(Co2Modul.Basis)} · {ZeltName(zeltId)}" : ModulTitel(modul), zeilen));
+            module.Add(new SteuerungGeraeteModulDto(modul, Co2Modul.ZeltId(modul) is { } zeltId ? $"{ModulTitel(Co2Modul.Basis)} · {ZeltName(zeltId)}" : InstanzTitel(modul), zeilen));
         }
 
         var eigene = _geraete.EigeneGeraete()
@@ -1099,7 +1099,8 @@ public sealed class SteuerungApiController : ApiControllerBase
     public async Task<ActionResult<SteuerungGeraeteSeiteDto>> GeraeteSpeichern(string modul, [FromBody] SteuerungGeraeteRequest request, CancellationToken ct)
     {
         if (request?.Zuordnungen is null) return BadRequestError("geraete_invalid", "Es wurde nichts übergeben.");
-        if (!SteuerungGeraeteRollen.Module.Contains(modul, StringComparer.OrdinalIgnoreCase) && !Co2Zelte.Module.Contains(modul, StringComparer.Ordinal))
+        if (!SteuerungGeraeteRollen.Module.Contains(modul, StringComparer.OrdinalIgnoreCase) && !Co2Zelte.Module.Contains(modul, StringComparer.Ordinal)
+            && !SteuerungInstanzen.Module.Contains(modul, StringComparer.Ordinal))
             return BadRequestError("modul_unbekannt", $"Die Steuerung „{modul}\" hat keine Geräte-Rollen.");
 
         var fehler = _geraete.Speichern(modul, request.Zuordnungen);
@@ -1136,6 +1137,10 @@ public sealed class SteuerungApiController : ApiControllerBase
 
     private string ZeltName(int zeltId)
         => _grows.GetTents(includeArchived: true).FirstOrDefault(t => t.Id == zeltId)?.Name ?? $"Zelt {zeltId}";
+
+    /// <summary>Der Titel eines Moduls; für eine weitere Instanz „Art · Name“ (zum Beispiel „Wasserkühler · Reserve“).</summary>
+    private static string InstanzTitel(string modul)
+        => SteuerungInstanzen.Aktuell.FirstOrDefault(i => i.Modul == modul) is { } i ? $"{ModulTitel(i.Art)} · {i.Name}" : ModulTitel(modul);
 
     internal static string ModulTitel(string modul) => modul switch
     {

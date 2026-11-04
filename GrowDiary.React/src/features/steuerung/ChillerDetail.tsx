@@ -12,6 +12,9 @@ import { useFehlerZeigen } from './fehler-reiter'
 import { haZustandName } from '../../deutsche-woerter'
 import { BestandAbschnitt, BestandHinweis } from './Bestand'
 import { useBestand } from './bestand-laden'
+import { InstanzBlock, InstanzLoeschen } from './InstanzBlock'
+import { useInstanzen } from './instanzen'
+import { Link } from 'react-router-dom'
 
 /**
  * Fork AI: Steuerung › Water Chiller — der Wasserkühler, der bisher als Kachel
@@ -32,11 +35,22 @@ import { useBestand } from './bestand-laden'
  * den Rollen — hier gibt es keinen eigenen Umschalter. Die Seite zeigt nur, was
  * daraus folgt, und blendet aus, was für die Ansteuerung nicht gilt.
  */
-export default function ChillerDetail({ module, aktiv, onWechsel }: {
+export default function ChillerDetail({ module, aktiv, onWechsel, modul = 'chiller', onInstanzGeaendert, onInstanzGeloescht }: {
   module: SteuerungModul[]
   aktiv: string
   onWechsel: (kennung: string) => void
+  /** `chiller` (die erste Instanz) oder `chiller-i{n}` (ein weiterer Wasserkühler mit eigenen Einstellungen und Geräten). */
+  modul?: string
+  onInstanzGeaendert?: () => void
+  onInstanzGeloescht?: () => void
 }) {
+  const weitere = modul !== 'chiller'
+  const abfrage = weitere ? `?instanz=${encodeURIComponent(modul)}` : ''
+  // Der Name steht im Register der Instanzen; die Übersicht kennt ihn nur, wenn der Wasserkühler dort ausgewählt ist.
+  const { instanzen, neuLaden: instanzenNeuLaden } = useInstanzen()
+  const instanz = instanzen?.find((i) => i.modul === modul)
+  const titel = instanz?.name ?? module.find((m) => m.kennung === modul)?.titel ?? 'Wasserkühler'
+  const [loeschenOffen, setLoeschenOffen] = useState(false)
   const [seite, setSeite] = useState<ChillerSeite | null>(null)
   const [entwurf, setEntwurf] = useState<ChillerEinstellungen | null>(null)
   const [reiter, setReiter] = useState<ChillerReiter>('betrieb')
@@ -49,24 +63,24 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
   const [arbeitet, setArbeitet] = useState(false)
   // Fork AI (02.10.2026): Bestand wie auf der CO₂-Seite — vorher zeigte diese
   // Seite ihn nicht, auch nicht die Lücke „Kühler ohne Aus".
-  const { bestand, neuLaden: bestandNeuLaden } = useBestand('chiller')
+  const { bestand, neuLaden: bestandNeuLaden } = useBestand(modul)
 
   const auffrischen = useCallback(async () => {
     try {
-      const geladen = await apiFetch<ChillerSeite>('/api/steuerung/chiller')
+      const geladen = await apiFetch<ChillerSeite>(`/api/steuerung/chiller${abfrage}`)
       setSeite(geladen)
       setEntwurf((vorher) => vorher ?? geladen.einstellungen)
     } catch {
       // Ein misslungenes Auffrischen ist kein Grund, die Seite rot zu färben.
     }
-  }, [])
+  }, [abfrage])
 
   useEffect(() => {
     const controller = new AbortController()
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<ChillerSeite>('/api/steuerung/chiller', { signal: controller.signal })
+        const geladen = await apiFetch<ChillerSeite>(`/api/steuerung/chiller${abfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) { setSeite(geladen); setEntwurf(geladen.einstellungen); setFehler(null) }
       } catch (caught) {
         if (!controller.signal.aborted) setFehler(formatApiError(caught, 'Die Kühler-Steuerung konnte nicht geladen werden.'))
@@ -76,7 +90,7 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
     }
     void laden()
     return () => controller.abort()
-  }, [])
+  }, [abfrage])
 
   // Eine Minute Takt — die Regelung selbst prüft im Minutentakt, und
   // Wassertemperatur bewegt sich träge.
@@ -96,7 +110,7 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
     if (leer) { setFeldFehler(leer); setMeldung(null); setFehler('Bitte die markierten Felder prüfen.'); fehlerZeigen(); return }
     setArbeitet(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<ChillerSeite>('/api/steuerung/chiller', { method: 'PUT', body: JSON.stringify(entwurf) })
+      const zurueck = await apiFetch<ChillerSeite>(`/api/steuerung/chiller${abfrage}`, { method: 'PUT', body: JSON.stringify(entwurf) })
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(zurueck.haAngenommen === false
         ? 'Gespeichert — aber nicht alle Helfer haben den Wert angenommen.'
@@ -110,9 +124,21 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
     }
   }
 
-  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title="Wasserkühler"><V1Skeleton rows={4} tiles={4} label="Wird geladen" /></V1Page>
+  if (loeschenOffen) {
+    return (
+      <InstanzLoeschen
+        modul={modul}
+        titel={titel}
+        ersterTitel={module.find((m) => m.kennung === 'chiller')?.titel ?? null}
+        onAbbrechen={() => setLoeschenOffen(false)}
+        onGeloescht={() => onInstanzGeloescht?.()}
+      />
+    )
+  }
+
+  if (laedt && !seite) return <V1Page eyebrow="Steuerung" title={titel}><V1Skeleton rows={4} tiles={4} label="Wird geladen" /></V1Page>
   if (!seite || !entwurf) {
-    return <V1Page eyebrow="Steuerung" title="Wasserkühler">{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
+    return <V1Page eyebrow="Steuerung" title={titel} vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}>{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
   }
 
   const live = seite.live
@@ -142,7 +168,7 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
   return (
     <V1Page
       eyebrow="Steuerung"
-      title="Wasserkühler"
+      title={titel}
       subtitle="Hält das Nährwasser auf dem Ziel der laufenden Woche — geschaltet in Home Assistant"
       action={geaendert ? <V1Button variant="primary" onClick={speichern} disabled={arbeitet}>{arbeitet ? 'Speichert …' : 'Speichern'}</V1Button> : undefined}
       vorKopf={<SteuerungWechsel module={module} aktiv={aktiv} onWechsel={onWechsel} />}
@@ -247,7 +273,7 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
                 Ansteuerung · {art.titel}
                 <small>{art.text} Ergibt sich aus den Rollen.</small>
               </span>
-              <V1LinkButton to={rollenPfad('chiller')} variant="ghost">Rollen ›</V1LinkButton>
+              <V1LinkButton to={rollenPfad(modul)} variant="ghost">Rollen ›</V1LinkButton>
             </div>
             {(perSteckdose || ansteuerung === 'beides') && (
               <div className="st-feldzeile">
@@ -368,7 +394,7 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
         </V1Section>
       )}
 
-      <BestandAbschnitt modul="chiller" schaltet="den Kühler" bestand={bestand} neuLaden={bestandNeuLaden} />
+      <BestandAbschnitt modul={modul} schaltet="den Kühler" bestand={bestand} neuLaden={bestandNeuLaden} />
 
       <div className="st-geraete-zeile">
         <span>
@@ -378,8 +404,14 @@ export default function ChillerDetail({ module, aktiv, onWechsel }: {
           </b>{' '}
           zugeordnet
         </span>
-        <V1LinkButton to={rollenPfad('chiller')} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
+        <V1LinkButton to={rollenPfad(modul)} variant="ghost">Rollen bearbeiten ›</V1LinkButton>
       </div>
+
+      {weitere ? (
+        <InstanzBlock instanz={instanz} neuLaden={instanzenNeuLaden} onGeaendert={() => onInstanzGeaendert?.()} onLoeschen={() => setLoeschenOffen(true)} />
+      ) : (
+        <p className="st-fuss st-fuss-link"><Link to="/steuerung/chiller-neu">+ Weiteren Wasserkühler anlegen</Link></p>
+      )}
     </V1Page>
   )
 }

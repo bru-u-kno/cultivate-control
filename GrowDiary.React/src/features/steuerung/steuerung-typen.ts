@@ -823,3 +823,10 @@ export type SteuerungZuweisung = {
   zelte: SteuerungZeltKurz[]
   eintraege: Array<{ kennung: string; titel: string; zeltId: number | null }>
 }
+
+/** Etappe 2: Eine weitere Instanz einer Steuerung (die erste steht nicht in der Liste). */
+export type SteuerungInstanz = { modul: string; art: string; nummer: number; name: string; zeltId: number | null }
+export type SteuerungInstanzen = { instanzen: SteuerungInstanz[] }
+
+/** Weitere Instanzen gibt es heute nur beim Wasserkühler; die Kennung `chiller-i{n}` führt auf seine Seite. */
+export const istChillerInstanz = (modul: string | undefined): boolean => modul != null && /^chiller-i[2-9]\d*$/.test(modul)
