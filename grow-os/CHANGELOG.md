@@ -5,7 +5,7 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
-## 2.0.0-cc.333
+## 2.0.0-cc.334
 
 **Trocknung: „Gerät einbinden“ — der Haken erscheint sofort, die Meldungen sagen in Klartext, was die Steuerung tut, und ein laufender Vorgang wird angezeigt, bis er fertig ist.**
 
@@ -18,6 +18,17 @@
 - **Gleicher Fehler an zwei weiteren Haken behoben:** Beim Licht warteten „Wächter“ (Reiter Wächter) und „Stufe automatisch nach Plan setzen“ (Reiter Lichtplan) ebenfalls auf die Antwort. Sie zeigen die Wahl jetzt sofort und darunter „wird gespeichert …“. Die Haken in der Steuerungs-Auswahl, im Einrichtungs-Assistenten und in den Entfeuchter-, Zuluft- und Wasserkühler-Einstellungen zeigten die Wahl schon sofort.
 - **Schnittstelle:** Der Stand der Trocknungs-Steuerung nennt unter `inArbeit` die Phase (`speichern`, `abgleichen`, `pruefen`) und die Kennung der Seite, die den Vorgang gestartet hat; das Speichern nimmt dafür optional `clientId` an (höchstens 40 Zeichen aus Buchstaben, Ziffern, `-` und `_`, sonst wird sie verworfen). Ohne laufenden Vorgang fehlt `inArbeit`.
 - **Getestet:** Der Haken steht beim Antippen, bevor die Antwort da ist (ohne die Umstellung wird der Test rot), die Phase kommt vom Server, ein Fehler zeigt wieder den gespeicherten Stand und das zweite Antippen verhält sich gleich, der Wechsel der Betriebsart zeigt die Schritte oben, die Rückfrage übernimmt einen zwischenzeitlich geänderten anderen Haken, ein Vorgang einer anderen Seite sperrt die Karten, die Rückfrage hält den Haken bis zur Bestätigung, und beim Licht-Wächter steht der Haken sofort (ohne die Umstellung wird der Test rot). Im Backend meldet der Stand den Vorgang mit Phase, die Antwort meldet ihn nicht mehr, nach einem Fehler bleibt keine Meldung stehen, ein zweiter Vorgang im selben Zelt behält Meldung und Phase, und die Kennung der Seite wird geprüft.
+
+## 2.0.0-cc.333
+
+**Steuerungen je Zelt, Teil 9b: Zu jedem weiteren Entfeuchter lässt sich jetzt ein Zusatz-Entfeuchter in der Oberfläche anlegen, einrichten, umbenennen und löschen.**
+
+- **Zusatz-Entfeuchter anlegen:** Auf der Seite eines weiteren Entfeuchters steht unten der Block „Zusatz-Entfeuchter“ mit „+ Zusatz-Entfeuchter dazu“ (nur solange der Entfeuchter noch keinen hat). Du gibst nur den Namen ein; das Zelt ist das des Entfeuchters, einen zweiten Zusatz zum selben Entfeuchter gibt es nicht.
+- **Ein Zusatz hat keine eigene Seite:** Er steht auf der Seite seines Entfeuchters, wie bei der ersten Entfeuchtung. Überblick und Einstellungen zeigen beide Geräte zusammen, die Einrichtung ordnet beide Geräte zu und zeigt den Bestand der Bausteine in Home Assistant für beide. Gespeichert wird in einem Zug, der Zusatz mit seinen eigenen Werten. Die Adresse des Zusatzes führt auf die Seite seines Entfeuchters.
+- **Dieser Zusatz-Entfeuchter:** Name ändern und den Zusatz allein löschen — der Entfeuchter bleibt unverändert. „Auch aus Home Assistant entfernen“ gilt dann nur für den Zusatz.
+- **Entfeuchter löschen:** Die Rückfrage nennt den Zusatz, der mitgelöscht wird; „Auch aus Home Assistant entfernen“ gilt für beide.
+- **Der erste Zusatz-Entfeuchter und die erste Entfeuchtung bleiben unverändert.**
+- **Getestet:** Anlegen, Seite mit den Werten des richtigen Zusatzes, Umbenennen, allein Löschen und gemeinsames Löschen gegen die laufende App; ohne die Angabe der Instanz beim Abruf wird der Test rot.
 
 ## 2.0.0-cc.332
 

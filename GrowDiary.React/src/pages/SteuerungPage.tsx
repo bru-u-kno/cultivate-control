@@ -8,14 +8,14 @@ import { V1Alert, V1Button, V1Card, V1Empty, V1LinkButton, V1Page, V1Section, V1
 import LichtDetail from '../features/steuerung/LichtDetail'
 import ZuluftDetail from '../features/steuerung/ZuluftDetail'
 import ChillerDetail from '../features/steuerung/ChillerDetail'
-import { InstanzAnlegen } from '../features/steuerung/InstanzAnlegen'
+import { InstanzAnlegen, ZusatzAnlegen } from '../features/steuerung/InstanzAnlegen'
 import TrocknungDetail from '../features/trocknung/TrocknungDetail'
 import EntfeuchtungSeite from '../features/steuerung/EntfeuchtungSeite'
 import EinrichtungSeite from '../features/steuerung/EinrichtungSeite'
 import { ENTFEUCHTUNG_KENNUNG, mitEntfeuchtung } from '../features/steuerung/entfeuchtung-modell'
 import { useEntfeuchtungEinrichtung } from '../features/steuerung/useEntfeuchtungEinrichtung'
 import { CO2_REITER, minuten, probeWerte, tagKurz, wirksameZiele } from '../features/steuerung/steuerung-typen'
-import { istChillerInstanz, istEntfeuchterInstanz, istLichtInstanz, istZuluftInstanz } from '../features/steuerung/steuerung-typen'
+import { entfeuchterZuZusatz, istChillerInstanz, istEntfeuchterInstanz, istEntfeuchterZusatzInstanz, istLichtInstanz, istZuluftInstanz } from '../features/steuerung/steuerung-typen'
 import EntfeuchterInstanzSeite from '../features/steuerung/EntfeuchterInstanzSeite'
 import type { Co2Einstellungen, Co2Reiter, Co2Seite, GrenzModus, SteuerungModul, SteuerungUebersicht } from '../features/steuerung/steuerung-typen'
 import { formatNumber } from '../utils'
@@ -164,6 +164,12 @@ export default function SteuerungPage() {
 
   if (modul === 'entfeuchter-neu') {
     return <InstanzAnlegen art="entfeuchter" module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
+  }
+
+  // Ein Zusatz-Entfeuchter hat keine eigene Seite: er steht auf der Seite seines Entfeuchters (gleiche Nummer).
+  if (istEntfeuchterZusatzInstanz(modul)) return <Navigate to={`/steuerung/${entfeuchterZuZusatz(modul!)}`} replace />
+  if (modul === 'entfeuchter-zusatz-neu') {
+    return <ZusatzAnlegen module={module} onAngelegt={neuLaden} onWechsel={(k) => navigate(`/steuerung/${k}`)} />
   }
 
   // Ein weiterer Entfeuchter: die Reiter der Entfeuchtung für genau ihn. `key`: beim Wechsel zwischen zwei Entfeuchtern fängt die Seite neu an.

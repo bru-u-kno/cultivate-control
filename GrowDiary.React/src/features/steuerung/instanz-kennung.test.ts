@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INSTANZ_BEZEICHNUNG, INSTANZ_MIT_HA, INSTANZ_WEIBLICH, istChillerInstanz, istEntfeuchterInstanz, istLichtInstanz, istZuluftInstanz } from './steuerung-typen'
+import { INSTANZ_BEZEICHNUNG, INSTANZ_MIT_HA, INSTANZ_WEIBLICH, istChillerInstanz, entfeuchterZuZusatz, istEntfeuchterInstanz, istEntfeuchterZusatzInstanz, istLichtInstanz, istZuluftInstanz } from './steuerung-typen'
 
 describe('Kennungen weiterer Instanzen', () => {
   it('erkennt weitere Entfeuchter, aber weder den ersten noch den Zusatz-Entfeuchter noch Wasserkühler', () => {
@@ -18,8 +18,8 @@ describe('Kennungen weiterer Instanzen', () => {
   })
 
   it('nennt jede Art mit ihrem Wort', () => {
-    expect(INSTANZ_BEZEICHNUNG).toEqual({ chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' })
-    expect(INSTANZ_WEIBLICH).toEqual({ chiller: false, entfeuchter: false, zuluft: true, licht: true })
+    expect(INSTANZ_BEZEICHNUNG).toEqual({ chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', 'entfeuchter-zusatz': 'Zusatz-Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' })
+    expect(INSTANZ_WEIBLICH).toEqual({ chiller: false, entfeuchter: false, 'entfeuchter-zusatz': false, zuluft: true, licht: true })
   })
 
   it('erkennt weitere Zuluft, aber weder die erste noch andere Arten', () => {
@@ -44,6 +44,15 @@ describe('Kennungen weiterer Instanzen', () => {
   })
 
   it('weiß, welche Arten Bausteine in Home Assistant haben', () => {
-    expect(INSTANZ_MIT_HA).toEqual({ chiller: true, entfeuchter: true, zuluft: true, licht: false })
+    expect(INSTANZ_MIT_HA).toEqual({ chiller: true, 'entfeuchter-zusatz': true, entfeuchter: true, zuluft: true, licht: false })
+  })
+
+  it('erkennt den Zusatz-Entfeuchter einer Instanz und findet seinen Entfeuchter (gleiche Nummer)', () => {
+    expect(istEntfeuchterZusatzInstanz('entfeuchter-zusatz-i2')).toBe(true)
+    expect(istEntfeuchterZusatzInstanz('entfeuchter-zusatz-i12')).toBe(true)
+    for (const nein of ['entfeuchter-zusatz', 'entfeuchter-i2', 'entfeuchter-zusatz-i1', 'zuluft-i2', undefined]) expect(istEntfeuchterZusatzInstanz(nein)).toBe(false)
+    expect(entfeuchterZuZusatz('entfeuchter-zusatz-i12')).toBe('entfeuchter-i12')
+    expect(INSTANZ_BEZEICHNUNG['entfeuchter-zusatz']).toBe('Zusatz-Entfeuchter')
+    expect(INSTANZ_WEIBLICH['entfeuchter-zusatz']).toBe(false)
   })
 })
