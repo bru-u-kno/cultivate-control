@@ -21,7 +21,9 @@ type Einstellungen = EntfeuchterZusatzEinstellungen
  * <b>Speichern schreibt nur, was geändert wurde</b> (A-009): `aenderungBilden`
  * vergleicht mit dem zuletzt geladenen Stand. Verhalten unverändert.
  */
-export function useEntfeuchterZusatz(aktiv = true) {
+export function useEntfeuchterZusatz(aktiv = true, modul = 'entfeuchter-zusatz') {
+  // Der erste Zusatz hat keinen Zusatz in der Adresse; der einer weiteren Instanz (`entfeuchter-zusatz-i{n}`) schon.
+  const abfrage = modul === 'entfeuchter-zusatz' ? '' : `?instanz=${encodeURIComponent(modul)}`
   const [seite, setSeite] = useState<EntfeuchterZusatzSeite | null>(null)
   const [entwurf, setEntwurf] = useState<Einstellungen | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -35,7 +37,7 @@ export function useEntfeuchterZusatz(aktiv = true) {
 
   const auffrischen = useCallback(async () => {
     try {
-      const neu = await apiFetch<EntfeuchterZusatzSeite>('/api/steuerung/entfeuchter-zusatz')
+      const neu = await apiFetch<EntfeuchterZusatzSeite>(`/api/steuerung/entfeuchter-zusatz${abfrage}`)
       const alt = geladenRef.current
       geladenRef.current = neu.einstellungen
       setSeite(neu)
@@ -45,7 +47,7 @@ export function useEntfeuchterZusatz(aktiv = true) {
     } catch {
       // Ein misslungenes Auffrischen ist kein Grund, die Seite rot zu färben.
     }
-  }, [])
+  }, [abfrage])
 
   useEffect(() => {
     if (!aktiv) return undefined
@@ -53,7 +55,7 @@ export function useEntfeuchterZusatz(aktiv = true) {
     const laden = async () => {
       setLaedt(true)
       try {
-        const geladen = await apiFetch<EntfeuchterZusatzSeite>('/api/steuerung/entfeuchter-zusatz', { signal: controller.signal })
+        const geladen = await apiFetch<EntfeuchterZusatzSeite>(`/api/steuerung/entfeuchter-zusatz${abfrage}`, { signal: controller.signal })
         if (!controller.signal.aborted) {
           geladenRef.current = geladen.einstellungen
           setSeite(geladen)
@@ -68,7 +70,7 @@ export function useEntfeuchterZusatz(aktiv = true) {
     }
     void laden()
     return () => controller.abort()
-  }, [aktiv])
+  }, [aktiv, abfrage])
 
   // Eine Minute Takt: die Regelung selbst prüft alle fünf Minuten.
   useEffect(() => {
@@ -89,7 +91,7 @@ export function useEntfeuchterZusatz(aktiv = true) {
     if (Object.keys(koerper).length === 0) return true
     setArbeitet(true); setMeldung(null); setFeldFehler({})
     try {
-      const zurueck = await apiFetch<EntfeuchterZusatzSeite>('/api/steuerung/entfeuchter-zusatz', { method: 'PUT', body: JSON.stringify(koerper) })
+      const zurueck = await apiFetch<EntfeuchterZusatzSeite>(`/api/steuerung/entfeuchter-zusatz${abfrage}`, { method: 'PUT', body: JSON.stringify(koerper) })
       geladenRef.current = zurueck.einstellungen
       setSeite(zurueck); setEntwurf(zurueck.einstellungen); setFehler(null)
       setMeldung(zurueck.haAngenommen === false

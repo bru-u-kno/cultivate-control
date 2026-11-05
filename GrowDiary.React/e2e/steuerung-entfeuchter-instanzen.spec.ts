@@ -44,9 +44,10 @@ test('Entfeuchter anlegen → Seite mit den Reitern → Umbenennen → Löschen,
   const modul = page.url().split('/').pop()!
   await expect(page.getByRole('heading', { name: 'Entfeuchter Reserve', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dieser Entfeuchter' })).toBeVisible()
-  // Die Reiter der Entfeuchtung, für diesen einen Entfeuchter — kein Zusatz-Entfeuchter.
+  // Die Reiter der Entfeuchtung, für diesen einen Entfeuchter — noch ohne Zusatz-Entfeuchter, mit dem Weg, einen anzulegen.
   await expect(page.locator('.v1-tab')).toHaveText(['Überblick', 'Einstellungen', 'Einrichtung'])
-  await expect(page.getByText('Zusatz-Entfeuchter')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '+ Zusatz-Entfeuchter dazu' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dieser Zusatz-Entfeuchter' })).toHaveCount(0)
   expect((await (await request.get('/api/steuerung/instanzen')).json()).instanzen).toMatchObject([{ modul, art: 'entfeuchter', zeltId: 2 }])
 
   // Die Einrichtung führt zu den Rollen dieses Entfeuchters.

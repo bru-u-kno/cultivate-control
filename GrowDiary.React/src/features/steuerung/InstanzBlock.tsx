@@ -44,7 +44,7 @@ function InstanzFormular({ art, instanz, neuLaden, meldung, setMeldung, onGeaend
   const [arbeitet, setArbeitet] = useState(false)
 
   const geaendert = name.trim() !== instanz.name || (zelt != null && zelt !== instanz.zeltId)
-  const mehrereZelte = zelte.length >= 2
+  const mehrereZelte = zelte.length >= 2 && art !== 'entfeuchter-zusatz'
 
   const speichern = async () => {
     setArbeitet(true)
@@ -71,6 +71,7 @@ function InstanzFormular({ art, instanz, neuLaden, meldung, setMeldung, onGeaend
         <V1Field label="Name" wide>
           <input type="text" aria-label="Name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
         </V1Field>
+        {art === 'entfeuchter-zusatz' && <p className="st-hinweis" style={{ margin: '6px 0 0' }}>Das Zelt ist das seines Entfeuchters.</p>}
         {mehrereZelte && (
           <div className="st-feldzeile" style={{ display: 'block' }}>
             <span className="st-etikett">Zelt</span>
@@ -87,11 +88,15 @@ function InstanzFormular({ art, instanz, neuLaden, meldung, setMeldung, onGeaend
 }
 
 /** Die Rückfrage vor dem Löschen. Entfernt wird die Instanz aus Cultivate Control; ihre Bausteine in Home Assistant bleiben stehen. */
-export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, onAbbrechen, onGeloescht }: {
+export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, zusatzTitel, hauptTitel, onAbbrechen, onGeloescht }: {
   art?: InstanzArt
   modul: string
   titel: string
   ersterTitel: string | null
+  /** Nur beim Entfeuchter: sein Zusatz-Entfeuchter, der mitgelöscht wird. */
+  zusatzTitel?: string | null
+  /** Nur beim Zusatz-Entfeuchter: sein Entfeuchter, der unverändert bleibt. */
+  hauptTitel?: string | null
   onAbbrechen: () => void
   onGeloescht: () => void
 }) {
@@ -124,26 +129,27 @@ export function InstanzLoeschen({ art = 'chiller', modul, titel, ersterTitel, on
       <V1Section title="Wirklich löschen?">
         <V1Card>
           <p className="st-hinweis">
-            {der} {b} verschwindet aus Cultivate Control: Seite, {mitHa ? '' : 'Einstellungen, '}Zuordnung und Zelt.{' '}
+            {zusatzTitel && <><b>{zusatzTitel}</b> gehört zu diesem Entfeuchter und wird mitgelöscht. </>}
+            {zusatzTitel ? 'Beide verschwinden' : `${der} ${b} verschwindet`} aus Cultivate Control: Seite, {mitHa ? '' : 'Einstellungen, '}Zuordnung und Zelt.{hauptTitel ? ` Der Entfeuchter „${hauptTitel}“ bleibt unverändert.` : ''}{' '}
             {!mitHa
               ? 'Das Gerät selbst schaltet sich nicht um — es behält Zeitplan und Stufe, die zuletzt am Controller standen.'
               : ausHa
-              ? `${sein} Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.`
-              : `${sein} Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.`}
+              ? `${zusatzTitel ? 'Ihre' : sein} Automationen, Rechenwerte und Helfer werden auch aus Home Assistant entfernt.`
+              : `${zusatzTitel ? 'Ihre' : sein} Regelung in Home Assistant läuft weiter, bis du sie dort entfernst — Helfer, Rechenwerte und Automationen bleiben stehen.`}
           </p>
           {mitHa && <V1Switch
             label="Auch aus Home Assistant entfernen"
             checked={ausHa}
             onChange={setAusHa}
-            hint={`Helfer, Rechenwerte und Automationen ${w ? 'dieser' : 'dieses'} ${b}${w ? '' : 's'}. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt ${w ? 'die' : 'der'} ${b} stehen und du kannst es noch einmal versuchen.`}
+            hint={`Helfer, Rechenwerte und Automationen ${zusatzTitel ? 'des Entfeuchters und des Zusatzes' : `${w ? 'dieser' : 'dieses'} ${b}${w ? '' : 's'}`}. Die Automationen werden vorher als Datei gesichert; von Hand Gebautes bleibt stehen. Klappt nicht alles, bleibt ${zusatzTitel ? 'alles' : w ? 'die' : 'der'} ${zusatzTitel ? '' : b + ' '}stehen und du kannst es noch einmal versuchen.`}
           />}
         </V1Card>
-        {ersterTitel && (
+        {ersterTitel && !hauptTitel && (
           <p className="st-hinweis">{w ? 'Die erste' : 'Den ersten'} {b} („{ersterTitel}“) kannst du nicht löschen, nur in der Auswahl abwählen.</p>
         )}
         <div className="st-knopfleiste">
           <V1Button variant="ghost" onClick={onAbbrechen}>Abbrechen</V1Button>
-          <V1Button variant="danger" disabled={arbeitet} onClick={() => void loeschen()}>{arbeitet ? 'Löscht …' : 'Löschen'}</V1Button>
+          <V1Button variant="danger" disabled={arbeitet} onClick={() => void loeschen()}>{arbeitet ? 'Löscht …' : zusatzTitel ? 'Beide löschen' : 'Löschen'}</V1Button>
         </div>
       </V1Section>
     </V1Page>

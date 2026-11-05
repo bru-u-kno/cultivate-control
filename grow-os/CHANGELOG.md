@@ -5,6 +5,17 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.333
+
+**Steuerungen je Zelt, Teil 9b: Zu jedem weiteren Entfeuchter lässt sich jetzt ein Zusatz-Entfeuchter in der Oberfläche anlegen, einrichten, umbenennen und löschen.**
+
+- **Zusatz-Entfeuchter anlegen:** Auf der Seite eines weiteren Entfeuchters steht unten der Block „Zusatz-Entfeuchter“ mit „+ Zusatz-Entfeuchter dazu“ (nur solange der Entfeuchter noch keinen hat). Du gibst nur den Namen ein; das Zelt ist das des Entfeuchters, einen zweiten Zusatz zum selben Entfeuchter gibt es nicht.
+- **Ein Zusatz hat keine eigene Seite:** Er steht auf der Seite seines Entfeuchters, wie bei der ersten Entfeuchtung. Überblick und Einstellungen zeigen beide Geräte zusammen, die Einrichtung ordnet beide Geräte zu und zeigt den Bestand der Bausteine in Home Assistant für beide. Gespeichert wird in einem Zug, der Zusatz mit seinen eigenen Werten. Die Adresse des Zusatzes führt auf die Seite seines Entfeuchters.
+- **Dieser Zusatz-Entfeuchter:** Name ändern und den Zusatz allein löschen — der Entfeuchter bleibt unverändert. „Auch aus Home Assistant entfernen“ gilt dann nur für den Zusatz.
+- **Entfeuchter löschen:** Die Rückfrage nennt den Zusatz, der mitgelöscht wird; „Auch aus Home Assistant entfernen“ gilt für beide.
+- **Der erste Zusatz-Entfeuchter und die erste Entfeuchtung bleiben unverändert.**
+- **Getestet:** Anlegen, Seite mit den Werten des richtigen Zusatzes, Umbenennen, allein Löschen und gemeinsames Löschen gegen die laufende App; ohne die Angabe der Instanz beim Abruf wird der Test rot.
+
 ## 2.0.0-cc.332
 
 **Steuerungen je Zelt, Teil 9a: Weitere Zusatz-Entfeuchter lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**

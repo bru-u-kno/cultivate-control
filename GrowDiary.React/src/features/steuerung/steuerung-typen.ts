@@ -834,6 +834,12 @@ export const istChillerInstanz = (modul: string | undefined): boolean => modul !
 /** Die Kennung `entfeuchter-i{n}` führt auf die Seite eines weiteren Entfeuchters (nicht des Zusatz-Entfeuchters). */
 export const istEntfeuchterInstanz = (modul: string | undefined): boolean => modul != null && /^entfeuchter-i(?:[2-9]|[1-9]\d+)$/.test(modul)
 
+/** Die Kennung `entfeuchter-zusatz-i{n}` ist der Zusatz-Entfeuchter des Entfeuchters `entfeuchter-i{n}` — er hat keine eigene Seite. */
+export const istEntfeuchterZusatzInstanz = (modul: string | undefined): boolean => modul != null && /^entfeuchter-zusatz-i(?:[2-9]|[1-9]\d+)$/.test(modul)
+
+/** Die Kennung des Entfeuchters, zu dem ein Zusatz-Entfeuchter gehört (gleiche Nummer). */
+export const entfeuchterZuZusatz = (zusatzModul: string): string => zusatzModul.replace('entfeuchter-zusatz-', 'entfeuchter-')
+
 /** Die Kennung `zuluft-i{n}` führt auf die Seite einer weiteren Zuluft. */
 export const istZuluftInstanz = (modul: string | undefined): boolean => modul != null && /^zuluft-i(?:[2-9]|[1-9]\d+)$/.test(modul)
 
@@ -841,9 +847,9 @@ export const istZuluftInstanz = (modul: string | undefined): boolean => modul !=
 export const istLichtInstanz = (modul: string | undefined): boolean => modul != null && /^licht-i(?:[2-9]|[1-9]\d+)$/.test(modul)
 
 /** Die Arten, von denen sich weitere Instanzen anlegen lassen, mit der Bezeichnung in der Oberfläche. */
-export type InstanzArt = 'chiller' | 'entfeuchter' | 'zuluft' | 'licht'
+export type InstanzArt = 'chiller' | 'entfeuchter' | 'entfeuchter-zusatz' | 'zuluft' | 'licht'
 /** Weibliche Bezeichnungen („diese Zuluft“) — für die Artikel und Endungen in den Texten. */
-export const INSTANZ_WEIBLICH: Record<InstanzArt, boolean> = { chiller: false, entfeuchter: false, zuluft: true, licht: true }
-export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' }
+export const INSTANZ_WEIBLICH: Record<InstanzArt, boolean> = { chiller: false, entfeuchter: false, 'entfeuchter-zusatz': false, zuluft: true, licht: true }
+export const INSTANZ_BEZEICHNUNG: Record<InstanzArt, string> = { chiller: 'Wasserkühler', entfeuchter: 'Entfeuchter', 'entfeuchter-zusatz': 'Zusatz-Entfeuchter', zuluft: 'Zuluft', licht: 'Lampe' }
 /** Hat die Art Bausteine in Home Assistant (Helfer, Rechenwerte, Automationen)? Die Lampe nicht: dort gibt es beim Löschen nichts zu entfernen. */
-export const INSTANZ_MIT_HA: Record<InstanzArt, boolean> = { chiller: true, entfeuchter: true, zuluft: true, licht: false }
+export const INSTANZ_MIT_HA: Record<InstanzArt, boolean> = { chiller: true, entfeuchter: true, 'entfeuchter-zusatz': true, zuluft: true, licht: false }

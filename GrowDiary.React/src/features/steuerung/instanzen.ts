@@ -32,12 +32,15 @@ export function useInstanzen(): { instanzen: SteuerungInstanz[] | null; neuLaden
 }
 
 /** Eine weitere Instanz anlegen; die Antwort ist die Liste aller Instanzen, die neue ist die ihrer Art mit der höchsten Nummer. */
-export async function instanzAnlegen(art: InstanzArt, name: string, zeltId: number | null): Promise<SteuerungInstanz> {
+export async function instanzAnlegen(art: InstanzArt, name: string, zeltId: number | null, hauptModul?: string): Promise<SteuerungInstanz> {
   const antwort = await apiFetch<SteuerungInstanzen>('/api/steuerung/instanzen', {
     method: 'POST',
-    body: JSON.stringify({ art, name, zeltId }),
+    body: JSON.stringify({ art, name, zeltId, hauptModul }),
   })
-  const neu = antwort.instanzen.filter((i) => i.art === art).sort((a, b) => b.nummer - a.nummer)[0]
+  // Ein Zusatz hat die Nummer seines Entfeuchters; sonst ist die neue die ihrer Art mit der höchsten Nummer.
+  const neu = hauptModul
+    ? antwort.instanzen.find((i) => i.art === art && i.nummer === Number(/\d+$/.exec(hauptModul)?.[0]))
+    : antwort.instanzen.filter((i) => i.art === art).sort((a, b) => b.nummer - a.nummer)[0]
   if (!neu) throw new Error('Die neue Instanz fehlt in der Antwort.')
   return neu
 }
