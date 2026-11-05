@@ -866,6 +866,15 @@ public static class SteuerungBauteile
         return gefunden;
     }
 
+    /// <summary>
+    /// Alle Kennungen, die in den Vorlagen einer Instanz der Art <paramref name="art"/> auf die Instanz umzustellen sind: die der Art
+    /// selbst und beim Zusatz-Entfeuchter die seines Hauptgeräts (gleiche Nummer).
+    /// </summary>
+    public static IReadOnlyList<string> UmstellKennungen(string art)
+        => FuerModul(art).Select(b => b.EntityId)
+            .Concat(art == SteuerungGeraeteRollen.ZusatzModul ? FuerModul("entfeuchter").Select(b => b.EntityId) : [])
+            .ToList();
+
     /// <summary>Die Bauteile einer Steuerung.</summary>
     public static IReadOnlyList<Bauteil> FuerModul(string modul)
         => Co2Modul.ZeltId(modul) is { } zelt
@@ -890,6 +899,10 @@ public static class SteuerungBauteile
             // Immer vom neuen Namensraum aus: eine weitere Instanz trägt nie die alten Kennungen einer Anlage.
             var basis = FuerRaum(KennungsRaum.Neu).Where(b => string.Equals(b.Modul, art, StringComparison.OrdinalIgnoreCase)).ToList();
             var kennungen = basis.Select(b => b.EntityId).ToList();
+            // Ein weiterer Zusatz-Entfeuchter gehört zum Entfeuchter mit derselben Nummer: was seine Vorlagen vom Hauptgerät lesen
+            // (Ziele, Höchsttemperatur, VPD-Regelung), wandert auf dessen Endung.
+            if (art == SteuerungGeraeteRollen.ZusatzModul)
+                kennungen.AddRange(FuerRaum(KennungsRaum.Neu).Where(b => b.Modul == "entfeuchter").Select(b => b.EntityId));
             return basis.Select(b => b with
             {
                 Modul = modul,

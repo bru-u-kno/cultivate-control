@@ -156,7 +156,7 @@ public sealed class EntfeuchterInstanzTests : IDisposable
     [InlineData("entfeuchter-i2", true)]
     [InlineData("entfeuchter-i17", true)]
     [InlineData("chiller-i2", true)]
-    [InlineData("entfeuchter-zusatz-i2", false)]   // der Zusatz-Dienst kann noch kein Fuer(modul)
+    [InlineData("entfeuchter-zusatz-i2", true)]
     [InlineData("zuluft-i2", true)]
     [InlineData("licht-i2", false)]
     public void ImStartwertWegSindEntfeuchterUndKuehlerInstanzen(string modul, bool kann)

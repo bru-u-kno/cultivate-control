@@ -156,16 +156,7 @@ public sealed class SteuerungApiController : ApiControllerBase
             EntfeuchterZeile(entfeuchter, "entfeuchter", "Entfeuchter", null),
             // Fork AI (A-009): Der Zusatz-Entfeuchter (Shelly) neben dem Entfeuchter.
             // Der Titel ist der Anzeigename — kein „Port 7" fest im Text.
-            new(
-                Kennung: "entfeuchter-zusatz",
-                Titel: zusatzLive.ZusatzName,
-                Status: ZusatzStatus(zusatzLive, zusatzStand),
-                Kurz: $"{ZusatzHilfeText(zusatzStand)} · {(zusatzLive.AutomatikAn == true && EntfeuchterZusatzSteuerungService.AutomatikWirksam(zusatzStand) ? "Automatik an" : "Automatik aus")} · folgt {zusatzLive.FuehrungName}",
-                Wert: F(zusatzLive.LeistungW, " W"),
-                Unterzeile: zusatzLive.ZiehtNichts == true ? "zieht nichts"
-                    : zusatzLive.ZusatzAn == true ? "entfeuchtet"
-                    : zusatzLive.ZusatzAn == false ? "bereit" : "Zustand unbekannt",
-                HatDetail: true),
+            ZusatzZeile(zusatzLive, zusatzStand, "entfeuchter-zusatz", zusatzLive.ZusatzName, F(zusatzLive.LeistungW, " W")),
             ChillerZeile(chiller, "chiller", "Wasserkühler", null),
             // Fork AI (forkai.136): Die Zeile „Crop Steering" ist entfallen —
             // stillgelegt, siehe ForkAiSchalter. Das Ziel führt der Plan.
@@ -188,6 +179,17 @@ public sealed class SteuerungApiController : ApiControllerBase
             var instanzLive = await _entfeuchter.Fuer(instanz.Modul).LiveAsync(ct);
             module.Insert(module.FindLastIndex(m => m.Kennung.StartsWith("entfeuchter", StringComparison.Ordinal)) + 1,
                 EntfeuchterZeile(instanzLive, instanz.Modul, instanz.Name, instanz.Nummer));
+        }
+        // Weitere Zusatz-Entfeuchter: je Instanz eine Zeile hinter ihrem Entfeuchter, mit dem Namen aus dem Register.
+        foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "entfeuchter-zusatz"))
+        {
+            var zusatz = _zusatz.Fuer(instanz.Modul);
+            var instanzLive = await zusatz.LiveAsync(ct, mitEnergie: false);
+            var instanzStand = await zusatz.EinstellungenAsync(ct);
+            var haupt = InstanzModul.Fuer("entfeuchter", instanz.Nummer);
+            var hinter = module.FindIndex(m => m.Kennung == haupt);
+            module.Insert(hinter >= 0 ? hinter + 1 : module.FindLastIndex(m => m.Kennung.StartsWith("entfeuchter", StringComparison.Ordinal)) + 1,
+                ZusatzZeile(instanzLive, instanzStand, instanz.Modul, instanz.Name, F(instanzLive.LeistungW, " W")));
         }
         // Weitere Lampen: je Instanz eine Zeile hinter der ersten, mit dem Namen aus dem Register.
         foreach (var instanz in SteuerungInstanzen.Aktuell.Where(i => i.Art == "licht"))
@@ -521,17 +523,19 @@ public sealed class SteuerungApiController : ApiControllerBase
     /// </summary>
     [HttpGet("entfeuchter-zusatz")]
     [ProducesResponseType(typeof(EntfeuchterZusatzSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<EntfeuchterZusatzSeiteDto>> EntfeuchterZusatz(CancellationToken ct)
+    public async Task<ActionResult<EntfeuchterZusatzSeiteDto>> EntfeuchterZusatz([FromQuery] string? instanz, CancellationToken ct)
     {
+        var zusatz = ZusatzDienst(instanz);
+        if (zusatz is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
         // Vor dem Lesen merken: das Lesen übernimmt die Werte aus den Helfern und
         // speichert sie — danach wäre „übernommen" nie mehr wahr.
-        var ausHomeAssistant = _zusatz.Gespeichert is null;
-        var geraete = _geraete.EntitiesFuerModul(EntfeuchterZusatzSteuerungService.Modul);
-        return Ok(new EntfeuchterZusatzSeiteDto(await _zusatz.EinstellungenAsync(ct), await _zusatz.LiveAsync(ct))
+        var ausHomeAssistant = zusatz.Gespeichert is null;
+        var geraete = _geraete.EntitiesFuerModul(zusatz.ModulName);
+        return Ok(new EntfeuchterZusatzSeiteDto(await zusatz.EinstellungenAsync(ct), await zusatz.LiveAsync(ct))
         {
             AusHomeAssistantUebernommen = ausHomeAssistant,
             GeraeteZugeordnet = geraete.Count(g => g.Value is not null),
-            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(EntfeuchterZusatzSteuerungService.Modul).Count,
+            GeraeteGesamt = SteuerungGeraeteRollen.FuerModulMitMitbenutzten(zusatz.ModulName).Count,
         });
     }
 
@@ -542,17 +546,19 @@ public sealed class SteuerungApiController : ApiControllerBase
     [HttpPut("entfeuchter-zusatz")]
     [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
     [ProducesResponseType(typeof(EntfeuchterZusatzSeiteDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<EntfeuchterZusatzSeiteDto>> EntfeuchterZusatzSpeichern([FromBody] EntfeuchterZusatzAenderung request, CancellationToken ct)
+    public async Task<ActionResult<EntfeuchterZusatzSeiteDto>> EntfeuchterZusatzSpeichern([FromBody] EntfeuchterZusatzAenderung request, [FromQuery] string? instanz, CancellationToken ct)
     {
         if (request is null) return BadRequestError("entfeuchter_zusatz_invalid", "Es wurde nichts übergeben.");
-        var ergebnis = await _zusatz.SpeichernAsync(request, ct);
+        var zusatz = ZusatzDienst(instanz);
+        if (zusatz is null) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
+        var ergebnis = await zusatz.SpeichernAsync(request, ct);
         if (ergebnis.Gespeichert is null)
         {
             foreach (var (feld, meldung) in ergebnis.Fehler) ModelState.AddModelError(feld, meldung);
             return ValidationError();
         }
 
-        var seite = await EntfeuchterZusatz(ct);
+        var seite = await EntfeuchterZusatz(instanz, ct);
         if (seite.Result is OkObjectResult ok && ok.Value is EntfeuchterZusatzSeiteDto dto)
         {
             // haAngenommen: aus den echten Schreibergebnissen — null, wenn nichts zu schreiben war.
@@ -709,13 +715,16 @@ public sealed class SteuerungApiController : ApiControllerBase
     {
         if (request is null) return BadRequestError("steuerung_instanz_invalid", "Es wurde nichts übergeben.");
         // Nur Steuerungen, deren Dienst schon mehrere Instanzen kann: sonst entstünde ein Eintrag ohne Wirkung.
-        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul or LichtSteuerungService.Modul))
+        if (request.Art is not (ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul or LichtSteuerungService.Modul or EntfeuchterZusatzSteuerungService.Modul))
             return BadRequestError("steuerung_instanz_art", "Diese Steuerung lässt sich noch nicht vervielfachen.");
         if (request.ZeltId is { } zelt && !zelteDienst.AktiveZelte().Any(t => t.Id == zelt))
             return BadRequestError("steuerung_instanz_zelt", "Dieses Zelt gibt es nicht.");
 
-        var (instanz, fehler) = instanzen.Anlegen(request.Art, request.Name);
+        // Ein Zusatz-Entfeuchter gehört zu einem weiteren Entfeuchter: gleiche Nummer, gleiches Zelt.
+        var zusatz = request.Art == EntfeuchterZusatzSteuerungService.Modul;
+        var (instanz, fehler) = zusatz ? instanzen.AnlegenZusatz(request.HauptModul, request.Name) : instanzen.Anlegen(request.Art, request.Name);
         if (instanz is null) return BadRequestError("steuerung_instanz_ungueltig", fehler!);
+        if (zusatz && zelteDienst.ZeltFuer(request.HauptModul!) is { } hauptZelt) request = new SteuerungInstanzAnlegen { Art = request.Art, Name = request.Name, ZeltId = hauptZelt };
         if (request.ZeltId is { } z)
         {
             var zuweisung = zelteDienst.Speichern(new Dictionary<string, int> { [instanz.Modul] = z });
@@ -759,24 +768,37 @@ public sealed class SteuerungApiController : ApiControllerBase
     {
         if (!instanzen.Liste().Any(i => i.Modul == modul)) return NotFoundError("steuerung_instanz_unbekannt", "Diese Instanz gibt es nicht.");
 
+        // Ein Entfeuchter nimmt seinen Zusatz-Entfeuchter mit: der gehört ihm (gleiche Nummer) und hätte ohne ihn keine Fühler mehr.
+        var zusatz = instanzen.ZusatzVon(modul);
+        var alle = zusatz is null ? new[] { modul } : new[] { zusatz.Modul, modul };
+
         SteuerungInstanzAufraeumenService.Bilanz? bilanz = null;
+        var entfernt = 0;
         if (ausHa)
         {
-            bilanz = await aufraeumen.EntfernenAsync(modul, _haSettings.GetEffectiveHomeAssistantSettings(), ct);
-            if (!bilanz.Erreichbar)
-                return ConflictError("home_assistant_stumm", "Home Assistant antwortet nicht — es wurde nichts entfernt. Die Instanz bleibt stehen.");
-            if (!bilanz.Vollstaendig)
+            foreach (var m in alle)
             {
-                var misslungen = bilanz.Einzeln.Where(t => t.Stand == "fehler").ToList();
-                var beispiele = string.Join("; ", misslungen.Take(3).Select(t => $"{t.Kennung}: {t.Hinweis}"));
-                return ConflictError("steuerung_instanz_ha_teilweise",
-                    $"Nicht alles ließ sich aus Home Assistant entfernen ({misslungen.Count} von {bilanz.Einzeln.Count} Bausteinen — {beispiele}{(misslungen.Count > 3 ? "; …" : "")}). Die Instanz bleibt stehen; das Entfernen lässt sich wiederholen.");
+                var teil = await aufraeumen.EntfernenAsync(m, _haSettings.GetEffectiveHomeAssistantSettings(), ct);
+                if (!teil.Erreichbar)
+                    return ConflictError("home_assistant_stumm", "Home Assistant antwortet nicht — es wurde nichts entfernt. Die Instanz bleibt stehen.");
+                if (!teil.Vollstaendig)
+                {
+                    var misslungen = teil.Einzeln.Where(t => t.Stand == "fehler").ToList();
+                    var beispiele = string.Join("; ", misslungen.Take(3).Select(t => $"{t.Kennung}: {t.Hinweis}"));
+                    return ConflictError("steuerung_instanz_ha_teilweise",
+                        $"Nicht alles ließ sich aus Home Assistant entfernen ({misslungen.Count} von {teil.Einzeln.Count} Bausteinen — {beispiele}{(misslungen.Count > 3 ? "; …" : "")}). Die Instanz bleibt stehen; das Entfernen lässt sich wiederholen.");
+                }
+                bilanz = teil;
+                entfernt += teil.Entfernt;
             }
         }
 
-        var fehler = instanzen.Entfernen(modul);
-        if (fehler is not null) return NotFoundError("steuerung_instanz_unbekannt", fehler);
-        return Ok(InstanzenDto(instanzen, zelteDienst) with { HaEntfernt = bilanz?.Entfernt });
+        foreach (var m in alle)
+        {
+            var fehler = instanzen.Entfernen(m);
+            if (fehler is not null) return NotFoundError("steuerung_instanz_unbekannt", fehler);
+        }
+        return Ok(InstanzenDto(instanzen, zelteDienst) with { HaEntfernt = bilanz is null ? null : entfernt });
     }
 
     private static SteuerungInstanzenDto InstanzenDto(SteuerungInstanzService instanzen, SteuerungZeltService zelteDienst)
@@ -788,6 +810,27 @@ public sealed class SteuerungApiController : ApiControllerBase
     }
 
     // ---------------------------------------------------------------- Licht
+
+    /// <summary>Die Zeile eines Zusatz-Entfeuchters in der Übersicht (der erste und jeder weitere).</summary>
+    public static SteuerungModulDto ZusatzZeile(EntfeuchterZusatzLive live, EntfeuchterZusatzEinstellungen stand, string kennung, string titel, string leistung) => new(
+        Kennung: kennung,
+        Titel: titel,
+        Status: ZusatzStatus(live, stand),
+        Kurz: $"{ZusatzHilfeText(stand)} · {(live.AutomatikAn == true && EntfeuchterZusatzSteuerungService.AutomatikWirksam(stand) ? "Automatik an" : "Automatik aus")} · folgt {live.FuehrungName}",
+        Wert: leistung,
+        Unterzeile: live.ZiehtNichts == true ? "zieht nichts"
+            : live.ZusatzAn == true ? "entfeuchtet"
+            : live.ZusatzAn == false ? "bereit" : "Zustand unbekannt",
+        HatDetail: true);
+
+    /// <summary>Der Zusatz-Dienst: ohne Angabe der erste, sonst der einer angelegten Instanz — eine unbekannte gibt <c>null</c>.</summary>
+    private EntfeuchterZusatzSteuerungService? ZusatzDienst(string? instanz)
+    {
+        if (string.IsNullOrWhiteSpace(instanz) || string.Equals(instanz, EntfeuchterZusatzSteuerungService.Modul, StringComparison.Ordinal)) return _zusatz.Bestand();
+        return SteuerungInstanzen.Module.Contains(instanz, StringComparer.Ordinal) && InstanzModul.Art(instanz) == EntfeuchterZusatzSteuerungService.Modul
+            ? _zusatz.Fuer(instanz)
+            : null;
+    }
 
     /// <summary>Die Zeile einer Lampe in der Übersicht (die erste und jede weitere).</summary>
     public static SteuerungModulDto LichtZeile(LichtLive licht, string kennung, string titel) => new(
@@ -1368,6 +1411,8 @@ public sealed class SteuerungInstanzAnlegen
     public string Art { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int? ZeltId { get; set; }
+    /// <summary>Nur beim Zusatz-Entfeuchter: der Entfeuchter, zu dem er gehört (<c>entfeuchter-i2</c>). Er trägt dessen Nummer und Zelt.</summary>
+    public string? HauptModul { get; set; }
 }
 
 public sealed class SteuerungInstanzUmbenennen

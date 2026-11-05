@@ -78,6 +78,48 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     private readonly EntfeuchterSteuerungService _entfeuchter;
     private readonly ILogger<EntfeuchterZusatzSteuerungService> _logger;
 
+    // Zusatz-Instanzen: Der Dienst aus der Abhängigkeits-Einspritzung gehört dem ersten Zusatz-Entfeuchter (Modul „entfeuchter-zusatz“, alle
+    // Kennungen unverändert). Für einen weiteren liefert Fuer() eine Kopie mit dessen Modul „entfeuchter-zusatz-i{n}“. Er gehört zum
+    // Entfeuchter mit DERSELBEN Nummer („entfeuchter-i{n}“): dessen Fühler, Licht, Höchsttemperatur und Führungsgerät gelten für ihn,
+    // und jede Kennung des Hauptgeräts in seinen Vorlagen wandert auf dessen Endung _i{n}.
+    private string _modul = Modul;
+    private int? _nummer;
+
+    /// <summary>Das Modul dieses Dienstes: <c>entfeuchter-zusatz</c> oder <c>entfeuchter-zusatz-i{n}</c>.</summary>
+    public string ModulName => _modul;
+
+    /// <summary>Die Nummer der Instanz (ab 2) — <c>null</c> beim ersten Zusatz.</summary>
+    public int? Nummer => _nummer;
+
+    /// <summary>Der Dienst einer Instanz. Ein Modul, das kein weiterer Zusatz-Entfeuchter ist, bekommt den Dienst des ersten.</summary>
+    public EntfeuchterZusatzSteuerungService Fuer(string modul)
+    {
+        if (!string.Equals(InstanzModul.Art(modul), Modul, StringComparison.Ordinal) || InstanzModul.Nummer(modul) is not { } n) return Bestand();
+        var kopie = (EntfeuchterZusatzSteuerungService)MemberwiseClone();
+        kopie._modul = modul;
+        kopie._nummer = n;
+        return kopie;
+    }
+
+    /// <summary>Der Dienst des ersten Zusatz-Entfeuchters.</summary>
+    public EntfeuchterZusatzSteuerungService Bestand()
+    {
+        if (_nummer is null) return this;
+        var kopie = (EntfeuchterZusatzSteuerungService)MemberwiseClone();
+        kopie._modul = Modul;
+        kopie._nummer = null;
+        return kopie;
+    }
+
+    /// <summary>Die Kennung eines Objekts der Instanz <paramref name="nummer"/> (<c>null</c> = erster Zusatz, unverändert).</summary>
+    public static string Kennung(string idImRaum, int? nummer)
+        => nummer is { } n ? InstanzModul.Id(Kennungen.NeueId(idImRaum), n) : idImRaum;
+
+    private string E(string idImRaum) => Kennung(idImRaum, _nummer);
+
+    /// <summary>Der Entfeuchter, zu dem dieser Zusatz gehört: der erste, oder der mit derselben Nummer.</summary>
+    private EntfeuchterSteuerungService Haupt => _nummer is { } n ? _entfeuchter.Fuer(InstanzModul.Fuer(EntfeuchterSteuerungService.Modul, n)) : _entfeuchter;
+
     public EntfeuchterZusatzSteuerungService(
         SteuerungRepository repo,
         HomeAssistantService ha,
@@ -101,7 +143,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     // ----------------------------------------------------------- Einstellungen
 
     /// <summary>Der gespeicherte Stand — null, solange nie gespeichert wurde.</summary>
-    public EntfeuchterZusatzEinstellungen? Gespeichert => _repo.GetEinstellungen<EntfeuchterZusatzEinstellungen>(Modul);
+    public EntfeuchterZusatzEinstellungen? Gespeichert => _repo.GetEinstellungen<EntfeuchterZusatzEinstellungen>(_modul);
 
     /// <summary>
     /// Die Einstellungen, wie sie gelten: der eigene Stand (beim ersten Aufruf aus
@@ -111,7 +153,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     public async Task<EntfeuchterZusatzEinstellungen> EinstellungenAsync(CancellationToken ct)
     {
         var e = Gespeichert ?? await UebernehmenAsync(ct);
-        MitHoechsttemperatur(e, await _entfeuchter.EinstellungenAsync(ct));
+        MitHoechsttemperatur(e, await Haupt.EinstellungenAsync(ct));
         // Die Hilfsstärke ist abgeleitet: was die Einzelwerte ergeben (oder „aus").
         e.Hilfe = EntfeuchterZusatzHilfe.Erkennen(e);
         return e;
@@ -125,7 +167,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         var entities = await _ha.GetEntitiesAsync(settings, ct);
         var uebernommen = AusHomeAssistant(
             entities.ToDictionary(x => x.EntityId, x => (string?)x.State, StringComparer.OrdinalIgnoreCase),
-            AutomatikAn(entities));
+            AutomatikAn(entities, _nummer), _nummer);
         // Wie beim Entfeuchter: nur mit echter Antwort von Home Assistant, sonst
         // stünden die Werkseinstellungen als „übernommen" da. Gespeichert wird nur
         // im Fork, nach Home Assistant wird nichts geschrieben.
@@ -133,8 +175,8 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         {
             // Die Kopie der Höchsttemperatur im eigenen Dokument ist nie die Quelle (gelesen wird
             // immer beim Entfeuchter) — aber sie soll beim Anlegen nicht gleich falsch dastehen.
-            MitHoechsttemperatur(uebernommen, await _entfeuchter.EinstellungenAsync(ct));
-            _repo.SetEinstellungen(Modul, uebernommen);
+            MitHoechsttemperatur(uebernommen, await Haupt.EinstellungenAsync(ct));
+            _repo.SetEinstellungen(_modul, uebernommen);
         }
         return uebernommen;
     }
@@ -146,25 +188,25 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     /// <param name="zustaende">Entity-ID auf Zustand.</param>
     /// <param name="automatikAn">Ob die Regel-Automation läuft — null, wenn es sie nicht gibt.</param>
     public static EntfeuchterZusatzEinstellungen AusHomeAssistant(
-        IReadOnlyDictionary<string, string?> zustaende, bool? automatikAn = null)
+        IReadOnlyDictionary<string, string?> zustaende, bool? automatikAn = null, int? nummer = null)
     {
         var e = new EntfeuchterZusatzEinstellungen();
 
         double? Zahl(string id) => zustaende.TryGetValue(id, out var s) ? Zahlenlesen.Maschine(s) : null;
         bool? An(string id) => zustaende.TryGetValue(id, out var s) ? AnAus(s) : null;
 
-        if (Zahl(Entitaeten.VpdHysterese) is { } h) e.VpdHystereseKpa = h;
-        if (Zahl(Entitaeten.Mindestlaufzeit) is { } lz) e.MindestlaufzeitMin = (int)Math.Round(lz);
-        if (Zahl(Entitaeten.Mindestpause) is { } mp) e.MindestpauseMin = (int)Math.Round(mp);
-        if (Zahl(Entitaeten.FolgeAbstand) is { } fa) e.FolgeAbstandK = fa;
-        if (Zahl(Entitaeten.WiederEinAbstand) is { } wa) e.WiederEinAbstandK = wa;
-        if (Zahl(Entitaeten.ZuschaltVerzoegerung) is { } zv) e.ZuschaltVerzoegerungMin = (int)Math.Round(zv);
-        if (An(Entitaeten.Tagbetrieb) is { } tb) e.TagbetriebErlauben = tb;
-        if (An(Entitaeten.NachtDurchlaufen) is { } nd) e.NachtDurchlaufen = nd;
-        if (An(Entitaeten.Melden) is { } me) e.Meldung.Aktiv = me;
-        if (Zahl(Entitaeten.MeldeGrenze) is { } mg) e.Meldung.GrenzeW = (int)Math.Round(mg);
-        if (Zahl(Entitaeten.MeldeDauer) is { } md) e.Meldung.DauerMin = (int)Math.Round(md);
-        if (Zahl(Entitaeten.MeldeWiederholung) is { } mw) e.Meldung.WiederholungH = (int)Math.Round(mw);
+        if (Zahl(Kennung(Entitaeten.VpdHysterese, nummer)) is { } h) e.VpdHystereseKpa = h;
+        if (Zahl(Kennung(Entitaeten.Mindestlaufzeit, nummer)) is { } lz) e.MindestlaufzeitMin = (int)Math.Round(lz);
+        if (Zahl(Kennung(Entitaeten.Mindestpause, nummer)) is { } mp) e.MindestpauseMin = (int)Math.Round(mp);
+        if (Zahl(Kennung(Entitaeten.FolgeAbstand, nummer)) is { } fa) e.FolgeAbstandK = fa;
+        if (Zahl(Kennung(Entitaeten.WiederEinAbstand, nummer)) is { } wa) e.WiederEinAbstandK = wa;
+        if (Zahl(Kennung(Entitaeten.ZuschaltVerzoegerung, nummer)) is { } zv) e.ZuschaltVerzoegerungMin = (int)Math.Round(zv);
+        if (An(Kennung(Entitaeten.Tagbetrieb, nummer)) is { } tb) e.TagbetriebErlauben = tb;
+        if (An(Kennung(Entitaeten.NachtDurchlaufen, nummer)) is { } nd) e.NachtDurchlaufen = nd;
+        if (An(Kennung(Entitaeten.Melden, nummer)) is { } me) e.Meldung.Aktiv = me;
+        if (Zahl(Kennung(Entitaeten.MeldeGrenze, nummer)) is { } mg) e.Meldung.GrenzeW = (int)Math.Round(mg);
+        if (Zahl(Kennung(Entitaeten.MeldeDauer, nummer)) is { } md) e.Meldung.DauerMin = (int)Math.Round(md);
+        if (Zahl(Kennung(Entitaeten.MeldeWiederholung, nummer)) is { } mw) e.Meldung.WiederholungH = (int)Math.Round(mw);
         if (automatikAn is { } au) e.AutomatikAktiv = au;
 
         // Die Hilfsstärke wird nicht gelesen, sondern erkannt: passen die Werte zu
@@ -365,7 +407,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         EntfeuchterEinstellungen? hoechstTemp = null;
         if (a.BetrifftTempMax)
         {
-            hoechstTemp = TempMaxEinarbeiten(await _entfeuchter.EinstellungenAsync(ct), a);
+            hoechstTemp = TempMaxEinarbeiten(await Haupt.EinstellungenAsync(ct), a);
             // Nur die TempMax-Felder: der Rest des Entfeuchters geht uns nichts an.
             foreach (var (feld, text) in EntfeuchterSteuerungService.Pruefen(hoechstTemp)
                          .Where(p => p.Key.StartsWith("TempMax", StringComparison.Ordinal)))
@@ -383,13 +425,13 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         var tempMaxSchreiben = new List<(string Domaene, string Dienst, string Entitaet, double? Wert)>();
         if (hoechstTemp is not null)
         {
-            _repo.SetEinstellungen(EntfeuchterSteuerungService.Modul, hoechstTemp);
+            _repo.SetEinstellungen(Haupt.ModulName, hoechstTemp);
             MitHoechsttemperatur(neu, hoechstTemp);
-            tempMaxSchreiben.AddRange(TempMaxSchreibliste(hoechstTemp, a, _wochenplan.PlanLuft()));
+            tempMaxSchreiben.AddRange(TempMaxSchreibliste(hoechstTemp, a, _wochenplan.PlanLuft(), _nummer));
         }
 
         neu.Hilfe = EntfeuchterZusatzHilfe.Erkennen(neu);
-        _repo.SetEinstellungen(Modul, neu);
+        _repo.SetEinstellungen(_modul, neu);
         var (erreicht, hinweise) = await NachHomeAssistantSchreibenAsync(aktuell, neu, a, tempMaxSchreiben, ct);
         return new(neu, fehler, erreicht, hinweise);
     }
@@ -400,19 +442,19 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     /// Der Wert ist der gültige Sollwert (Plan-Luft + Abstand oder fest), auf die Spanne des Helfers begrenzt.
     /// </summary>
     public static IReadOnlyList<(string Domaene, string Dienst, string Entitaet, double? Wert)> TempMaxSchreibliste(
-        EntfeuchterEinstellungen e, EntfeuchterZusatzAenderung a, (string Woche, double LuftTagC, double LuftNachtC)? plan)
+        EntfeuchterEinstellungen e, EntfeuchterZusatzAenderung a, (string Woche, double LuftTagC, double LuftNachtC)? plan, int? nummer = null)
     {
         var liste = new List<(string, string, string, double?)>();
         if (a.TempMaxTagModus is not null || a.TempMaxTagAbstandK is not null || a.TempMaxTagFestC is not null)
         {
-            liste.Add(("input_number", "set_value", EntfeuchterSteuerungService.Entitaeten.TempMaxTag,
-                EntfeuchterSteuerungService.TempMaxFuer(EntfeuchterSteuerungService.Entitaeten.TempMaxTag,
+            liste.Add(("input_number", "set_value", EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.TempMaxTag, nummer),
+                EntfeuchterSteuerungService.TempMaxFuer(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.TempMaxTag, nummer),
                     e.TempMaxTagModus, e.TempMaxTagAbstandK, e.TempMaxTagFestC, plan?.LuftTagC)));
         }
         if (a.TempMaxNachtModus is not null || a.TempMaxNachtAbstandK is not null || a.TempMaxNachtFestC is not null)
         {
-            liste.Add(("input_number", "set_value", EntfeuchterSteuerungService.Entitaeten.TempMaxNacht,
-                EntfeuchterSteuerungService.TempMaxFuer(EntfeuchterSteuerungService.Entitaeten.TempMaxNacht,
+            liste.Add(("input_number", "set_value", EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.TempMaxNacht, nummer),
+                EntfeuchterSteuerungService.TempMaxFuer(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.TempMaxNacht, nummer),
                     e.TempMaxNachtModus, e.TempMaxNachtAbstandK, e.TempMaxNachtFestC, plan?.LuftNachtC)));
         }
         return liste;
@@ -426,7 +468,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     /// ansetzen können, an der die Entscheidung fällt.
     /// </summary>
     public static IReadOnlyList<(string Domaene, string Dienst, string Entitaet, double? Wert)> Schreibliste(
-        EntfeuchterZusatzEinstellungen alt, EntfeuchterZusatzEinstellungen neu, EntfeuchterZusatzAenderung? a = null)
+        EntfeuchterZusatzEinstellungen alt, EntfeuchterZusatzEinstellungen neu, EntfeuchterZusatzAenderung? a = null, int? nummer = null)
     {
         var liste = new List<(string, string, string, double?)>();
         var staerke = a?.Hilfe is { } h && EntfeuchterZusatzHilfe.Finden(h) is not null;
@@ -443,18 +485,18 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
             liste.Add(("input_boolean", nachher ? "turn_on" : "turn_off", entity, null));
         }
 
-        Zahl(Entitaeten.VpdHysterese, alt.VpdHystereseKpa, neu.VpdHystereseKpa, staerke || a?.VpdHystereseKpa is not null);
-        Zahl(Entitaeten.Mindestlaufzeit, alt.MindestlaufzeitMin, neu.MindestlaufzeitMin, a?.MindestlaufzeitMin is not null);
-        Zahl(Entitaeten.Mindestpause, alt.MindestpauseMin, neu.MindestpauseMin, staerke || a?.MindestpauseMin is not null);
-        Zahl(Entitaeten.FolgeAbstand, alt.FolgeAbstandK, neu.FolgeAbstandK, staerke || a?.FolgeAbstandK is not null);
-        Zahl(Entitaeten.WiederEinAbstand, alt.WiederEinAbstandK, neu.WiederEinAbstandK, staerke || a?.WiederEinAbstandK is not null);
-        Zahl(Entitaeten.ZuschaltVerzoegerung, alt.ZuschaltVerzoegerungMin, neu.ZuschaltVerzoegerungMin, staerke || a?.ZuschaltVerzoegerungMin is not null);
-        Schalter(Entitaeten.Tagbetrieb, alt.TagbetriebErlauben, neu.TagbetriebErlauben, a?.TagbetriebErlauben is not null);
-        Schalter(Entitaeten.NachtDurchlaufen, alt.NachtDurchlaufen, neu.NachtDurchlaufen, a?.NachtDurchlaufen is not null);
-        Schalter(Entitaeten.Melden, alt.Meldung.Aktiv, neu.Meldung.Aktiv, a?.Meldung?.Aktiv is not null);
-        Zahl(Entitaeten.MeldeGrenze, alt.Meldung.GrenzeW, neu.Meldung.GrenzeW, a?.Meldung?.GrenzeW is not null);
-        Zahl(Entitaeten.MeldeDauer, alt.Meldung.DauerMin, neu.Meldung.DauerMin, a?.Meldung?.DauerMin is not null);
-        Zahl(Entitaeten.MeldeWiederholung, alt.Meldung.WiederholungH, neu.Meldung.WiederholungH, a?.Meldung?.WiederholungH is not null);
+        Zahl(Kennung(Entitaeten.VpdHysterese, nummer), alt.VpdHystereseKpa, neu.VpdHystereseKpa, staerke || a?.VpdHystereseKpa is not null);
+        Zahl(Kennung(Entitaeten.Mindestlaufzeit, nummer), alt.MindestlaufzeitMin, neu.MindestlaufzeitMin, a?.MindestlaufzeitMin is not null);
+        Zahl(Kennung(Entitaeten.Mindestpause, nummer), alt.MindestpauseMin, neu.MindestpauseMin, staerke || a?.MindestpauseMin is not null);
+        Zahl(Kennung(Entitaeten.FolgeAbstand, nummer), alt.FolgeAbstandK, neu.FolgeAbstandK, staerke || a?.FolgeAbstandK is not null);
+        Zahl(Kennung(Entitaeten.WiederEinAbstand, nummer), alt.WiederEinAbstandK, neu.WiederEinAbstandK, staerke || a?.WiederEinAbstandK is not null);
+        Zahl(Kennung(Entitaeten.ZuschaltVerzoegerung, nummer), alt.ZuschaltVerzoegerungMin, neu.ZuschaltVerzoegerungMin, staerke || a?.ZuschaltVerzoegerungMin is not null);
+        Schalter(Kennung(Entitaeten.Tagbetrieb, nummer), alt.TagbetriebErlauben, neu.TagbetriebErlauben, a?.TagbetriebErlauben is not null);
+        Schalter(Kennung(Entitaeten.NachtDurchlaufen, nummer), alt.NachtDurchlaufen, neu.NachtDurchlaufen, a?.NachtDurchlaufen is not null);
+        Schalter(Kennung(Entitaeten.Melden, nummer), alt.Meldung.Aktiv, neu.Meldung.Aktiv, a?.Meldung?.Aktiv is not null);
+        Zahl(Kennung(Entitaeten.MeldeGrenze, nummer), alt.Meldung.GrenzeW, neu.Meldung.GrenzeW, a?.Meldung?.GrenzeW is not null);
+        Zahl(Kennung(Entitaeten.MeldeDauer, nummer), alt.Meldung.DauerMin, neu.Meldung.DauerMin, a?.Meldung?.DauerMin is not null);
+        Zahl(Kennung(Entitaeten.MeldeWiederholung, nummer), alt.Meldung.WiederholungH, neu.Meldung.WiederholungH, a?.Meldung?.WiederholungH is not null);
         return liste;
     }
 
@@ -470,10 +512,10 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     /// <c>null</c>: alle. Sonst nur die genannten (frisch angelegte) — ein Helfer, den es schon gab, behält seinen Wert.
     /// </param>
     public static IReadOnlyList<(string Domaene, string Dienst, string Entitaet, double? Wert)> Startwerteliste(
-        EntfeuchterZusatzEinstellungen e, IReadOnlySet<string>? nur = null)
-        => Schreibliste(e, e, AlsAenderung(e)).Where(z => nur is null || nur.Contains(z.Entitaet)).ToArray();
+        EntfeuchterZusatzEinstellungen e, IReadOnlySet<string>? nur = null, int? nummer = null)
+        => Schreibliste(e, e, AlsAenderung(e), nummer).Where(z => nur is null || nur.Contains(z.Entitaet)).ToArray();
 
-    string IStartwertDienst.StartModul => Modul;
+    string IStartwertDienst.StartModul => _modul;
 
     /// <summary>
     /// Den Stand festhalten, bevor die Helfer entstehen: Hat der Fork noch nichts gespeichert, übernähme er beim ersten Lesen
@@ -483,7 +525,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
 
     async Task<(int Geschrieben, bool Alles)> IStartwertDienst.StartwerteSchreibenAsync(object stand, IReadOnlySet<string> neuAngelegt, CancellationToken ct)
     {
-        var liste = Startwerteliste((EntfeuchterZusatzEinstellungen)stand, neuAngelegt);
+        var liste = Startwerteliste((EntfeuchterZusatzEinstellungen)stand, neuAngelegt, _nummer);
         if (liste.Count == 0) return (0, true);
 
         var settings = _haSettings.GetEffectiveHomeAssistantSettings();
@@ -513,7 +555,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         EntfeuchterZusatzEinstellungen alt, EntfeuchterZusatzEinstellungen neu, EntfeuchterZusatzAenderung a,
         IReadOnlyList<(string Domaene, string Dienst, string Entitaet, double? Wert)> tempMax, CancellationToken ct)
     {
-        var liste = Schreibliste(alt, neu, a).Concat(tempMax).ToList();
+        var liste = Schreibliste(alt, neu, a, _nummer).Concat(tempMax).ToList();
         var automatikGenannt = a.AutomatikAktiv is not null || a.Hilfe is not null;
         var automatikSchreiben = automatikGenannt || AutomatikWirksam(alt) != AutomatikWirksam(neu);
         var ausSchalten = a.Hilfe == EntfeuchterZusatzHilfe.Aus;
@@ -536,7 +578,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
 
         if (automatikSchreiben)
         {
-            var kennungen = AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct));
+            var kennungen = AutomatikKennungen(await _ha.GetEntitiesAsync(settings, ct), _nummer);
             foreach (var automation in kennungen)
             {
                 alles &= await _ha.CallEntityServiceAsync(settings, "automation",
@@ -549,7 +591,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         // einfaches Aus, und ein falsch gedeuteter Befehl wäre schlimmer als keiner.
         if (ausSchalten)
         {
-            var schalter = _geraete.Entity(Modul, Rollen.ZusatzSchalter);
+            var schalter = _geraete.Entity(_modul, Rollen.ZusatzSchalter);
             if (schalter is null)
             {
                 hinweise.Add("Dem Zusatz-Entfeuchter ist kein Schalter zugeordnet — er wurde nicht ausgeschaltet.");
@@ -578,15 +620,15 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
     /// Fork angelegt (Entity-ID aus dem Alias der Vorlage). Ohne Entitätenliste
     /// (Home Assistant antwortet nicht) die Katalog-Kennung; leer, wenn es sie nicht gibt.
     /// </summary>
-    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle)
+    public static IReadOnlyList<string> AutomatikKennungen(IReadOnlyCollection<HomeAssistantEntity> alle, int? nummer = null)
     {
-        var regelung = SteuerungBauteile.FuerModul(Modul).Single(b => b.VorlagenDatei == "regelung");
+        var regelung = SteuerungBauteile.FuerModul(nummer is { } n ? InstanzModul.Fuer(Modul, n) : Modul).Single(b => b.VorlagenDatei == "regelung");
         return alle.Count == 0 ? [regelung.EntityId] : SteuerungBauteile.AutomationFinden(regelung, alle);
     }
 
-    internal static bool? AutomatikAn(IReadOnlyCollection<HomeAssistantEntity> alle)
+    internal static bool? AutomatikAn(IReadOnlyCollection<HomeAssistantEntity> alle, int? nummer = null)
     {
-        var zustaende = AutomatikKennungen(alle)
+        var zustaende = AutomatikKennungen(alle, nummer)
             .Select(id => alle.FirstOrDefault(x => string.Equals(x.EntityId, id, StringComparison.OrdinalIgnoreCase))?.State)
             .Select(AnAus)
             .Where(z => z is not null)
@@ -606,7 +648,7 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         string? Text(string? id) => id is not null && nachId.TryGetValue(id, out var s) ? s.State : null;
         double? Zahl(string? id) => Zahlenlesen.Maschine(Text(id));
 
-        var geraete = _geraete.EntitiesFuerModul(Modul);
+        var geraete = _geraete.EntitiesFuerModul(_modul);
         string? Rolle(string rolle) => geraete.TryGetValue(rolle, out var id) ? id : null;
 
         var e = await EinstellungenAsync(ct);
@@ -624,15 +666,15 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
             HaErreichbar: entities.Count > 0,
             FuehrungName: namen.Fuehrung.Anzeigename,
             ZusatzName: namen.Zusatz.Anzeigename,
-            Plan: _wochenplan.PlanLuft(),
+            Plan: _wochenplan.PlanLuft(_nummer is null ? null : _wochenplan.PlanZelt(Haupt.ModulName)),
             TempC: Zahl(Rolle("zelt_temp")),
             FeuchteProzent: Zahl(Rolle("zelt_rh")),
             Vpd: Zahl(Rolle("zelt_vpd")),
             TagPhase: AnAus(Text(Rolle("licht_zustand"))),
-            VpdUnten: Zahl(EntfeuchterSteuerungService.Entitaeten.VpdUnten),
-            VpdOben: Zahl(EntfeuchterSteuerungService.Entitaeten.VpdOben),
-            FeuchteEin: Zahl(EntfeuchterSteuerungService.Entitaeten.EinAktiv),
-            FeuchteAus: Zahl(EntfeuchterSteuerungService.Entitaeten.AusAktiv),
+            VpdUnten: Zahl(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.VpdUnten, _nummer)),
+            VpdOben: Zahl(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.VpdOben, _nummer)),
+            FeuchteEin: Zahl(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.EinAktiv, _nummer)),
+            FeuchteAus: Zahl(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.AusAktiv, _nummer)),
             ZusatzZustand: Text(Rolle(Rollen.ZusatzSchalter)),
             LeistungW: Zahl(Rolle(Rollen.ZusatzLeistung)),
             EnergieHeuteKwh: energieHeute,
@@ -640,8 +682,8 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
             AutomatikAn: entities.Count > 0 ? AutomatikAn(entities) : null,
             ZusatzSeitUtc: Rolle(Rollen.ZusatzSchalter) is { } schalterId && nachId.TryGetValue(schalterId, out var schalterZustand)
                 ? schalterZustand.LastChangedUtc : null,
-            RhObergrenzeProzent: Zahl(EntfeuchterSteuerungService.Entitaeten.RhObergrenze),
-            VpdRegelung: AnAus(Text(EntfeuchterSteuerungService.Entitaeten.VpdRegelung))));
+            RhObergrenzeProzent: Zahl(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.RhObergrenze, _nummer)),
+            VpdRegelung: AnAus(Text(EntfeuchterSteuerungService.Kennung(EntfeuchterSteuerungService.Entitaeten.VpdRegelung, _nummer)))));
     }
 
     /// <summary>Was das Livebild aus Home Assistant und dem Plan braucht — gelesen, nicht gerechnet.</summary>
@@ -779,8 +821,8 @@ public sealed class EntfeuchterZusatzSteuerungService : IStartwertDienst
         var nachId = entities.ToDictionary(x => x.EntityId, x => x, StringComparer.OrdinalIgnoreCase);
         string? Anzeige(string? id) => id is not null && nachId.TryGetValue(id, out var s) ? s.FriendlyName : null;
 
-        var fuehrungEntitaet = _geraete.Entity(EntfeuchterSteuerungService.Modul, EntfeuchterSteuerungService.Rollen.PortSchalter);
-        var zusatzEntitaet = _geraete.Entity(Modul, Rollen.ZusatzSchalter);
+        var fuehrungEntitaet = _geraete.Entity(Haupt.ModulName, EntfeuchterSteuerungService.Rollen.PortSchalter);
+        var zusatzEntitaet = _geraete.Entity(_modul, Rollen.ZusatzSchalter);
         var gespeichert = _repo.GetEinstellungen<EntfeuchterNamen>(NamenModul);
 
         return Task.FromResult(NamenBilden(gespeichert, Anzeige(fuehrungEntitaet), Anzeige(zusatzEntitaet)));

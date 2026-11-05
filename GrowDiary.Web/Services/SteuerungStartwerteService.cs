@@ -42,7 +42,7 @@ public sealed class SteuerungStartwerteService
 
     /// <summary>Weitere Instanzen einer Steuerung, deren Dienst schon <c>Fuer(modul)</c> kann (Wasserkühler und Entfeuchter).</summary>
     private static bool InstanzMitStartwerten(string modul)
-        => InstanzModul.Art(modul) is ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul;
+        => InstanzModul.Art(modul) is ChillerSteuerungService.Modul or EntfeuchterSteuerungService.Modul or ZuluftSteuerungService.Modul or EntfeuchterZusatzSteuerungService.Modul;
 
     /// <summary>Die fehlenden Helfer anlegen und den neuen ihren Startwert geben; die Bilanz sagt, wie viele es waren.</summary>
     public Task<SteuerungHelferService.Bilanz> AnlegenAsync(
@@ -84,6 +84,7 @@ public sealed class SteuerungStartwerteService
             if (erste is ChillerSteuerungService chiller) return chiller.Fuer(modul);
             if (erste is EntfeuchterSteuerungService entfeuchter) return entfeuchter.Fuer(modul);
             if (erste is ZuluftSteuerungService zuluft) return zuluft.Fuer(modul);
+            if (erste is EntfeuchterZusatzSteuerungService zusatz) return zusatz.Fuer(modul);
         }
 
         return dienste.TryGetValue(modul, out var dienst)

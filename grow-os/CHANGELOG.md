@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.332
+
+**Steuerungen je Zelt, Teil 9a: Weitere Zusatz-Entfeuchter lassen sich im Hintergrund anlegen und führen — die Oberfläche folgt im nächsten Teil, bei dir ändert sich nichts.**
+
+- **Ein Zusatz je weiterem Entfeuchter:** Ein weiterer Zusatz-Entfeuchter gehört zum Entfeuchter mit derselben Nummer (Zusatz 2 zu Entfeuchter 2), höchstens einer je Entfeuchter. Er liegt im Zelt seines Entfeuchters und liest dessen Zelt-Fühler, Licht, Höchsttemperatur und Führungsgerät. Der erste Zusatz-Entfeuchter bleibt in allem, wie er war.
+- **Eigene Bausteine in Home Assistant:** Der Zusatz-Dienst arbeitet je Zusatz mit eigenen Einstellungen, Helfern, Rechenwerten, Automationen und Geräten (Endung der Nummer). Die Vorlagen seiner Regelung und der Meldung „zieht nichts“ lesen die Ziele, die Höchsttemperatur und die VPD-Regelung seines eigenen Entfeuchters, nicht die des ersten.
+- **An einer echten Test-Home-Assistant durchgespielt:** Entfeuchter 2 mit Zusatz 2 legt 29 Helfer (mit Startwerten), 8 Rechenwerte und 4 Automationen an; in der Regelung und der Meldung des Zusatzes steht keine Kennung des ersten Geräts mehr (53 und 16 Verweise mit Endung). Das Löschen des Entfeuchters mit „Auch aus Home Assistant entfernen“ nimmt den Zusatz mit und räumt alle 41 Bausteine weg; der erste Entfeuchter und sein Zusatz bleiben unverändert.
+- **Löschen:** Wird ein Entfeuchter gelöscht, geht sein Zusatz-Entfeuchter mit; der Zusatz allein lässt sich löschen, der Entfeuchter bleibt.
+- **Zelt ruhend:** Jeder weitere Zusatz steht als eigenes Gerät in der Liste und geht wie der erste aus, wenn das Zelt ruht.
+- **Übersicht:** Jeder weitere Zusatz hat eine eigene Zeile hinter seinem Entfeuchter.
+- **Schnittstelle:** Die Zusatz-Seite und das Speichern nehmen eine Angabe `instanz` an; eine unbekannte oder fremde Instanz wird abgewiesen. Das Anlegen nimmt „Zusatz-Entfeuchter“ mit der Angabe, zu welchem Entfeuchter er gehört.
+- **Getestet:** Jede Kennung des Dienstes steht im Katalog der Instanz, die Vorlagen zeigen auf den Entfeuchter derselben Nummer (ohne die Umstellung wird ein Test rot), Fühler und Licht kommen vom richtigen Entfeuchter (ohne sie wird ein Test rot), das Anlegen prüft Nummer, Zelt und „einer je Entfeuchter“, und das Löschen nimmt den Zusatz mit.
+
 ## 2.0.0-cc.331
 
 **Steuerungen je Zelt, Teil 8b: Weitere Lampen lassen sich jetzt in der Oberfläche anlegen, einrichten, umbenennen und löschen — wie Wasserkühler, Entfeuchter und Zuluft.**

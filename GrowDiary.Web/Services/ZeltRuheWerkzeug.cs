@@ -120,6 +120,11 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
             }),
+            _ when ZeltRuheArten.IstZusatzInstanz(kennung) => Aus(async () => (await _zusatz.Fuer(kennung).EinstellungenAsync(ct)).AutomatikAktiv, async an =>
+            {
+                var ergebnis = await _zusatz.Fuer(kennung).SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
+                return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
+            }),
             _ when ZeltRuheArten.IstZuluftInstanz(kennung) => Aus(async () => (await _zuluft.Fuer(kennung).EinstellungenAsync(ct)).AutomatikAktiv, async an =>
             {
                 var zuluft = _zuluft.Fuer(kennung);
@@ -184,6 +189,11 @@ public sealed class ZeltRuheWerkzeug : IZeltRuheWerkzeug
             ZeltRuheArten.Zusatz => An(async an =>
             {
                 var ergebnis = await _zusatz.SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
+                return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
+            }),
+            _ when ZeltRuheArten.IstZusatzInstanz(kennung) => An(async an =>
+            {
+                var ergebnis = await _zusatz.Fuer(kennung).SpeichernAsync(new EntfeuchterZusatzAenderung { AutomatikAktiv = an }, ct);
                 return ergebnis.Gespeichert is not null && ergebnis.HaErreicht == true;
             }),
             _ when ZeltRuheArten.IstZuluftInstanz(kennung) => An(async an =>

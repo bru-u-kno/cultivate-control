@@ -92,6 +92,9 @@ public static class ZeltRuheArten
             // Weitere Entfeuchter: wie der erste ohne Auswahl „läuft weiter“, Schalter ist ihr Port.
             .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Entfeuchter)
                 .Select(i => new ZeltRuheArt(i.Modul, $"Entfeuchter {i.Name}", i.Modul, "port_schalter", false)))
+            // Weitere Zusatz-Entfeuchter: wie der erste „ausschalten“, Schalter ist ihre Steckdose.
+            .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == SteuerungGeraeteRollen.ZusatzModul)
+                .Select(i => new ZeltRuheArt(i.Modul, $"Zusatz-Entfeuchter {i.Name}", i.Modul, "zusatz_schalter", true)))
             // Weitere Zuluft-Steuerungen: wie die erste „läuft weiter“, Schalter ist ihr Port.
             .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Zuluft)
                 .Select(i => new ZeltRuheArt(i.Modul, $"Zuluft {i.Name}", i.Modul, "port_schalter", false)))
@@ -99,6 +102,9 @@ public static class ZeltRuheArten
             .Concat(GrowDiary.Web.Services.SteuerungInstanzen.Aktuell.Where(i => i.Art == Licht)
                 .Select(i => new ZeltRuheArt(i.Modul, $"Licht {i.Name}", i.Modul, "licht_modus", true)))
             .ToList();
+
+    /// <summary>Ist die Kennung ein weiterer Zusatz-Entfeuchter (<c>entfeuchter-zusatz-i2</c>)?</summary>
+    public static bool IstZusatzInstanz(string? kennung) => InstanzModul.Art(kennung) == SteuerungGeraeteRollen.ZusatzModul;
 
     /// <summary>Ist die Kennung eine weitere Lampe (<c>licht-i2</c>)?</summary>
     public static bool IstLichtInstanz(string? kennung) => InstanzModul.Art(kennung) == Licht;

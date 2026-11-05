@@ -291,9 +291,10 @@ public sealed class InstanzFundamentTests : IDisposable
             Assert.Equal(["chiller", "chiller-i2"], SteuerungAuswahlService.ModuleVon(art));
             Assert.Contains("chiller-i2", SteuerungAuswahlService.Bausteinmodule(art));
             // Die Auswahl „entfeuchter“ umfasst Entfeuchter UND Zusatz — Instanzen kommen hinter ihre Art.
-            dienst.Anlegen("entfeuchter-zusatz", "Zusatz 2");
+            dienst.Anlegen("entfeuchter", "Entfeuchter 2");
+            dienst.AnlegenZusatz("entfeuchter-i2", "Zusatz 2");
             var e = SteuerungAuswahlService.Finden("entfeuchter")!;
-            Assert.Equal(["entfeuchter", "entfeuchter-zusatz", "entfeuchter-zusatz-i2"], SteuerungAuswahlService.ModuleVon(e));
+            Assert.Equal(["entfeuchter", "entfeuchter-i2", "entfeuchter-zusatz", "entfeuchter-zusatz-i2"], SteuerungAuswahlService.ModuleVon(e));
         }
         finally { try { Directory.Delete(wurzel, true); } catch { /* Windows haelt manchmal fest */ } }
     }

@@ -210,4 +210,58 @@ public sealed class SteuerungInstanzApiTests : IDisposable
         Assert.Equal("licht-i2", instanz.Modul);
         Assert.Equal(_zelt2, _zelte.ZeltFuer("licht-i2"));
     }
+
+    [Theory]
+    [InlineData("entfeuchter-zusatz-i9")]   // Art stimmt, aber nie angelegt
+    [InlineData("entfeuchter-i2")]          // angelegt, aber eine andere Art
+    [InlineData("chiller-i2")]
+    [InlineData("quatsch")]
+    public async Task Die_Zusatz_Routen_lehnen_eine_unbekannte_oder_fremde_Instanz_ab(string instanz)
+    {
+        Anlegen("chiller", "Reserve", _zelt1);
+        Anlegen("entfeuchter", "Entfeuchter B", _zelt2);
+
+        Assert.IsType<NotFoundObjectResult>((await _controller.EntfeuchterZusatz(instanz, CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await _controller.EntfeuchterZusatzSpeichern(new EntfeuchterZusatzAenderung(), instanz, CancellationToken.None)).Result);
+    }
+
+    [Fact]
+    public void Ein_Zusatz_gehoert_zu_einem_Entfeuchter_traegt_dessen_Nummer_und_Zelt()
+    {
+        // Ohne Entfeuchter, ohne Angabe, zum ersten Entfeuchter oder zu einer anderen Art: nicht möglich.
+        Assert.IsType<BadRequestObjectResult>(Anlegen("entfeuchter-zusatz", "Zusatz B", _zelt1).Result);
+        Wert(Anlegen("entfeuchter", "Entfeuchter 2", _zelt1));
+        Wert(Anlegen("entfeuchter", "Entfeuchter B", _zelt2));          // entfeuchter-i3
+        Assert.IsType<BadRequestObjectResult>(ZusatzAnlegen("entfeuchter", "Zusatz").Result);
+        Assert.IsType<BadRequestObjectResult>(ZusatzAnlegen("chiller-i2", "Zusatz").Result);
+        Assert.IsType<BadRequestObjectResult>(ZusatzAnlegen("entfeuchter-i9", "Zusatz").Result);
+
+        var zusatz = Assert.Single(Wert(ZusatzAnlegen("entfeuchter-i3", "Zusatz B")).Instanzen, i => i.Art == "entfeuchter-zusatz");
+        Assert.Equal("entfeuchter-zusatz-i3", zusatz.Modul);
+        Assert.Equal(3, zusatz.Nummer);
+        Assert.Equal(_zelt2, zusatz.ZeltId);                              // das Zelt des Entfeuchters, nicht das angefragte
+        Assert.Equal(_zelt2, _zelte.ZeltFuer("entfeuchter-zusatz-i3"));
+        // Je Entfeuchter höchstens einer.
+        Assert.IsType<BadRequestObjectResult>(ZusatzAnlegen("entfeuchter-i3", "Noch ein Zusatz").Result);
+    }
+
+    [Fact]
+    public async Task Ein_Entfeuchter_nimmt_seinen_Zusatz_beim_Loeschen_mit()
+    {
+        Wert(Anlegen("entfeuchter", "Entfeuchter 2", _zelt1));
+        Wert(Anlegen("entfeuchter", "Entfeuchter B", _zelt2));
+        Wert(ZusatzAnlegen("entfeuchter-i2", "Zusatz 2"));
+        Wert(ZusatzAnlegen("entfeuchter-i3", "Zusatz 3"));
+
+        var rest = Wert(await _controller.InstanzEntfernen("entfeuchter-i2", _instanzen, _zelte, null!, CancellationToken.None)).Instanzen;
+
+        Assert.DoesNotContain(rest, i => i.Modul is "entfeuchter-i2" or "entfeuchter-zusatz-i2");
+        Assert.Equal(["entfeuchter-i3", "entfeuchter-zusatz-i3"], rest.Select(i => i.Modul).OrderBy(m => m, StringComparer.Ordinal).ToList());
+        // Der Zusatz allein lässt sich löschen, der Entfeuchter bleibt.
+        var ohneZusatz = Wert(await _controller.InstanzEntfernen("entfeuchter-zusatz-i3", _instanzen, _zelte, null!, CancellationToken.None)).Instanzen;
+        Assert.Equal(["entfeuchter-i3"], ohneZusatz.Select(i => i.Modul).ToList());
+    }
+
+    private ActionResult<SteuerungInstanzenDto> ZusatzAnlegen(string haupt, string name)
+        => _controller.InstanzAnlegen(_instanzen, _zelte, new SteuerungInstanzAnlegen { Art = "entfeuchter-zusatz", Name = name, ZeltId = _zelt1, HauptModul = haupt });
 }

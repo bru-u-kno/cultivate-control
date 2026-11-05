@@ -169,7 +169,7 @@ public sealed class ChillerInstanzTests : IDisposable
     [InlineData("chiller-i2", true)]
     [InlineData("chiller-i17", true)]
     [InlineData("zuluft-i2", true)]
-    [InlineData("entfeuchter-zusatz-i2", false)]
+    [InlineData("entfeuchter-zusatz-i2", true)]
     [InlineData("licht-i2", false)]
     public void NurDieInstanzenMitFuerModulHabenEinenStartwertWeg(string modul, bool kann)
         => Assert.Equal(kann, SteuerungStartwerteService.Kann(modul));

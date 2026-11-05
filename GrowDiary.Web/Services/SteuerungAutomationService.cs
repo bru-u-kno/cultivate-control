@@ -171,7 +171,7 @@ public sealed class SteuerungAutomationService
             // CO₂ je Zelt: die Vorlage ist die des Bestands, Kennungen und Alias werden auf das Zelt umgestellt.
             vorlage = Co2Modul.Vorlage(vorlage, Co2Modul.ZeltId(modul));
             // Weitere Instanzen einer Steuerung: dieselbe Vorlage, Kennungen und Alias auf die Instanz umgestellt.
-            vorlage = InstanzModul.Vorlage(vorlage, modul, SteuerungBauteile.FuerModul(InstanzModul.Art(modul) ?? modul).Select(b => b.EntityId));
+            vorlage = InstanzModul.Vorlage(vorlage, modul, SteuerungBauteile.UmstellKennungen(InstanzModul.Art(modul) ?? modul));
             if (vorlage["alias"] is JsonValue alias && alias.TryGetValue<string>(out var lesbar)) titel[kennung] = lesbar;
 
             // Fork AI (Chiller-Ansteuerung): Eine Vorlage kann entfallen, weil ein

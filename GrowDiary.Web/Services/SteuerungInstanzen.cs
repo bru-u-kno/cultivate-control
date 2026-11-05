@@ -61,6 +61,8 @@ public sealed class SteuerungInstanzService
     public (SteuerungInstanz? Instanz, string? Fehler) Anlegen(string art, string name)
     {
         if (!InstanzModul.Arten.Contains(art, StringComparer.Ordinal)) return (null, "Diese Steuerung lässt sich nicht vervielfachen.");
+        // Ein Zusatz-Entfeuchter hat keine eigene Nummer: er gehört zu einem Entfeuchter (AnlegenZusatz).
+        if (art == "entfeuchter-zusatz") return (null, "Ein Zusatz-Entfeuchter wird zu einem Entfeuchter angelegt.");
         var pruefung = NamePruefen(name);
         if (pruefung is not null) return (null, pruefung);
 
@@ -75,6 +77,36 @@ public sealed class SteuerungInstanzService
         Speichern(stand);
         return (instanz, null);
     }
+
+    /// <summary>
+    /// Einen weiteren Zusatz-Entfeuchter anlegen: Er gehört zum Entfeuchter <paramref name="hauptModul"/> (<c>entfeuchter-i{n}</c>) und trägt
+    /// dieselbe Nummer. Je Entfeuchter höchstens einer.
+    /// </summary>
+    public (SteuerungInstanz? Instanz, string? Fehler) AnlegenZusatz(string? hauptModul, string name)
+    {
+        if (InstanzModul.Art(hauptModul) != "entfeuchter" || InstanzModul.Nummer(hauptModul) is not { } nummer)
+            return (null, "Ein weiterer Zusatz-Entfeuchter gehört zu einem weiteren Entfeuchter.");
+        var pruefung = NamePruefen(name);
+        if (pruefung is not null) return (null, pruefung);
+
+        var stand = Stand;
+        if (!stand.Instanzen.Any(i => i.Modul == hauptModul)) return (null, "Diesen Entfeuchter gibt es nicht.");
+        if (stand.Instanzen.Any(i => i.Art == "entfeuchter-zusatz" && i.Nummer == nummer)) return (null, "Dieser Entfeuchter hat schon einen Zusatz-Entfeuchter.");
+        if (stand.Instanzen.Any(i => i.Art == "entfeuchter-zusatz" && string.Equals(i.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return (null, "So heißt schon eine andere Instanz dieser Steuerung.");
+
+        stand.Vergeben["entfeuchter-zusatz"] = Math.Max(stand.Vergeben.GetValueOrDefault("entfeuchter-zusatz", 1), nummer);
+        var instanz = new SteuerungInstanz { Art = "entfeuchter-zusatz", Nummer = nummer, Name = name.Trim() };
+        stand.Instanzen.Add(instanz);
+        Speichern(stand);
+        return (instanz, null);
+    }
+
+    /// <summary>Der Zusatz-Entfeuchter eines Entfeuchters (<c>entfeuchter-zusatz-i{n}</c>) — <c>null</c>, wenn er keinen hat.</summary>
+    public SteuerungInstanz? ZusatzVon(string? hauptModul)
+        => InstanzModul.Art(hauptModul) == "entfeuchter" && InstanzModul.Nummer(hauptModul) is { } n
+            ? Stand.Instanzen.FirstOrDefault(i => i.Art == "entfeuchter-zusatz" && i.Nummer == n)
+            : null;
 
     /// <summary>Eine Instanz umbenennen. Nur der Name im Fork ändert sich, nichts in Home Assistant.</summary>
     public string? Umbenennen(string modul, string name)

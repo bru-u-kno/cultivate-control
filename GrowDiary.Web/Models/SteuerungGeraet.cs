@@ -284,6 +284,10 @@ public static class SteuerungGeraeteRollen
     public static IReadOnlyList<(string Quelle, string Rolle)> MitbenutztVon(string modul)
         => string.Equals(modul, ZusatzModul, StringComparison.OrdinalIgnoreCase)
             ? [("entfeuchter", "zelt_rh"), ("entfeuchter", "zelt_temp"), ("entfeuchter", "zelt_vpd"), ("entfeuchter", "licht_zustand")]
+            // Ein weiterer Zusatz-Entfeuchter gehört zum Entfeuchter mit derselben Nummer: dessen Fühler und Licht gelten für ihn.
+            : InstanzModul.Art(modul) == ZusatzModul && InstanzModul.Nummer(modul) is { } n
+                ? [(InstanzModul.Fuer("entfeuchter", n), "zelt_rh"), (InstanzModul.Fuer("entfeuchter", n), "zelt_temp"),
+                   (InstanzModul.Fuer("entfeuchter", n), "zelt_vpd"), (InstanzModul.Fuer("entfeuchter", n), "licht_zustand")]
             : string.Equals(modul, "zuluft", StringComparison.OrdinalIgnoreCase)
                 ? [(RaumModul, "raum_temp"), (RaumModul, "raum_rh")]
                 : [];
