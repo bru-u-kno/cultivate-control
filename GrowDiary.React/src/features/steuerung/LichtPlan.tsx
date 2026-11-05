@@ -22,6 +22,8 @@ export default function LichtPlan() {
   const [entwurf, setEntwurf] = useState<LichtKalibrierung | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
+  // Der Haken zeigt die Wahl sofort, bis der Server geantwortet hat.
+  const [automatikWunsch, setAutomatikWunsch] = useState<boolean | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -200,11 +202,13 @@ export default function LichtPlan() {
         <V1Card>
           <V1Switch
             label="Stufe automatisch nach Plan setzen"
-            checked={stand.kalibrierung.automatikStufe}
+            checked={automatikWunsch ?? stand.kalibrierung.automatikStufe}
+            ausstehend={automatikWunsch != null}
             onChange={(an) => {
               // Nur auf gespeicherter Kalibrierung und nur mit Kurve einschalten; ausschalten geht immer.
               if (arbeitet || (an && (geaendert || !stand.kalibriert))) return
-              void speichern({ ...stand.kalibrierung, automatikStufe: an })
+              setAutomatikWunsch(an)
+              void speichern({ ...stand.kalibrierung, automatikStufe: an }).finally(() => setAutomatikWunsch(null))
             }}
             hint="Voreinstellung: aus. Eingeschaltet setzt der Fork die Stufe zu Beginn jeder neuen Planwoche (nicht sofort). Stellst du die Stufe selbst um, zum Beispiel gegen Wärme, wartet die Automatik bis zur nächsten Planwoche. Bei ausgeschaltetem Licht oder ruhendem Zelt passiert nichts."
           />

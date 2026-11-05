@@ -1,24 +1,39 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, formatApiError } from '../../api'
 import { V1Alert, V1Button, V1Card, V1LinkButton, V1Page, V1Section, V1Skeleton, V1Stat, V1Switch, V1Tabs } from '../../components/v1'
 import { V1Sheet } from '../../components/V1Sheet'
+import { Kurzmeldung, type KurzmeldungTon } from '../../components/Kurzmeldung'
 import { SteuerungWechsel } from '../steuerung/SteuerungWechsel'
 import type { SteuerungModul } from '../steuerung/steuerung-typen'
 import '../steuerung/steuerung.css'
 import './ziel.css'
 import { PortBlatt } from './PortBlatt'
 import {
-  betriebText, geraetHinweis, plakette, ROLLE, SCHALTER, schalterVon, wuerdeSchreiben, zahl,
-  type Betrieb, type Folgt, type SteuerungGeraet, type TrocknungSteuerung,
+  ARBEIT_SCHRITTE, ARBEIT_TITEL, betriebText, einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, ROLLE, SCHALTER, schalterVon,
+  wuerdeSchreiben, zahl,
+  type ArbeitPhase, type Betrieb, type Folgt, type Schalter, type SteuerungGeraet, type TrocknungSteuerung,
 } from './steuerung-text'
 
 /**
- * Steuerung › Trocknung (A-029, Etappe 3, Teil B): Folgen die Geräte am Trockenzelt dem Plan?
+ * Steuerung › Trocknung (A-029, Etappe 3, Teil B): welche Geräte am Trockenzelt bindet der Nutzer ein?
  *
- * Der Fork ändert nur die Grenzen der Auslöser an den Ports des Controllers, nie deren Modus; der Controller regelt weiter selbst.
- * „Nur melden“ schreibt nichts und zeigt, was geschrieben würde. Auf „Regeln“ stellt man erst nach einer Rückfrage, die genau
- * auflistet, was geschrieben wird.
+ * Eingebundene Geräte bringt die Steuerung auf die Planwerte des Trocknungsplans und hält sie dort. Technisch ändert der Fork nur
+ * die Grenzen der Auslöser an den Ports des Controllers, nie deren Modus; der Controller regelt weiter selbst. „Nur anzeigen“
+ * schreibt nichts und zeigt, was geschrieben würde. Auf „Regeln“ stellt man erst nach einer Rückfrage, die genau auflistet,
+ * was geschrieben wird.
+ *
+ * Bedienung (cc.333): Der Haken erscheint sofort beim Antippen. Solange der Fork speichert und mit dem Controller abgleicht, zeigt
+ * die Karte die Phase (und sperrt sich); dasselbe sehen andere Benutzer über `inArbeit` im Stand. Am Ende steht „Fertig“ oder
+ * der Grund, warum der Haken zurückgesprungen ist.
  */
+const SCHNELL_MS = 1500
+const RUHIG_MS = 15000
+
+const neueKennung = () => `s-${Math.random().toString(36).slice(2, 10)}`
+
+type Vorgang = { schalter: Schalter | 'betrieb'; betrieb: Betrieb; an: boolean | null }
+type Band = { schalter: Schalter | 'betrieb'; ton: 'ok' | 'critical'; text: string }
+
 export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   module: SteuerungModul[]
   aktiv: string
@@ -27,15 +42,24 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   const zeltId = module.find((m) => m.kennung === 'trocknung')?.zeltId ?? null
   const [stand, setStand] = useState<TrocknungSteuerung | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
-  const [meldung, setMeldung] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
   const [laedt, setLaedt] = useState(true)
-  const [rueckfrage, setRueckfrage] = useState<{ betrieb: Betrieb; folgt: Folgt } | null>(null)
+  const [rueckfrage, setRueckfrage] = useState<{ betrieb: Betrieb; folgt: Folgt; schalter: Schalter | null } | null>(null)
   const [portBlatt, setPortBlatt] = useState(false)
+  // Eigener Vorgang: gesetzter Haken sofort sichtbar, bis der Fork fertig ist (oder den Haken zurückstellt).
+  const [vorgang, setVorgang] = useState<Vorgang | null>(null)
+  const [lokal, setLokal] = useState<Folgt | null>(null)
+  const [band, setBand] = useState<Band | null>(null)
+  const [kurz, setKurz] = useState<{ text: string; ton: KurzmeldungTon; nr: number } | null>(null)
+  const [kennung] = useState(neueKennung)
+  // Eine ältere Antwort darf einen neueren Stand nicht überschreiben (Abfrage vor dem Speichern, Antwort danach).
+  const ladeNr = useRef(0)
 
   const laden = useCallback(async () => {
     if (zeltId == null) return
-    setStand(await apiFetch<TrocknungSteuerung>(`/api/tents/${zeltId}/trocknung/steuerung`))
+    const nr = ++ladeNr.current
+    const geladen = await apiFetch<TrocknungSteuerung>(`/api/tents/${zeltId}/trocknung/steuerung`)
+    if (nr === ladeNr.current) setStand(geladen)
   }, [zeltId])
 
   useEffect(() => {
@@ -55,39 +79,73 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
     return () => controller.abort()
   }, [zeltId])
 
-  // Eine Minute Takt: Der Wert am Gerät ändert sich auch ohne uns (Controller, Etappenwechsel).
+  // Takt: Der Wert am Gerät ändert sich auch ohne uns (Controller, Etappenwechsel, ein anderer Benutzer). Läuft ein Vorgang
+  // (eigener oder fremder), fragen wir dichter nach, damit Phase und Ende sichtbar werden.
+  const vorgangLaeuft = vorgang != null || stand?.inArbeit != null
   useEffect(() => {
-    const uhr = window.setInterval(() => { void laden().catch(() => undefined) }, 60000)
+    const uhr = window.setInterval(() => { void laden().catch(() => undefined) }, vorgangLaeuft ? SCHNELL_MS : RUHIG_MS)
     return () => window.clearInterval(uhr)
-  }, [laden])
+  }, [laden, vorgangLaeuft])
 
-  const setzen = async (betrieb: Betrieb, folgt: Folgt) => {
+  // Das „Fertig“-Band verschwindet nach einigen Sekunden von selbst; der Fehler bleibt, bis etwas Neues passiert.
+  useEffect(() => {
+    if (band?.ton !== 'ok') return undefined
+    const t = window.setTimeout(() => setBand(null), 6000)
+    return () => window.clearTimeout(t)
+  }, [band])
+
+  const meldeKurz = useCallback((text: string, ton: KurzmeldungTon = 'ok') => setKurz((alt) => ({ text, ton, nr: (alt?.nr ?? 0) + 1 })), [])
+  const kurzSchliessen = useCallback(() => setKurz(null), [])
+
+  const setzen = async (betrieb: Betrieb, folgt: Folgt, schalter: Schalter | null) => {
     if (zeltId == null) return
-    setArbeitet(true); setMeldung(null)
+    const bezug: Schalter | 'betrieb' = schalter ?? 'betrieb'
+    setVorgang({ schalter: bezug, betrieb, an: schalter ? folgt[schalter] : null })
+    setLokal(folgt); setBand(null); setFehler(null)
+    ladeNr.current++
     try {
       const neu = await apiFetch<TrocknungSteuerung>(`/api/tents/${zeltId}/trocknung/steuerung`, {
         method: 'PUT',
-        body: JSON.stringify({ betrieb, entfeuchterFolgt: folgt.entfeuchter, kuehlungFolgt: folgt.kuehlung, abluftFolgt: folgt.abluft }),
+        body: JSON.stringify({ betrieb, entfeuchterFolgt: folgt.entfeuchter, kuehlungFolgt: folgt.kuehlung, abluftFolgt: folgt.abluft, clientId: kennung }),
       })
-      setStand(neu); setFehler(null)
-      setMeldung(betrieb === 'regeln' ? 'Gespeichert. Der Fork hat die Grenzen auf den Plan gesetzt.' : 'Gespeichert.')
+      ladeNr.current++
+      setStand(neu)
+      const zeilenNeu = schalter ? neu.geraete.filter((g) => schalterVon(g.rolle) === schalter) : []
+      const ziel = schalter ? ROLLE[schalter === 'abluft' ? 'abluft-feuchte' : schalter].titel : null
+      const status = schalter ? plakette(kopfZeile(zeilenNeu), neu.betrieb).text : null
+      // Nur sagen, was feststeht: gespeichert und abgeglichen — ob am Gerät etwas geschrieben wurde, zeigt die Plakette.
+      const text = schalter
+        ? (folgt[schalter]
+          ? `${ziel} ist eingebunden — ${status}.`
+          : `${ziel} ist nicht mehr eingebunden. ${ohneEinbindungText(zeilenNeu)}`)
+        : `Betriebsart: ${betriebText(betrieb)}. ${betrieb === 'regeln' ? 'Die Steuerung gleicht die eingebundenen Geräte jetzt mit dem Plan ab.' : 'Die Steuerung ändert nichts.'}`
+      setBand({ schalter: bezug, ton: 'ok', text: `Fertig. ${text}` })
+      meldeKurz(text)
     } catch (caught) {
-      setFehler(formatApiError(caught, 'Speichern fehlgeschlagen.'))
+      // Der Haken springt auf den Stand des Servers zurück; die Karte sagt, warum.
+      const grund = formatApiError(caught, 'Speichern fehlgeschlagen.')
+      setBand({ schalter: bezug, ton: 'critical', text: `Nicht abgeschlossen. Der Haken zeigt wieder den gespeicherten Stand. ${grund}` })
+      meldeKurz('Nicht abgeschlossen — der Haken zeigt wieder den gespeicherten Stand.', 'critical')
+      void laden().catch(() => undefined)
     } finally {
-      setArbeitet(false)
+      setLokal(null)
+      setVorgang(null)
     }
   }
 
   const zuruecksetzen = async () => {
     if (zeltId == null) return
-    setArbeitet(true); setMeldung(null)
+    setArbeitet(true); setBand(null)
     try {
       const antwort = await apiFetch<{ zurueck: number; gescheitert: number; stand: TrocknungSteuerung }>(
         `/api/tents/${zeltId}/trocknung/steuerung/zuruecksetzen`, { method: 'POST' })
+      ladeNr.current++
       setStand(antwort.stand); setFehler(null)
-      setMeldung(antwort.gescheitert > 0
-        ? `${antwort.zurueck} Wert zurückgesetzt, ${antwort.gescheitert} ließ sich nicht zurücksetzen. Der Fork fasst nichts mehr an.`
-        : 'Die alten Werte stehen wieder am Gerät.')
+      const text = antwort.gescheitert > 0
+        ? `${antwort.zurueck} Wert zurückgesetzt, ${antwort.gescheitert} ließ sich nicht zurücksetzen. Die Steuerung fasst nichts mehr an.`
+        : 'Die alten Werte stehen wieder am Gerät.'
+      setBand({ schalter: 'betrieb', ton: 'ok', text })
+      meldeKurz(text)
     } catch (caught) {
       setFehler(formatApiError(caught, 'Zurücksetzen fehlgeschlagen.'))
     } finally {
@@ -102,22 +160,30 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   if (laedt && !stand) return <V1Page {...kopf}><V1Skeleton rows={4} tiles={2} label="Wird geladen" /></V1Page>
   if (!stand) return <V1Page {...kopf}>{fehler && <V1Alert tone="critical" message={fehler} />}</V1Page>
 
-  const folgt: Folgt = {
+  const serverFolgt: Folgt = {
     entfeuchter: stand.geraete.find((g) => g.rolle === 'entfeuchter')?.folgt ?? false,
     kuehlung: stand.geraete.find((g) => g.rolle === 'kuehlung')?.folgt ?? false,
     abluft: stand.geraete.find((g) => schalterVon(g.rolle) === 'abluft')?.folgt ?? false,
   }
+  // Angezeigt wird, was der Nutzer gerade gewählt hat (Rückfrage offen, Vorgang läuft) — sonst der Stand vom Server.
+  // Bei offener Rückfrage gilt nur der eine gewählte Haken als „noch nicht gespeichert“; die anderen zeigen den Stand vom Server.
+  const mitRueckfrage: Folgt = rueckfrage?.schalter ? { ...serverFolgt, [rueckfrage.schalter]: rueckfrage.folgt[rueckfrage.schalter] } : serverFolgt
+  const folgt: Folgt = rueckfrage ? mitRueckfrage : lokal ?? serverFolgt
+  const betriebAngezeigt: Betrieb = vorgang?.betrieb ?? stand.betrieb
   const zugeordnet = SCHALTER.filter((s) => stand.geraete.some((g) => schalterVon(g.rolle) === s && g.urteil !== 'nichtZugeordnet')).length
-  const regeln = stand.betrieb === 'regeln'
+  const regeln = betriebAngezeigt === 'regeln'
   const hatMerker = stand.geraete.some((g) => g.vorher != null)
+  const fremd = vorgang == null && stand.inArbeit != null && stand.inArbeit.clientId !== kennung
+  const phase = stand.inArbeit?.phase ?? 'speichern'
+  const gesperrt = vorgang != null || fremd || arbeitet
 
   // Wer „Regeln“ einschaltet oder im Betrieb „Regeln“ ein Gerät dazunimmt, bekommt vorher gezeigt, was geschrieben wird.
-  const anfrage = (betrieb: Betrieb, neu: Folgt) => {
+  const anfrage = (betrieb: Betrieb, neu: Folgt, schalter: Schalter | null) => {
     if (betrieb === 'regeln' && wuerdeSchreiben(stand.geraete, neu).length > 0) {
-      setRueckfrage({ betrieb, folgt: neu })
+      setRueckfrage({ betrieb, folgt: neu, schalter })
       return
     }
-    void setzen(betrieb, neu)
+    void setzen(betrieb, neu, schalter)
   }
 
   const untertitel = stand.trocknet
@@ -125,6 +191,22 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
     : 'Es trocknet gerade nichts'
   const bandText = (von: number | null, bis: number | null, einheit: string) =>
     von == null || bis == null ? '–' : von === bis ? `${zahl(von)} ${einheit}` : `${zahl(von)}–${zahl(bis)} ${einheit}`
+
+  // Bestätigt wird mit dem frischen Stand: Hat inzwischen jemand anderes einen anderen Haken geändert, bleibt das erhalten.
+  const bestaetigen = () => {
+    const r = rueckfrage
+    setRueckfrage(null)
+    if (!r) return
+    if (gesperrt) { meldeKurz('Gerade läuft ein anderer Vorgang — bitte gleich noch einmal einbinden.', 'warn'); return }
+    const neu: Folgt = r.schalter ? { ...serverFolgt, [r.schalter]: r.folgt[r.schalter] } : serverFolgt
+    void setzen(r.betrieb, neu, r.schalter)
+  }
+
+  const rueckfrageName = rueckfrage?.schalter ? ROLLE[rueckfrage.schalter === 'abluft' ? 'abluft-feuchte' : rueckfrage.schalter].titel : null
+  const rueckfrageAbbrechen = () => {
+    if (rueckfrageName) meldeKurz(`Abgebrochen — ${rueckfrageName} bleibt nicht eingebunden.`, 'warn')
+    setRueckfrage(null)
+  }
 
   return (
     <V1Page
@@ -134,14 +216,31 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
       vorKopf={kopf.vorKopf}
     >
       {fehler && <V1Alert tone="critical" message={fehler} />}
-      {meldung && <V1Alert tone="ok" message={meldung} />}
-      {!stand.portsErreichbar && <V1Alert tone="warn" title="Home Assistant nicht erreichbar" message="Die Werte an den Geräten lassen sich gerade nicht lesen. Der Fork schreibt in dieser Zeit nichts." />}
+      {vorgang?.schalter === 'betrieb' && (
+        <div className="zj-band is-warn" role="status" data-audit="trocknung-vorgang-betrieb">
+          <b>Betriebsart wird gespeichert …</b> Bis die Steuerung fertig ist, sind die Karten gesperrt.
+          <ul className="zj-schritte">
+            {ARBEIT_SCHRITTE.map((x, i) => (
+              <li key={x.phase} className={i < ARBEIT_SCHRITTE.findIndex((y) => y.phase === phase) ? 'is-fertig' : x.phase === phase ? 'is-jetzt' : ''}>{x.text}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {band?.schalter === 'betrieb' && !vorgang && <V1Alert tone={band.ton} message={band.text} />}
+      {fremd && (
+        <V1Alert
+          tone="warn"
+          title="Jemand anderes ändert gerade etwas"
+          message={`Die Steuerung ${ARBEIT_TITEL[phase]}. Die Karten sind gesperrt, bis der Vorgang fertig ist.`}
+        />
+      )}
+      {!stand.portsErreichbar && <V1Alert tone="warn" title="Home Assistant nicht erreichbar" message="Die Werte an den Geräten lassen sich gerade nicht lesen. Die Steuerung schreibt in dieser Zeit nichts." />}
       <V1Alert
         tone={regeln ? 'ok' : 'neutral'}
-        title={regeln ? 'Regeln: die Geräte folgen dem Plan' : 'Nur melden'}
+        title={regeln ? 'Regeln: die eingebundenen Geräte folgen dem Plan' : 'Nur anzeigen'}
         message={regeln
-          ? 'Der Fork stellt die Grenzen am Controller auf den Plan, beim Start und bei jedem Etappenwechsel. Geregelt wird weiter vom Controller.'
-          : 'Der Fork schreibt nichts an die Geräte. Er zeigt nur, was er einstellen würde.'}
+          ? 'Die Steuerung versucht mit den eingebundenen Geräten, die Planwerte zu erreichen und zu halten.'
+          : 'Es wird nichts an die Geräte geschrieben.'}
       />
 
       <section className="v1-kpi-grid">
@@ -159,15 +258,22 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
         </div>
       </V1Card>
 
-      <V1Section title="Betrieb">
+      <V1Section title="Geräte einbinden">
         <V1Card>
           <div className="st-feldzeile">
-            <span className="st-etikett">Betriebsart<small>Starte mit „Nur melden“.</small></span>
+            <span className="st-etikett">
+              Wie arbeitet die Steuerung?
+              <small>
+                {regeln
+                  ? 'Die Steuerung stellt die eingebundenen Geräte auf den Trocknungsplan und hält sie dort — beim Start, bei jedem Etappenwechsel und alle 5 Minuten.'
+                  : 'Die Steuerung ändert nichts. Sie zeigt nur, was sie an den eingebundenen Geräten einstellen würde.'}
+              </small>
+            </span>
           </div>
           <V1Tabs
-            items={[{ value: 'melden' as Betrieb, label: 'Nur melden' }, { value: 'regeln' as Betrieb, label: 'Regeln' }]}
-            active={stand.betrieb}
-            onChange={(b) => { if (b !== stand.betrieb && !arbeitet) { if (b === 'melden') void setzen('melden', folgt); else anfrage('regeln', folgt) } }}
+            items={[{ value: 'melden' as Betrieb, label: 'Nur anzeigen' }, { value: 'regeln' as Betrieb, label: 'Regeln' }]}
+            active={betriebAngezeigt}
+            onChange={(b) => { if (b !== stand.betrieb && !gesperrt) { if (b === 'melden') void setzen('melden', folgt, null); else anfrage('regeln', folgt, null) } }}
             label="Betriebsart"
           />
         </V1Card>
@@ -178,21 +284,26 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
           return (
             <GeraetKarte
               key={schalter}
+              schalter={schalter}
               zeilen={zeilen}
-              betrieb={stand.betrieb}
-              gesperrt={arbeitet}
+              betrieb={betriebAngezeigt}
+              eingebunden={folgt[schalter]}
+              wartetAufBestaetigung={rueckfrage?.schalter === schalter}
+              eigenerVorgang={vorgang?.schalter === schalter ? { phase } : null}
+              band={band?.schalter === schalter ? band : null}
+              gesperrt={gesperrt}
               onFolgt={(an) => {
                 const neu = { ...folgt, [schalter]: an }
-                if (regeln && an) anfrage('regeln', neu)
-                else void setzen(stand.betrieb, neu)
+                if (regeln && an) anfrage('regeln', neu, schalter)
+                else void setzen(stand.betrieb, neu, schalter)
               }}
             />
           )
         })}
 
         <div className="zj-aktionen">
-          {!regeln && <V1Button variant="primary" disabled={arbeitet || !SCHALTER.some((s) => folgt[s])} onClick={() => anfrage('regeln', folgt)}>Auf „Regeln“ stellen…</V1Button>}
-          {hatMerker && <V1Button variant="ghost" disabled={arbeitet} onClick={() => void zuruecksetzen()}>Alte Werte zurück</V1Button>}
+          {!regeln && <V1Button variant="primary" disabled={gesperrt || !SCHALTER.some((s) => folgt[s])} onClick={() => anfrage('regeln', folgt, null)}>Auf „Regeln“ stellen…</V1Button>}
+          {hatMerker && <V1Button variant="ghost" disabled={gesperrt} onClick={() => void zuruecksetzen()}>Alte Werte zurück</V1Button>}
         </div>
       </V1Section>
 
@@ -203,17 +314,19 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
 
       <V1Sheet
         open={rueckfrage != null}
-        onClose={() => setRueckfrage(null)}
-        title="Auf „Regeln“ stellen?"
+        onClose={rueckfrageAbbrechen}
+        title={rueckfrage?.schalter && stand.betrieb === 'regeln' ? 'Gerät einbinden?' : 'Auf „Regeln“ stellen?'}
         footer={(
           <>
-            <button type="button" className="ls-btn" onClick={() => setRueckfrage(null)}>Abbrechen</button>
-            <button type="button" className="ls-btn is-primary" onClick={() => { const r = rueckfrage; setRueckfrage(null); if (r) void setzen(r.betrieb, r.folgt) }}>Ja, Regeln einschalten</button>
+            <button type="button" className="ls-btn" onClick={rueckfrageAbbrechen}>Abbrechen</button>
+            <button type="button" className="ls-btn is-primary" onClick={() => bestaetigen()}>
+              {rueckfrage?.schalter && stand.betrieb === 'regeln' ? 'Ja, einbinden' : 'Ja, Regeln einschalten'}
+            </button>
           </>
         )}
       >
         <div className="zj-rueckfrage">
-          <p>Das schreibt der Fork ab jetzt an den Controller:</p>
+          <p>Die Steuerung stellt die Geräte ab jetzt auf den Planwert:</p>
           {rueckfrage && wuerdeSchreiben(stand.geraete, rueckfrage.folgt).map((w) => (
             <div key={w.rolle} className="zj-wert" data-audit={`rueckfrage-${w.rolle}`}>
               <span>{w.portName} · {w.feld}</span>
@@ -221,8 +334,8 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
             </div>
           ))}
           <p className="fe-hinweis">
-            Nicht angefasst: alle Geräte ohne „Folgt dem Plan“ und der Modus der Ports. Der Fork merkt sich die alten Werte; „Alte Werte zurück“
-            setzt sie wieder ein. {betriebText('regeln')} gilt, bis du auf „Nur melden“ zurückstellst.
+            Nicht angefasst: alle Geräte, die nicht eingebunden sind, und der Modus der Ports. Die Steuerung merkt sich die alten Werte; „Alte Werte zurück“
+            setzt sie wieder ein. {betriebText('regeln')} gilt, bis du auf „Nur anzeigen“ zurückstellst.
           </p>
         </div>
       </V1Sheet>
@@ -233,38 +346,81 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
         tentId={zeltId}
         onGespeichert={() => { setPortBlatt(false); void laden().catch(() => undefined) }}
       />
+      <Kurzmeldung text={kurz?.text ?? null} ton={kurz?.ton} nr={kurz?.nr} onSchliessen={kurzSchliessen} />
     </V1Page>
   )
 }
 
-/** Eine Karte je Gerät. Die Abluft hat zwei Zeilen (Feuchte- und Temperatur-Obergrenze), die anderen eine. */
-function GeraetKarte({ zeilen, betrieb, gesperrt, onFolgt }: { zeilen: SteuerungGeraet[]; betrieb: Betrieb; gesperrt: boolean; onFolgt: (an: boolean) => void }) {
-  // Kopf, Plakette und Hinweis zeigen die Zeile, die vom Plan abweicht — sonst die erste.
-  const g = zeilen.find((z) => z.urteil === 'weichtAb') ?? zeilen[0]
+/**
+ * Eine Karte je Gerät. Die Abluft hat zwei Zeilen (Feuchte- und Temperatur-Grenze), die anderen eine.
+ * Der Haken zeigt die Wahl des Nutzers sofort; solange ein Vorgang läuft, sagt die Karte, was gerade passiert.
+ */
+function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaetigung, eigenerVorgang, band, gesperrt, onFolgt }: {
+  schalter: Schalter
+  zeilen: SteuerungGeraet[]
+  betrieb: Betrieb
+  eingebunden: boolean
+  wartetAufBestaetigung: boolean
+  eigenerVorgang: { phase: ArbeitPhase } | null
+  band: Band | null
+  gesperrt: boolean
+  onFolgt: (an: boolean) => void
+}) {
+  // Plakette und Erklärung zeigen den Zustand, den der Haken jetzt wählt — nicht den, den der Server noch hat.
+  const angezeigt = zeilen.map((z) => ({ ...z, folgt: eingebunden }))
+  const g = kopfZeile(angezeigt)
   const r = ROLLE[g.rolle]
   const p = plakette(g, betrieb)
   const nichtZugeordnet = g.urteil === 'nichtZugeordnet'
+  const schritt = eigenerVorgang ? ARBEIT_SCHRITTE.findIndex((x) => x.phase === eigenerVorgang.phase) : -1
   return (
     <V1Card>
-      <div className="st-feldzeile" data-audit={`trocknung-${schalterVon(g.rolle)}`}>
+      <div className="st-feldzeile" data-audit={`trocknung-${schalter}`}>
         <span className="st-etikett">
           {r.titel}
           <small>{g.portName ? `${g.portName}${g.modus ? ` · ${g.modus === 'Off' ? 'Modus Aus' : g.modus}` : ''}` : 'kein Port zugeordnet'}</small>
         </span>
-        <span className={p.ton ? `zj-chip is-${p.ton}` : 'zj-chip'}>{p.text}</span>
+        {eigenerVorgang
+          ? <span className="zj-chip is-warn" data-audit="trocknung-vorgang"><span className="v1-dreher" aria-hidden="true" />{ARBEIT_TITEL[eigenerVorgang.phase]}</span>
+          : wartetAufBestaetigung
+            ? <span className="zj-chip is-warn">wartet auf Bestätigung</span>
+            : <span className={`zj-chip is-${p.ton}`}>{p.text}</span>}
       </div>
+      {eigenerVorgang && (
+        <div className="zj-band is-warn" role="status">
+          <b>{eigenerVorgang.phase === 'speichern' ? 'Wird gespeichert …' : 'Die Steuerung arbeitet …'}</b> Der Haken ist schon gesetzt. Bis die Steuerung fertig ist, ist diese Karte gesperrt.
+          <ul className="zj-schritte">
+            {ARBEIT_SCHRITTE.map((x, i) => (
+              <li key={x.phase} className={i < schritt ? 'is-fertig' : i === schritt ? 'is-jetzt' : ''}>{x.text}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {wartetAufBestaetigung && !eigenerVorgang && (
+        <div className="zj-band is-warn" role="status"><b>Noch nicht gespeichert.</b> Der Haken gilt erst, wenn du unten „Ja, einbinden“ tippst.</div>
+      )}
+      {band && !eigenerVorgang && <div className={`zj-band ${band.ton === 'ok' ? 'is-ok' : 'is-fehler'}`} role="status">{band.text}</div>}
       {!nichtZugeordnet && (
         <>
-          <V1Switch label="Folgt dem Plan" checked={g.folgt} onChange={gesperrt ? () => undefined : onFolgt} hint={geraetHinweis(g)} />
+          <V1Switch
+            label="Gerät einbinden"
+            checked={eingebunden}
+            onChange={onFolgt}
+            hint={einbindenHinweis(schalter, eingebunden, betrieb)}
+            gesperrt={gesperrt || eigenerVorgang != null || wartetAufBestaetigung}
+          />
+          {!eigenerVorgang && !wartetAufBestaetigung && (
+            <p className="zj-erklaerung" data-audit={`trocknung-erklaerung-${schalter}`}><b>Was das jetzt heißt:</b> {erklaerung(angezeigt, betrieb)}</p>
+          )}
           {zeilen.map((z) => (
             <div key={z.rolle}>
               <div className="st-feldzeile">
-                <span className="st-etikett">{ROLLE[z.rolle].feld} am Gerät</span>
-                <span className="st-nurlesen">{z.wertAmGeraet == null ? '–' : `${zahl(z.wertAmGeraet)} ${ROLLE[z.rolle].einheit}`}</span>
+                <span className="st-etikett">{ROLLE[z.rolle].feld.replace('-Obergrenze', '')}: Planwert</span>
+                <span className="st-nurlesen">{z.planWert == null ? '–' : `${zahl(z.planWert)} ${ROLLE[z.rolle].einheit}`}</span>
               </div>
               <div className="st-feldzeile">
-                <span className="st-etikett">Plan (oben im Band)</span>
-                <span className="st-nurlesen">{z.planWert == null ? '–' : `${zahl(z.planWert)} ${ROLLE[z.rolle].einheit}`}</span>
+                <span className="st-etikett">{ROLLE[z.rolle].feld.replace('-Obergrenze', '')}: am Gerät</span>
+                <span className="st-nurlesen">{z.wertAmGeraet == null ? '–' : `${zahl(z.wertAmGeraet)} ${ROLLE[z.rolle].einheit}`}</span>
               </div>
             </div>
           ))}

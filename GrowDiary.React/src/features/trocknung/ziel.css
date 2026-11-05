@@ -8,8 +8,24 @@
 .zj-wert strong { font-weight: 600; text-align: right; }
 .zj-chip { display: inline-block; padding: 2px 9px; border: 1px solid var(--hair); border-radius: 999px; font: 600 .7rem var(--mono); color: var(--muted); white-space: nowrap; }
 .zj-chip.is-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.zj-chip.is-grau { color: var(--faint); }
 .zj-chip.is-ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
 .zj-etappe { font-size: .85rem; }
 /* Steuerung › Trocknung (Teil B) */
 .zj-aktionen { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
 .zj-rueckfrage .zj-wert { border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; }
+
+/* Vorgang läuft / fertig / fehlgeschlagen (cc.333): Band auf der Karte, Drehkringel in der Plakette */
+.zj-band { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 10px; font-size: .85rem; line-height: 1.4; }
+.zj-band.is-warn { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.zj-band.is-ok { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.zj-band.is-fehler { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.zj-schritte { list-style: none; margin: 6px 0 0; padding: 0; font-size: .8rem; }
+.zj-schritte li { color: var(--faint); }
+.zj-schritte li::before { content: "○ "; }
+.zj-schritte li.is-fertig { color: var(--muted); }
+.zj-schritte li.is-fertig::before { content: "✓ "; color: var(--accent); }
+.zj-schritte li.is-jetzt { color: var(--ink); }
+.zj-schritte li.is-jetzt::before { content: "● "; color: var(--warn); }
+.zj-erklaerung { margin: 8px 0 4px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
+.zj-erklaerung b { color: var(--ink); font-weight: 600; }

@@ -174,13 +174,20 @@ export function V1Field({ label, children, hint, wide }: { label: string; childr
   )
 }
 
-export function V1Switch({ label, checked, onChange, hint, className }: { label: string; checked: boolean; onChange: (checked: boolean) => void; hint?: ReactNode; className?: string }) {
+/**
+ * Haken mit Beschriftung. `ausstehend`: Der Haken zeigt schon die Wahl des Nutzers, der Server speichert noch — die Zeile sagt es
+ * und sperrt weiteres Antippen, bis die Antwort da ist (danach springt der Haken auf den Stand des Servers, bei einem Fehler zurück).
+ */
+export function V1Switch({ label, checked, onChange, hint, className, ausstehend, gesperrt }: { label: string; checked: boolean; onChange: (checked: boolean) => void; hint?: ReactNode; className?: string; ausstehend?: boolean; gesperrt?: boolean }) {
+  // Gesperrt, aber nicht `disabled`: so behält der Haken den Tastaturfokus und liest sich als „nicht verfügbar“ statt zu verschwinden.
+  const zu = ausstehend || gesperrt
   return (
-    <label className={classNames('v1-switch', className)}>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    <label className={classNames('v1-switch', ausstehend && 'is-ausstehend', gesperrt && 'is-gesperrt', className)} aria-busy={ausstehend || undefined}>
+      <input type="checkbox" checked={checked} aria-disabled={zu || undefined} onChange={(event) => { if (!zu) onChange(event.target.checked) }} />
       <span>
         <strong>{label}</strong>
         {hint && <small>{hint}</small>}
+        {ausstehend && <small className="v1-switch-wartet" aria-live="polite"><span className="v1-dreher" aria-hidden="true" />wird gespeichert …</small>}
       </span>
     </label>
   )

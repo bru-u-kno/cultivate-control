@@ -43,9 +43,59 @@ public sealed class TrocknungSteuerungService
         string Rolle, string? PortName, bool Folgt, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert,
         string Urteil, double? Vorher, DateTime? ZuletztGesetztUtc);
 
+    /// <summary>Ein Vorgang läuft gerade (Speichern der Haken, Abgleich mit dem Controller): damit sehen auch andere Benutzer, dass die Seite noch arbeitet.</summary>
+    public sealed record Arbeit(string Phase, DateTime SeitUtc, string? ClientId);
+
+    public const string PhaseSpeichern = "speichern";
+    public const string PhaseAbgleichen = "abgleichen";
+    public const string PhasePruefen = "pruefen";
+
+    // Eine Sicherung gegen einen hängenden Vorgang: nach so langer Zeit zeigt der Stand ihn nicht mehr an.
+    private static readonly TimeSpan ArbeitHoechstens = TimeSpan.FromMinutes(2);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, Arbeit> _arbeit = new();
+
+    /// <summary>Meldet, dass für das Zelt ein Vorgang läuft. Das Ende (Dispose) nimmt die Meldung zurück.</summary>
+    public ArbeitsVorgang ArbeitBeginnen(int tentId, string? clientId)
+    {
+        var meine = new Arbeit(PhaseSpeichern, DateTime.UtcNow, ClientIdPruefen(clientId));
+        _arbeit[tentId] = meine;
+        return new ArbeitsVorgang(this, tentId, meine);
+    }
+
+    /// <summary>Die Kennung der Seite ist frei gewählt und nur zum Wiedererkennen: kurz und aus einfachen Zeichen, sonst wird sie verworfen.</summary>
+    public static string? ClientIdPruefen(string? clientId)
+        => clientId is { Length: > 0 and <= 40 } && clientId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') ? clientId : null;
+
+    private Arbeit? AktuelleArbeit(int tentId)
+        => _arbeit.TryGetValue(tentId, out var a) && DateTime.UtcNow - a.SeitUtc < ArbeitHoechstens ? a : null;
+
+    /// <summary>Ein laufender Vorgang. Phase und Ende betreffen nur diesen Vorgang, nie den eines anderen Benutzers im selben Zelt.</summary>
+    public sealed class ArbeitsVorgang : IDisposable
+    {
+        private readonly TrocknungSteuerungService _dienst;
+        private readonly int _tentId;
+        private Arbeit _aktuell;
+
+        internal ArbeitsVorgang(TrocknungSteuerungService dienst, int tentId, Arbeit anfang)
+        {
+            _dienst = dienst;
+            _tentId = tentId;
+            _aktuell = anfang;
+        }
+
+        public void Phase(string phase)
+        {
+            var neu = _aktuell with { Phase = phase };
+            // Nur ersetzen, wenn der Eintrag noch dieser ist: ein anderer Vorgang oder das Aufräumen dazwischen bleibt unberührt.
+            if (_dienst._arbeit.TryUpdate(_tentId, neu, _aktuell)) _aktuell = neu;
+        }
+
+        public void Dispose() => _dienst._arbeit.TryRemove(new KeyValuePair<int, Arbeit>(_tentId, _aktuell));
+    }
+
     public sealed record Stand(
         bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete);
+        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete, Arbeit? InArbeit = null);
 
     // Die Abluft hat einen Port, aber zwei Grenzen: jede ist hier eine eigene Rolle (eigener Wert, eigener Merker).
     private static readonly string[] Rollen =
@@ -94,7 +144,7 @@ public sealed class TrocknungSteuerungService
 
         return new Stand(
             trocknung is not null, einstellung.Betrieb, erreichbar, trocknung?.Tag, geplant, etappeName,
-            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete);
+            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete, AktuelleArbeit(tentId));
     }
 
     private async Task<TrocknungZiel.Wunsch> WunschAsync(string rolle, TrocknungZiel.Port port, double? planGrenze, CancellationToken ct)

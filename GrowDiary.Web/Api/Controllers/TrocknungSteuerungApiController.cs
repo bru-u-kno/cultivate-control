@@ -71,10 +71,16 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         if (abluftFolgt && !zuordnung.ContainsKey(TrocknungZiel.RolleAbluft))
             return BadRequestError("kein_port", "Der Abluft ist noch kein Port zugeordnet.");
 
+        // Solange der Vorgang läuft, sieht jede Seite (auch die anderer Benutzer) im Stand „inArbeit“ mit der Phase.
+        using var arbeit = _dienst.ArbeitBeginnen(tentId, request.ClientId);
         _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt, abluftFolgt));
         // Sofort nachziehen, nicht erst im nächsten Takt: Wer „Regeln“ einschaltet, will das Ergebnis sehen.
+        arbeit.Phase(TrocknungSteuerungService.PhaseAbgleichen);
         await _dienst.AbgleichenAsync(tentId, ct);
-        return Ok(Dto(await _dienst.StandAsync(tentId, ct)));
+        arbeit.Phase(TrocknungSteuerungService.PhasePruefen);
+        var stand = await _dienst.StandAsync(tentId, ct);
+        // Die Antwort gilt erst nach dem Ende: sie meldet „fertig“, nicht „in Arbeit“.
+        return Ok(Dto(stand with { InArbeit = null }));
     }
 
     /// <summary>
@@ -96,7 +102,8 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         s.Trocknet, s.Betrieb, s.PortsErreichbar, s.Tag, s.TageGeplant, s.Etappe, s.TempMin, s.TempMax, s.FeuchteMin, s.FeuchteMax,
         s.Geraete.Select(g => new TrocknungSteuerungGeraetDto(
             g.Rolle, g.PortName, g.Folgt, g.Modus, g.WertAmGeraet, g.Einheit, g.PlanWert, g.Urteil, g.Vorher,
-            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null)).ToList());
+            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null)).ToList(),
+        s.InArbeit is { } a ? new TrocknungArbeitDto(a.Phase, DateTime.SpecifyKind(a.SeitUtc, DateTimeKind.Utc).ToString("O"), a.ClientId) : null);
 }
 
 public sealed class TrocknungSteuerungRequest
@@ -114,6 +121,9 @@ public sealed class TrocknungSteuerungRequest
     /// Folgen die Luftfeuchte- und die Temperatur-Obergrenze am Abluft-Port dem Plan? Fehlt die Angabe, bleibt der Schalter.
     /// </summary>
     public bool? AbluftFolgt { get; set; }
+
+    /// <summary>Kennung der Seite, die speichert (frei gewählt, nur zum Wiedererkennen): damit weiß jede Seite, ob der Vorgang ihr gehört oder einem anderen Benutzer.</summary>
+    public string? ClientId { get; set; }
 }
 
 public sealed record TrocknungSteuerungGeraetDto(
@@ -122,6 +132,10 @@ public sealed record TrocknungSteuerungGeraetDto(
 
 public sealed record TrocknungSteuerungDto(
     bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-    double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<TrocknungSteuerungGeraetDto> Geraete);
+    double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<TrocknungSteuerungGeraetDto> Geraete,
+    TrocknungArbeitDto? InArbeit);
+
+/// <summary>Ein Vorgang läuft gerade: Phase „speichern“, „abgleichen“ oder „pruefen“; clientId nennt, welche Seite ihn angestoßen hat.</summary>
+public sealed record TrocknungArbeitDto(string Phase, string Seit, string? ClientId);
 
 public sealed record TrocknungZuruecksetzenDto(int Zurueck, int Gescheitert, TrocknungSteuerungDto Stand);

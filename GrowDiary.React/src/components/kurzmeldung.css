@@ -1,0 +1,12 @@
+.v1-kurzmeldung {
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(var(--bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  max-width: 560px; margin-inline: auto;
+  padding: 11px 14px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--hair-2);
+  color: var(--ink); font-size: var(--fs-klein, .85rem); line-height: 1.4;
+  box-shadow: 0 6px 22px color-mix(in srgb, black 45%, transparent);
+}
+.v1-kurzmeldung.tone-ok { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.v1-kurzmeldung.tone-warn { border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
+.v1-kurzmeldung.tone-critical { border-color: var(--danger); }

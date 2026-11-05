@@ -96,7 +96,7 @@ test('Fertig-Erkennung: eintragen, wiederfinden, falsche Eingabe, löschen, Weg 
     await k.getByRole('link', { name: /Unter Steuerung zuordnen/ }).click()
     await expect(page).toHaveURL(/\/steuerung\/trocknung/)
     await expect(page.getByRole('heading', { name: 'Trocknung', level: 1 })).toBeVisible()
-    await expect(page.getByText('Nur melden').first()).toBeVisible()
+    await expect(page.getByText('Nur anzeigen').first()).toBeVisible()
 
     // Die Demo hat kein Home Assistant: Das Blatt sagt es, statt eine leere Auswahl anzubieten, und Speichern ist gesperrt.
     await page.getByRole('button', { name: /Ports bearbeiten/ }).click()
@@ -105,7 +105,7 @@ test('Fertig-Erkennung: eintragen, wiederfinden, falsche Eingabe, löschen, Weg 
     await page.getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page.getByRole('alert')).toHaveCount(0)
 
-    // Schnittstelle: ohne zugeordneten Port lässt sich „Folgt dem Plan“ nicht einschalten, eine unbekannte Betriebsart nicht setzen.
+    // Schnittstelle: ohne zugeordneten Port lässt sich „Gerät einbinden“ (entfeuchterFolgt) nicht einschalten, eine unbekannte Betriebsart nicht setzen.
     const ohnePort = await request.put(`/api/tents/${zeltId}/trocknung/steuerung`, { data: { betrieb: 'regeln', entfeuchterFolgt: true, kuehlungFolgt: false } })
     expect(ohnePort.status()).toBe(400)
     const falsch = await request.put(`/api/tents/${zeltId}/trocknung/steuerung`, { data: { betrieb: 'x', entfeuchterFolgt: false, kuehlungFolgt: false } })

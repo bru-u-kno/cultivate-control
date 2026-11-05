@@ -26,6 +26,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
     private readonly Dictionary<string, HomeAssistantState> _ha = [];
     private readonly List<(string Entity, double Wert)> _gesetzt = [];
     private bool _setzenGelingt = true;
+    private Action? _beimSetzen;
 
     private static readonly IReadOnlyList<TrocknungZiel.Port> Ports =
     [
@@ -74,6 +75,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
             (id, wert, _) =>
             {
                 _gesetzt.Add((id, wert));
+                _beimSetzen?.Invoke();
                 if (_setzenGelingt) ZustandSetzen(id, wert.ToString(System.Globalization.CultureInfo.InvariantCulture), _ha[id].UnitOfMeasurement);
                 return Task.FromResult(_setzenGelingt);
             });
@@ -372,6 +374,75 @@ public sealed class TrocknungSteuerungTests : IDisposable
         Assert.False(_steuerung.Get(_trockenZelt.Id).AbluftFolgt);
         Assert.Empty(_steuerung.Merkers(_trockenZelt.Id));
     }
+
+    [Fact]
+    public async Task Waehrend_des_Speicherns_meldet_der_Stand_den_Vorgang_mit_Phase_und_die_Antwort_meldet_ihn_nicht()
+    {
+        ErnteImTrockenzelt();
+        var dienst = Dienst();
+        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst);
+        TrocknungSteuerungService.Arbeit? mittendrin = null;
+        // Ein anderer Benutzer liest den Stand, während der Fork gerade an den Controller schreibt.
+        _beimSetzen = () => mittendrin ??= dienst.StandAsync(_trockenZelt.Id, default).GetAwaiter().GetResult().InArbeit;
+
+        var anfrage = Anfrage("regeln", true, false);
+        anfrage.ClientId = "seite-a";
+        var stand = Wert(await c.Setzen(_trockenZelt.Id, anfrage, default));
+
+        Assert.NotNull(mittendrin);
+        Assert.Equal(TrocknungSteuerungService.PhaseAbgleichen, mittendrin!.Phase);
+        Assert.Equal("seite-a", mittendrin.ClientId);
+        Assert.Null(stand.InArbeit);                                                        // die Antwort sagt „fertig“
+        Assert.Null((await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit);          // und nichts bleibt hängen
+    }
+
+    [Fact]
+    public async Task Scheitert_der_Vorgang_mit_einem_Fehler_bleibt_keine_Arbeitsmeldung_stehen()
+    {
+        ErnteImTrockenzelt();
+        var dienst = Dienst();
+        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst);
+        _beimSetzen = () => throw new InvalidOperationException("Controller antwortet nicht");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => c.Setzen(_trockenZelt.Id, Anfrage("regeln", true, false), default));
+
+        Assert.Null((await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit);
+    }
+
+    [Fact]
+    public async Task Ein_zweiter_Vorgang_desselben_Zelts_behaelt_seine_Meldung_und_seine_Phase_wenn_der_erste_endet_oder_weiterschaltet()
+    {
+        var dienst = Dienst();
+        var erster = dienst.ArbeitBeginnen(_trockenZelt.Id, "a");
+        await Task.Delay(5);
+        var zweiter = dienst.ArbeitBeginnen(_trockenZelt.Id, "b");
+
+        erster.Phase(TrocknungSteuerungService.PhasePruefen);   // gehört dem ersten, der Eintrag ist aber der des zweiten
+        erster.Dispose();
+
+        var arbeit = (await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit;
+        Assert.Equal("b", arbeit?.ClientId);
+        Assert.Equal(TrocknungSteuerungService.PhaseSpeichern, arbeit?.Phase);
+        zweiter.Phase(TrocknungSteuerungService.PhaseAbgleichen);
+        Assert.Equal(TrocknungSteuerungService.PhaseAbgleichen, (await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit?.Phase);
+        zweiter.Dispose();
+        Assert.Null((await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit);
+    }
+
+    [Theory]
+    [InlineData("s-abc123", "s-abc123")]
+    [InlineData("Seite_7", "Seite_7")]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    [InlineData("mit Leerzeichen", null)]
+    [InlineData("<script>", null)]
+    [InlineData("ä-ö", null)]
+    public void Die_Kennung_der_Seite_ist_kurz_und_aus_einfachen_Zeichen_sonst_wird_sie_verworfen(string? eingabe, string? erwartet)
+        => Assert.Equal(erwartet, TrocknungSteuerungService.ClientIdPruefen(eingabe));
+
+    [Fact]
+    public void Eine_zu_lange_Kennung_wird_verworfen()
+        => Assert.Null(TrocknungSteuerungService.ClientIdPruefen(new string('a', 41)));
 
     [Fact]
     public void Eine_Datenbank_aus_der_Zeit_vor_der_Abluft_bekommt_die_Spalte_nachgeruestet()

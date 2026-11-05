@@ -314,6 +314,10 @@
      Trennung aneinander — „LoesungswechselReservoir oder Naehrloesung …". */
   .v1-switch > span { display: grid; gap: 2px; min-width: 0; }
   .v1-switch strong { font-weight: 500; }
+  .v1-dreher { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: v1-drehen .8s linear infinite; }
+  @keyframes v1-drehen { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .v1-dreher { animation: none; border-right-color: currentColor; } }
+  .v1-switch.is-ausstehend, .v1-switch.is-gesperrt { opacity: .7; }
   .v1-switch small { color: var(--muted); font-size: var(--fs-klein); line-height: 1.4; }
   .v1-form-actions { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
 

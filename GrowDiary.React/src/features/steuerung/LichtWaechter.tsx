@@ -26,6 +26,8 @@ export default function LichtWaechter() {
   const [stand, setStand] = useState<LichtWaechterStand | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [arbeitet, setArbeitet] = useState(false)
+  // Der Haken zeigt die Wahl sofort, bis der Server geantwortet hat.
+  const [aktivWunsch, setAktivWunsch] = useState<boolean | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -93,7 +95,12 @@ export default function LichtWaechter() {
             Prüft 5 Minuten nach jeder Ein- und Ausschaltzeit mit dem Lichtsensor, ob das Licht wirklich so ist wie der Lichtplan
             {stand.plan ? ` (${stand.plan})` : ''}. Jetzt: Sensor {prozent(stand.sensor)}.
           </p>
-          <V1Switch label="Wächter" checked={e.aktiv} onChange={(aktiv) => void speichern({ ...e, aktiv })} />
+          <V1Switch
+            label="Wächter"
+            checked={aktivWunsch ?? e.aktiv}
+            ausstehend={aktivWunsch != null}
+            onChange={(aktiv) => { if (arbeitet) return; setAktivWunsch(aktiv); void speichern({ ...e, aktiv }).finally(() => setAktivWunsch(null)) }}
+          />
 
           <div className="st-feldzeile is-gestapelt">
             <span className="st-etikett">
