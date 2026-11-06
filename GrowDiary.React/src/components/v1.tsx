@@ -44,8 +44,8 @@ export function V1Card({ children, className, tone = 'neutral' }: { children: Re
   return <article className={classNames('v1-card', `tone-${tone}`, className)}>{children}</article>
 }
 
-export function V1Button({ children, onClick, type = 'button', disabled, variant = 'secondary', className, audit }: { children: ReactNode; onClick?: () => void; type?: 'button' | 'submit'; disabled?: boolean; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; className?: string; audit?: string }) {
-  return <button type={type} className={classNames('v1-button', `is-${variant}`, className)} data-audit={audit} disabled={disabled} onClick={onClick}>{children}</button>
+export function V1Button({ children, onClick, type = 'button', disabled, variant = 'secondary', className, audit, ariaLabel }: { children: ReactNode; onClick?: () => void; type?: 'button' | 'submit'; disabled?: boolean; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; className?: string; audit?: string; ariaLabel?: string }) {
+  return <button type={type} className={classNames('v1-button', `is-${variant}`, className)} data-audit={audit} aria-label={ariaLabel} disabled={disabled} onClick={onClick}>{children}</button>
 }
 
 export function V1LinkButton({ to, children, variant = 'secondary', className }: { to: string; children: ReactNode; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; className?: string }) {

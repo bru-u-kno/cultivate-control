@@ -34,7 +34,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
     [
         new("dev-dehumi", "Testport Entfeuchter", "C", 5, "select.dehumi_modus", "number.dehumi_feuchte", "switch.dehumi_feuchte_an", null, null),
         new("dev-clima", "Testport Kühlung", "C", 4, "select.clima_modus", null, null, "number.clima_temp", "switch.clima_temp_an"),
-        new("dev-abluft", "Testport Abluft", "C", 1, "select.abluft_modus", "number.abluft_feuchte", "switch.abluft_feuchte_an", "number.abluft_temp", "switch.abluft_temp_an"),
+        new("dev-abluft", "Testport Abluft", "C", 1, "select.abluft_modus", "number.abluft_feuchte", "switch.abluft_feuchte_an", "number.abluft_temp", "switch.abluft_temp_an", "number.abluft_stufe"),
     ];
 
     public TrocknungSteuerungTests()
@@ -428,6 +428,122 @@ public sealed class TrocknungSteuerungTests : IDisposable
         ZustandSetzen("switch.abluft_feuchte_an", "on");
         ZustandSetzen("number.abluft_temp", bereit ? "24" : "unavailable", bereit ? "°C" : null);
         ZustandSetzen("switch.abluft_temp_an", "on");
+    }
+
+    // ---------------------------------------------------------------- Mindeststufe der Abluft (07.11.2026)
+
+    private void AbluftStufe(string modus, string stufe)
+    {
+        AbluftEinrichten(modus);
+        ZustandSetzen("number.abluft_stufe", stufe);
+    }
+
+    private async Task<TrocknungSteuerungService> AbluftLaeuft(int minStufe, bool folgt = true, string betrieb = "regeln")
+    {
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung(betrieb, false, false, folgt, minStufe));
+        await Task.CompletedTask;
+        return Dienst();
+    }
+
+    [Fact]
+    public async Task Liegt_die_Abluft_unter_der_Mindeststufe_hebt_der_Fork_sie_an_und_nie_darueber()
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe("On", "1");
+        var dienst = await AbluftLaeuft(2);
+
+        Assert.True(await dienst.AbluftStufeAsync(_trockenZelt.Id, default));
+        Assert.Equal([("number.abluft_stufe", 2.0)], _gesetzt);
+        Assert.Equal("On", _ha["select.abluft_modus"].State); // der Modus bleibt
+
+        // Läuft sie schon höher, bleibt sie dort: der Fork nimmt eine Stufe nie zurück.
+        ZustandSetzen("number.abluft_stufe", "5");
+        Assert.False(await dienst.AbluftStufeAsync(_trockenZelt.Id, default));
+        Assert.Single(_gesetzt);
+
+        // Genau auf der Mindeststufe: nichts zu tun.
+        ZustandSetzen("number.abluft_stufe", "2");
+        Assert.False(await dienst.AbluftStufeAsync(_trockenZelt.Id, default));
+        Assert.Single(_gesetzt);
+    }
+
+    [Theory]
+    [InlineData("Off")]
+    [InlineData("Auto")]
+    public async Task Steht_der_Port_nicht_auf_On_schreibt_der_Fork_keine_Stufe(string modus)
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe(modus, "0");
+        var dienst = await AbluftLaeuft(2);
+
+        Assert.False(await dienst.AbluftStufeAsync(_trockenZelt.Id, default));
+        Assert.Empty(_gesetzt);
+        Assert.Equal(modus, _ha["select.abluft_modus"].State);
+    }
+
+    [Fact]
+    public async Task Ohne_Mindeststufe_nicht_eingebunden_oder_nur_melden_schreibt_der_Fork_nichts()
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe("On", "0");
+
+        Assert.False(await (await AbluftLaeuft(0)).AbluftStufeAsync(_trockenZelt.Id, default));            // keine Mindeststufe
+        Assert.False(await (await AbluftLaeuft(2, folgt: false)).AbluftStufeAsync(_trockenZelt.Id, default)); // nicht eingebunden
+        Assert.False(await (await AbluftLaeuft(2, betrieb: "melden")).AbluftStufeAsync(_trockenZelt.Id, default));
+        Assert.Empty(_gesetzt);
+    }
+
+    [Fact]
+    public async Task Lehnt_das_Geraet_die_Stufe_ab_meldet_der_Stand_stufeNichtAnhebbar()
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe("On", "1");
+        _setzenGelingt = false;
+        var dienst = await AbluftLaeuft(2);
+
+        Assert.False(await dienst.AbluftStufeAsync(_trockenZelt.Id, default));
+        var abluft = (await dienst.StandAsync(_trockenZelt.Id, default)).Geraete.First(g => g.Rolle == "abluft-feuchte");
+        Assert.Equal("stufeNichtAnhebbar", abluft.Urteil);
+        Assert.Equal(2, abluft.Stufe!.Mindest);
+    }
+
+    [Fact]
+    public async Task Der_Stand_nennt_Mindeststufe_Stufe_jetzt_und_das_Urteil()
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe("On", "3");
+        var dienst = await AbluftLaeuft(2);
+
+        var stand = await dienst.StandAsync(_trockenZelt.Id, default);
+        var abluft = stand.Geraete.First(g => g.Rolle == "abluft-feuchte");
+        Assert.Equal(2, stand.AbluftMinStufe);
+        Assert.Equal("haeltStufe", abluft.Urteil);
+        Assert.Equal((2, 3.0, "haelt"), (abluft.Stufe!.Mindest, abluft.Stufe.Jetzt, abluft.Stufe.Zustand));
+
+        ZustandSetzen("select.abluft_modus", "Off");
+        Assert.Equal("stufePortNichtOn", (await dienst.StandAsync(_trockenZelt.Id, default)).Geraete.First(g => g.Rolle == "abluft-feuchte").Urteil);
+    }
+
+    [Fact]
+    public async Task Die_Mindeststufe_wird_ueber_die_Schnittstelle_gesetzt_geprueft_und_bleibt_wenn_die_Angabe_fehlt()
+    {
+        ErnteImTrockenzelt();
+        AbluftStufe("On", "3");
+        var c = Controller();
+
+        var stand = Wert(await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftFolgt = true, AbluftMinStufe = 2 }, default));
+        Assert.Equal(2, stand.AbluftMinStufe);
+        Assert.Equal(2, _steuerung.Get(_trockenZelt.Id).AbluftMinStufe);
+
+        // Eine Anfrage ohne die Angabe lässt sie stehen; 11 und −1 werden abgewiesen.
+        stand = Wert(await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln" }, default));
+        Assert.Equal(2, stand.AbluftMinStufe);
+        Assert.IsType<BadRequestObjectResult>((await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftMinStufe = 11 }, default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftMinStufe = -1 }, default)).Result);
+
+        // 0 heißt „keine“.
+        stand = Wert(await c.Setzen(_trockenZelt.Id, new TrocknungSteuerungRequest { Betrieb = "regeln", AbluftMinStufe = 0 }, default));
+        Assert.Equal(0, stand.AbluftMinStufe);
     }
 
     [Fact]

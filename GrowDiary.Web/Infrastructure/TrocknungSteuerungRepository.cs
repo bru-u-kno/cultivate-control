@@ -16,7 +16,7 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
     public const string BetriebMelden = "melden";
     public const string BetriebRegeln = "regeln";
 
-    public sealed record Einstellung(string Betrieb, bool EntfeuchterFolgt, bool KuehlungFolgt, bool AbluftFolgt = false)
+    public sealed record Einstellung(string Betrieb, bool EntfeuchterFolgt, bool KuehlungFolgt, bool AbluftFolgt = false, int AbluftMinStufe = 0)
     {
         public static Einstellung Standard { get; } = new(BetriebMelden, false, false);
 
@@ -53,6 +53,7 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
                 EntfeuchterFolgt INTEGER NOT NULL,
                 KuehlungFolgt INTEGER NOT NULL,
                 AbluftFolgt INTEGER NOT NULL DEFAULT 0,
+                AbluftMinStufe INTEGER NOT NULL DEFAULT 0,
                 UpdatedAtUtc TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS ForkTrocknungMerker (
@@ -81,17 +82,24 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
             ergaenzen.CommandText = "ALTER TABLE ForkTrocknungSteuerung ADD COLUMN AbluftFolgt INTEGER NOT NULL DEFAULT 0;";
             ergaenzen.ExecuteNonQuery();
         }
+
+        if (!vorhanden.Contains("AbluftMinStufe", StringComparer.OrdinalIgnoreCase))
+        {
+            using var stufe = connection.CreateCommand();
+            stufe.CommandText = "ALTER TABLE ForkTrocknungSteuerung ADD COLUMN AbluftMinStufe INTEGER NOT NULL DEFAULT 0;";
+            stufe.ExecuteNonQuery();
+        }
     }
 
     public Einstellung Get(int tentId)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt FROM ForkTrocknungSteuerung WHERE TentId = $tentId;";
+        command.CommandText = "SELECT Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe FROM ForkTrocknungSteuerung WHERE TentId = $tentId;";
         command.Parameters.AddWithValue("$tentId", tentId);
         using var reader = command.ExecuteReader();
         return reader.Read()
-            ? new Einstellung(reader.GetString(0), reader.GetInt32(1) != 0, reader.GetInt32(2) != 0, reader.GetInt32(3) != 0)
+            ? new Einstellung(reader.GetString(0), reader.GetInt32(1) != 0, reader.GetInt32(2) != 0, reader.GetInt32(3) != 0, reader.GetInt32(4))
             : Einstellung.Standard;
     }
 
@@ -100,16 +108,18 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ForkTrocknungSteuerung (TentId, Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, UpdatedAtUtc)
-            VALUES ($tentId, $betrieb, $e, $k, $a, $jetzt)
+            INSERT INTO ForkTrocknungSteuerung (TentId, Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe, UpdatedAtUtc)
+            VALUES ($tentId, $betrieb, $e, $k, $a, $s, $jetzt)
             ON CONFLICT(TentId) DO UPDATE SET Betrieb = excluded.Betrieb, EntfeuchterFolgt = excluded.EntfeuchterFolgt,
-                KuehlungFolgt = excluded.KuehlungFolgt, AbluftFolgt = excluded.AbluftFolgt, UpdatedAtUtc = excluded.UpdatedAtUtc;
+                KuehlungFolgt = excluded.KuehlungFolgt, AbluftFolgt = excluded.AbluftFolgt, AbluftMinStufe = excluded.AbluftMinStufe,
+                UpdatedAtUtc = excluded.UpdatedAtUtc;
             """;
         command.Parameters.AddWithValue("$tentId", tentId);
         command.Parameters.AddWithValue("$betrieb", einstellung.Betrieb);
         command.Parameters.AddWithValue("$e", einstellung.EntfeuchterFolgt ? 1 : 0);
         command.Parameters.AddWithValue("$k", einstellung.KuehlungFolgt ? 1 : 0);
         command.Parameters.AddWithValue("$a", einstellung.AbluftFolgt ? 1 : 0);
+        command.Parameters.AddWithValue("$s", einstellung.AbluftMinStufe);
         command.Parameters.AddWithValue("$jetzt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
     }

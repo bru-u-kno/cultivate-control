@@ -46,7 +46,8 @@ public static partial class TrocknungZiel
         string? FeuchteWertEntity,
         string? FeuchteAktivEntity,
         string? TempWertEntity,
-        string? TempAktivEntity);
+        string? TempAktivEntity,
+        string? StufeEntity = null);
 
     [GeneratedRegex(@"^ac_infinity_(?<controller>[0-9A-Za-z]+)_port_(?<nr>\d+)_(?<schluessel>[A-Za-z0-9]+)$")]
     private static partial Regex KennungMuster();
@@ -75,7 +76,9 @@ public static partial class TrocknungZiel
             ports.Add(new Port(
                 gruppe.Key, name, controller, nummer, modus,
                 je.GetValueOrDefault("devHh"), je.GetValueOrDefault("activeHh"),
-                je.GetValueOrDefault("devHt"), je.GetValueOrDefault("activeHt")));
+                je.GetValueOrDefault("devHt"), je.GetValueOrDefault("activeHt"),
+                // „Einschaltleistung“: die Lüfterstufe, wenn der Port auf On steht.
+                je.GetValueOrDefault("onSpead")));
         }
 
         return ports.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToList();

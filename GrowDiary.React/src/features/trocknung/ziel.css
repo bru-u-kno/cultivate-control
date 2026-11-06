@@ -29,3 +29,5 @@
 .zj-schritte li.is-jetzt::before { content: "● "; color: var(--warn); }
 .zj-erklaerung { margin: 8px 0 4px; font-size: .85rem; line-height: 1.45; color: var(--muted); }
 .zj-erklaerung b { color: var(--ink); font-weight: 600; }
+.zj-stufe { display: flex; align-items: center; gap: 10px; }
+.zj-stufe b { min-width: 2ch; text-align: center; font-size: 1.1rem; }

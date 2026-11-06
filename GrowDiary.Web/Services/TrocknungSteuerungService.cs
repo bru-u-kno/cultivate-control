@@ -45,7 +45,10 @@ public sealed class TrocknungSteuerungService
 
     public sealed record Geraet(
         string Rolle, string? PortName, bool Folgt, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert,
-        string Urteil, double? Vorher, DateTime? ZuletztGesetztUtc, SchaltStand? Schalten = null);
+        string Urteil, double? Vorher, DateTime? ZuletztGesetztUtc, SchaltStand? Schalten = null, StufeStand? Stufe = null);
+
+    /// <summary>Die Abluft mit Mindeststufe (nur bei der Abluft, solange sie eingebunden ist und eine Mindeststufe gilt).</summary>
+    public sealed record StufeStand(int Mindest, double? Jetzt, string Zustand, string? Modus, bool Gescheitert);
 
     /// <summary>Der Zustand des Entfeuchters, den der Fork schaltet (nur Rolle Entfeuchter): Schwellen, Luftfeuchte, letzter Schaltvorgang.</summary>
     public sealed record SchaltStand(
@@ -103,7 +106,8 @@ public sealed class TrocknungSteuerungService
 
     public sealed record Stand(
         bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
-        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete, Arbeit? InArbeit = null);
+        double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<Geraet> Geraete, Arbeit? InArbeit = null,
+        int AbluftMinStufe = 0);
 
     // Die Abluft hat einen Port, aber zwei Grenzen: jede ist hier eine eigene Rolle (eigener Wert, eigener Merker).
     private static readonly string[] Rollen =
@@ -156,12 +160,22 @@ public sealed class TrocknungSteuerungService
             }
 
             var wunsch = await WunschAsync(rolle, port, planGrenze, ct);
-            geraete.Add(new Geraet(rolle, port.Name, folgt, wunsch.Modus, wunsch.Jetzt, wunsch.Einheit, wunsch.Plan ?? planGrenze, wunsch.Urteil, m?.Vorher, m?.GesetztAtUtc));
+            StufeStand? stufeStand = null;
+            var urteil = wunsch.Urteil;
+            if (TrocknungZiel.PortRolle(rolle) == TrocknungZiel.RolleAbluft && folgt && einstellung.AbluftMinStufe > 0)
+            {
+                var lage = await StufeLageAsync(port, ct);
+                stufeStand = StufeStandAus(tentId, einstellung.AbluftMinStufe, lage);
+                // Im Modus On und Off gibt es keine Auslöser: dort gilt die Mindeststufe. Im Modus Auto bleibt das Urteil der Grenzen.
+                if (!string.Equals(lage.Modus, "Auto", StringComparison.OrdinalIgnoreCase)) urteil = StufeUrteil(stufeStand);
+            }
+
+            geraete.Add(new Geraet(rolle, port.Name, folgt, wunsch.Modus, wunsch.Jetzt, wunsch.Einheit, wunsch.Plan ?? planGrenze, urteil, m?.Vorher, m?.GesetztAtUtc, null, stufeStand));
         }
 
         return new Stand(
             trocknung is not null, einstellung.Betrieb, erreichbar, trocknung?.Tag, geplant, etappeName,
-            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete, AktuelleArbeit(tentId));
+            band?.TempMin, band?.TempMax, band?.FeuchteMin, band?.FeuchteMax, geraete, AktuelleArbeit(tentId), einstellung.AbluftMinStufe);
     }
 
     private async Task<TrocknungZiel.Wunsch> WunschAsync(string rolle, TrocknungZiel.Port port, double? planGrenze, CancellationToken ct)
@@ -176,9 +190,11 @@ public sealed class TrocknungSteuerungService
     // ------------------------------------------------------------------ Entfeuchter schalten
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (DateTime Utc, string Aktion)> _zuletztGeschaltet = new();
+    // Schlüssel: Zelt * 10 + Art (1 = Entfeuchter, 2 = Abluft), damit sich beide Störungen nicht gegenseitig zurücksetzen.
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _problemZyklen = new();
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _letzterSchaltFehler = new();
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _problemGemeldet = new();
+    private static int Schluessel(int tentId, int art) => tentId * 10 + art;
 
     /// <summary>Wie viele Läufe (je eine Minute) ein Problem dauern muss, bis der Fork es per Push meldet.</summary>
     public const int ProblemBisPush = 10;
@@ -265,26 +281,97 @@ public sealed class TrocknungSteuerungService
         return false;
     }
 
-    private void Erholt(int tentId)
+    private void Erholt(int tentId, int art = 1)
     {
-        _problemZyklen.TryRemove(tentId, out _);
-        _problemGemeldet.TryRemove(tentId, out _);
+        _problemZyklen.TryRemove(Schluessel(tentId, art), out _);
+        _problemGemeldet.TryRemove(Schluessel(tentId, art), out _);
     }
 
-    private async Task ProblemAsync(int tentId, string text, CancellationToken ct)
+    private async Task ProblemAsync(int tentId, string text, CancellationToken ct, int art = 1)
     {
-        var zyklen = _problemZyklen.AddOrUpdate(tentId, 1, (_, n) => n + 1);
-        if (zyklen < ProblemBisPush || _problemGemeldet.GetValueOrDefault(tentId) || _bereiche is null) return;
-        _problemGemeldet[tentId] = true;
+        var schluessel = Schluessel(tentId, art);
+        var zyklen = _problemZyklen.AddOrUpdate(schluessel, 1, (_, n) => n + 1);
+        if (zyklen < ProblemBisPush || _problemGemeldet.GetValueOrDefault(schluessel) || _bereiche is null) return;
+        _problemGemeldet[schluessel] = true;
         try
         {
             using var bereich = _bereiche.CreateScope();
-            await bereich.ServiceProvider.GetRequiredService<NotificationService>().SendAsync(NotificationCategory.System, "Trockenzelt: Entfeuchter wird nicht geschaltet", text, ct, trotzRuhezeit: true);
+            await bereich.ServiceProvider.GetRequiredService<NotificationService>().SendAsync(NotificationCategory.System, art == 2 ? "Trockenzelt: Abluft unter der Mindeststufe" : "Trockenzelt: Entfeuchter wird nicht geschaltet", text, ct, trotzRuhezeit: true);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Trocknung Zelt {Zelt}: Push zur Störung des Entfeuchters nicht gesendet.", tentId);
         }
+    }
+
+    // ------------------------------------------------------------------ Mindeststufe der Abluft
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _letzterStufeFehler = new();
+
+    private sealed record StufeLage(string? Modus, double? Stufe);
+
+    private async Task<StufeLage> StufeLageAsync(TrocknungZiel.Port port, CancellationToken ct)
+    {
+        var modus = (await _ziel.ZustandAsync(port.ModusEntity, ct))?.State;
+        double? stufe = port.StufeEntity is null ? null : Zahlenlesen.Maschine((await _ziel.ZustandAsync(port.StufeEntity, ct))?.State);
+        return new StufeLage(modus, stufe);
+    }
+
+    private StufeStand StufeStandAus(int tentId, int mindest, StufeLage lage)
+    {
+        var e = TrocknungAbluftStufe.Entscheide(mindest, lage.Modus, lage.Stufe);
+        return new StufeStand(mindest, lage.Stufe, e.Zustand, lage.Modus, _letzterStufeFehler.GetValueOrDefault(tentId));
+    }
+
+    private static string StufeUrteil(StufeStand s) => s.Gescheitert ? "stufeNichtAnhebbar" : s.Zustand switch
+    {
+        TrocknungAbluftStufe.ZustandHaelt => "haeltStufe",
+        TrocknungAbluftStufe.ZustandHebtAn => "hebtStufeAn",
+        TrocknungAbluftStufe.ZustandKeinWert => "stufeKeinWert",
+        _ => "stufePortNichtOn",
+    };
+
+    /// <summary>
+    /// Ein Lauf (jede Minute): Liegt die Abluft unter der Mindeststufe, hebt der Fork sie auf die Mindeststufe an. Nur in „Regeln“, nur eingebunden,
+    /// nur im Modus On, nur während eine Charge trocknet. Nach oben und am Modus ändert er nichts. Gibt zurück, ob geschrieben wurde.
+    /// </summary>
+    public async Task<bool> AbluftStufeAsync(int tentId, CancellationToken ct)
+    {
+        const int art = 2;
+        var einstellung = _steuerung.Get(tentId);
+        if (einstellung.Betrieb != TrocknungSteuerungRepository.BetriebRegeln || !einstellung.AbluftFolgt || einstellung.AbluftMinStufe <= 0) { Erholt(tentId, art); return false; }
+        if (DryingWindow.StandFor(_grows, _ernten, tentId, DateTime.Today) is null) { Erholt(tentId, art); return false; }
+        if (!_ports.Get(tentId).TryGetValue(TrocknungZiel.RolleAbluft, out var deviceId)) return false;
+        var ports = await _ziel.PortsAsync(frisch: false, ct);
+        if (ports?.FirstOrDefault(p => p.DeviceId == deviceId) is not { } port) { await ProblemAsync(tentId, "Home Assistant liefert den Port der Abluft nicht.", ct, art); return false; }
+
+        var lage = await StufeLageAsync(port, ct);
+        var e = TrocknungAbluftStufe.Entscheide(einstellung.AbluftMinStufe, lage.Modus, lage.Stufe);
+        // Im Modus Auto regeln die Grenzen der Abluft, nicht die Stufe: dort gibt es nichts zu sichern und nichts zu melden.
+        if (string.Equals(lage.Modus, "Auto", StringComparison.OrdinalIgnoreCase)) { _letzterStufeFehler[tentId] = false; Erholt(tentId, art); return false; }
+        if (e.Aktion == TrocknungAbluftStufe.Aktion.Nichts)
+        {
+            _letzterStufeFehler[tentId] = false;
+            if (e.Zustand is TrocknungAbluftStufe.ZustandPortNichtOn or TrocknungAbluftStufe.ZustandKeinWert)
+                await ProblemAsync(tentId, e.Zustand == TrocknungAbluftStufe.ZustandPortNichtOn
+                    ? $"Der Port „{port.Name}“ steht auf {lage.Modus ?? "unbekannt"}: Die Abluft läuft nicht und die Mindeststufe {einstellung.AbluftMinStufe} wirkt nicht. Stelle den Port am Controller auf On."
+                    : "Die Stufe der Abluft lässt sich nicht lesen: Die Mindeststufe kann nicht geprüft werden.", ct, art);
+            else Erholt(tentId, art);
+            return false;
+        }
+
+        if (port.StufeEntity is { } entity && await _ziel.SetzeZahlAsync(entity, einstellung.AbluftMinStufe, ct))
+        {
+            _letzterStufeFehler[tentId] = false;
+            Erholt(tentId, art);
+            _logger.LogInformation("Trocknung Zelt {Zelt}: Abluft {Port} auf Stufe {Neu} angehoben (war {Alt}, Mindeststufe {Min}).", tentId, port.Name, einstellung.AbluftMinStufe, lage.Stufe, einstellung.AbluftMinStufe);
+            return true;
+        }
+
+        _letzterStufeFehler[tentId] = true;
+        _logger.LogWarning("Trocknung Zelt {Zelt}: Abluft {Port} ließ sich nicht auf Stufe {Neu} anheben.", tentId, port.Name, einstellung.AbluftMinStufe);
+        await ProblemAsync(tentId, $"Die Abluft „{port.Name}“ ließ sich nicht auf die Mindeststufe {einstellung.AbluftMinStufe} anheben. Die Cloud des Controllers hat den Befehl nicht angenommen.", ct, art);
+        return false;
     }
 
     /// <summary>Anzahl der Grenzen, die dieser Durchlauf an Home Assistant geschrieben hat.</summary>

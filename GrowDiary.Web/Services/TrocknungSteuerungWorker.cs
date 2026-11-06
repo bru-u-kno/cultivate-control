@@ -57,6 +57,7 @@ public sealed class TrocknungSteuerungWorker : BackgroundService
         foreach (var zelt in repository.ZelteImBetrieb(TrocknungSteuerungRepository.BetriebRegeln))
         {
             if (await dienst.SchaltenAsync(zelt, ct)) geschrieben++;
+            if (await dienst.AbluftStufeAsync(zelt, ct)) geschrieben++;
             if (grenzen) geschrieben += (await dienst.AbgleichenAsync(zelt, ct)).Geschrieben;
         }
 

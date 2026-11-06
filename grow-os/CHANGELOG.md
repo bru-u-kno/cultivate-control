@@ -5,6 +5,18 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.336
+
+**Trocknung: Die Abluft läuft nie unter eine Mindeststufe, die du selbst einstellst.**
+
+- **Mindeststufe:** In Steuerung › Trocknung hat die Karte „Abluft“ eine Zeile „Mindeststufe“ mit Minus und Plus (0 bis 10; 0 heißt: keine Mindeststufe, so ändert sich für niemanden etwas, der sie nicht einstellt). Die Steuerung prüft die Abluft jede Minute. Läuft sie unter der Mindeststufe, hebt sie sie auf die Mindeststufe an. Läuft sie höher, bleibt sie dort: Eine höhere Stufe nimmt die Steuerung nie zurück.
+- **Nur im Modus On:** Die Stufe gehört zum Modus On des Ports. Den Modus ändert die Steuerung nie. Steht der Port auf Aus oder Auto, kann sie die Stufe nicht halten: Die Karte zeigt „Port steht auf Aus“ und sagt, dass der Port am Controller auf On gehört. Hält die Störung zehn Minuten an, kommt einmal eine Push-Meldung.
+- **Karte „Abluft“:** Im Modus On gibt es keine Grenzen, an die sich die Abluft halten könnte. Statt der vier Zeilen „Luftfeuchte/Temperatur: Planwert/am Gerät“ (dort stand bei der Abluft immer „–“) zeigt die Karte die Mindeststufe und „Jetzt: Stufe 3“. Im Modus Auto bleibt alles wie bisher.
+- **Text:** Oben auf der Seite stand „alle 5 Minuten“. Das gilt für die Grenzwerte von Kühlung und Abluft; den Entfeuchter schaltet die Steuerung jede Minute, die Mindeststufe prüft sie ebenfalls jede Minute.
+- **Bedienelemente:** Die Knöpfe „−“ und „+“ sagen Bildschirmlesern „Eine Stufe weniger“ und „Eine Stufe mehr“ (der gemeinsame Knopf kennt jetzt eine Beschriftung für Hilfsprogramme).
+- **Schnittstelle:** Das Speichern der Trocknungs-Steuerung nimmt `abluftMinStufe` (0 bis 10, sonst Fehler `stufe_ungueltig`; fehlt die Angabe, bleibt der gespeicherte Wert). Der Stand nennt `abluftMinStufe` und bei der Abluft unter `stufe` die Mindeststufe, die Stufe jetzt, den Zustand (`haelt`, `hebtAn`, `portNichtOn`, `keinWert`) und den Modus. Neue Urteile: `haeltStufe`, `hebtStufeAn`, `stufeNichtAnhebbar`, `stufePortNichtOn`, `stufeKeinWert`.
+- **Getestet:** Anheben nur unter der Mindeststufe (an den Rändern geprüft: darunter, genau darauf, darüber); keine Stufe bei Aus, Auto und anderen Modi; nichts ohne Mindeststufe, ohne Haken oder im Modus „Nur anzeigen“; ein abgelehnter Befehl wird gemeldet und erneut versucht; Prüfung der Schnittstelle (0 bis 10, fehlende Angabe bleibt); Bedienung mit Plus und Minus bis 0.
+
 ## 2.0.0-cc.335
 
 **Trocknung: Der Fork schaltet den Entfeuchter am Trockenzelt selbst ein und aus — nach der Luftfeuchte im Zelt und den Werten des Trocknungsplans, ohne dass jemand von Hand schalten muss.**

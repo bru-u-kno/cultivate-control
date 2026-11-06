@@ -11,7 +11,7 @@ import { PortBlatt } from './PortBlatt'
 import {
   ARBEIT_SCHRITTE, ARBEIT_TITEL, betriebText, einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, ROLLE, SCHALTER, schalterVon,
   wuerdeSchalten, wuerdeSchreiben, zahl,
-  type ArbeitPhase, type Betrieb, type Folgt, type Schalter, type SteuerungGeraet, type SteuerungSchalten, type TrocknungSteuerung,
+  type ArbeitPhase, type Betrieb, type Folgt, type Schalter, type SteuerungGeraet, type SteuerungSchalten, type SteuerungStufe, type TrocknungSteuerung,
 } from './steuerung-text'
 
 /**
@@ -99,7 +99,7 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   const meldeKurz = useCallback((text: string, ton: KurzmeldungTon = 'ok') => setKurz((alt) => ({ text, ton, nr: (alt?.nr ?? 0) + 1 })), [])
   const kurzSchliessen = useCallback(() => setKurz(null), [])
 
-  const setzen = async (betrieb: Betrieb, folgt: Folgt, schalter: Schalter | null) => {
+  const setzen = async (betrieb: Betrieb, folgt: Folgt, schalter: Schalter | null, minStufe?: number) => {
     if (zeltId == null) return
     const bezug: Schalter | 'betrieb' = schalter ?? 'betrieb'
     setVorgang({ schalter: bezug, betrieb, an: schalter ? folgt[schalter] : null })
@@ -108,7 +108,7 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
     try {
       const neu = await apiFetch<TrocknungSteuerung>(`/api/tents/${zeltId}/trocknung/steuerung`, {
         method: 'PUT',
-        body: JSON.stringify({ betrieb, entfeuchterFolgt: folgt.entfeuchter, kuehlungFolgt: folgt.kuehlung, abluftFolgt: folgt.abluft, clientId: kennung }),
+        body: JSON.stringify({ betrieb, entfeuchterFolgt: folgt.entfeuchter, kuehlungFolgt: folgt.kuehlung, abluftFolgt: folgt.abluft, ...(minStufe != null ? { abluftMinStufe: minStufe } : {}), clientId: kennung }),
       })
       ladeNr.current++
       setStand(neu)
@@ -116,7 +116,9 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
       const ziel = schalter ? ROLLE[schalter === 'abluft' ? 'abluft-feuchte' : schalter].titel : null
       const status = schalter ? plakette(kopfZeile(zeilenNeu), neu.betrieb).text : null
       // Nur sagen, was feststeht: gespeichert und abgeglichen — ob am Gerät etwas geschrieben wurde, zeigt die Plakette.
-      const text = schalter
+      const text = minStufe != null
+        ? (minStufe === 0 ? 'Keine Mindeststufe für die Abluft.' : `Mindeststufe der Abluft: Stufe ${minStufe}. ${status ?? ''}`.trim())
+        : schalter
         ? (folgt[schalter]
           ? `${ziel} ist eingebunden — ${status}.`
           : `${ziel} ist nicht mehr eingebunden. ${ohneEinbindungText(zeilenNeu)}`)
@@ -267,7 +269,7 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
               Wie arbeitet die Steuerung?
               <small>
                 {regeln
-                  ? 'Die Steuerung stellt die eingebundenen Geräte auf den Trocknungsplan und hält sie dort — beim Start, bei jedem Etappenwechsel und alle 5 Minuten.'
+                  ? 'Die Steuerung stellt die eingebundenen Geräte auf den Trocknungsplan und hält sie dort — beim Start, bei jedem Etappenwechsel und alle 5 Minuten. Den Entfeuchter schaltet sie jede Minute, die Mindeststufe der Abluft prüft sie jede Minute.'
                   : 'Die Steuerung ändert nichts. Sie zeigt nur, was sie an den eingebundenen Geräten einstellen würde.'}
               </small>
             </span>
@@ -294,6 +296,8 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
               eigenerVorgang={vorgang?.schalter === schalter ? { phase } : null}
               band={band?.schalter === schalter ? band : null}
               gesperrt={gesperrt}
+              minStufe={stand.abluftMinStufe ?? 0}
+              onStufe={(n) => void setzen(stand.betrieb, folgt, 'abluft', n)}
               onFolgt={(an) => {
                 const neu = { ...folgt, [schalter]: an }
                 if (regeln && an) anfrage('regeln', neu, schalter)
@@ -362,6 +366,28 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
   )
 }
 
+/** Die Abluft mit Mindeststufe: Stepper für die gewählte Stufe und die Stufe jetzt. */
+function StufeZeilen({ mindest, stufe, gesperrt, onStufe }: { mindest: number; stufe: SteuerungStufe | null; gesperrt: boolean; onStufe: (n: number) => void }) {
+  return (
+    <div data-audit="trocknung-stufe">
+      <div className="st-feldzeile">
+        <span className="st-etikett">Mindeststufe<small>Die Abluft läuft nie darunter. 0 = keine Mindeststufe.</small></span>
+        <span className="zj-stufe">
+          <V1Button variant="ghost" ariaLabel="Eine Stufe weniger" disabled={gesperrt || mindest <= 0} onClick={() => onStufe(mindest - 1)}>−</V1Button>
+          <b data-audit="trocknung-stufe-wert">{mindest}</b>
+          <V1Button variant="ghost" ariaLabel="Eine Stufe mehr" disabled={gesperrt || mindest >= 10} onClick={() => onStufe(mindest + 1)}>+</V1Button>
+        </span>
+      </div>
+      {stufe && (
+        <div className="st-feldzeile">
+          <span className="st-etikett">Jetzt<small>{stufe.modus === 'On' ? 'Port steht auf On' : stufe.modus ? `Port steht auf ${stufe.modus === 'Off' ? 'Aus' : stufe.modus}` : 'Modus nicht lesbar'}</small></span>
+          <span className="st-nurlesen">{stufe.jetzt == null ? '–' : `Stufe ${zahl(stufe.jetzt)}`}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Die drei Zeilen des Entfeuchters, den der Fork schaltet: Schwellen, Luftfeuchte jetzt, letzter Schaltvorgang. */
 function SchaltZeilen({ s }: { s: SteuerungSchalten }) {
   const seit = s.zuletztUtc ? new Date(s.zuletztUtc).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : null
@@ -388,7 +414,7 @@ function SchaltZeilen({ s }: { s: SteuerungSchalten }) {
  * Eine Karte je Gerät. Die Abluft hat zwei Zeilen (Feuchte- und Temperatur-Grenze), die anderen eine.
  * Der Haken zeigt die Wahl des Nutzers sofort; solange ein Vorgang läuft, sagt die Karte, was gerade passiert.
  */
-function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaetigung, eigenerVorgang, band, gesperrt, onFolgt }: {
+function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaetigung, eigenerVorgang, band, gesperrt, onFolgt, minStufe, onStufe }: {
   schalter: Schalter
   zeilen: SteuerungGeraet[]
   betrieb: Betrieb
@@ -398,6 +424,9 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
   band: Band | null
   gesperrt: boolean
   onFolgt: (an: boolean) => void
+  /** Mindeststufe der Abluft (nur bei der Abluft von Belang). */
+  minStufe: number
+  onStufe: (stufe: number) => void
 }) {
   // Plakette und Erklärung zeigen den Zustand, den der Haken jetzt wählt — nicht den, den der Server noch hat.
   const angezeigt = zeilen.map((z) => ({ ...z, folgt: eingebunden }))
@@ -439,7 +468,7 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
             label="Gerät einbinden"
             checked={eingebunden}
             onChange={onFolgt}
-            hint={einbindenHinweis(schalter, eingebunden, betrieb)}
+            hint={einbindenHinweis(schalter, eingebunden, betrieb, minStufe)}
             gesperrt={gesperrt || eigenerVorgang != null || wartetAufBestaetigung}
           />
           {!eigenerVorgang && !wartetAufBestaetigung && (
@@ -448,7 +477,15 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
           {g.schalten && g.urteil !== 'nichtZugeordnet' && (
             <SchaltZeilen s={g.schalten} />
           )}
-          {!g.schalten && zeilen.map((z) => (
+          {schalter === 'abluft' && eingebunden && (
+            <StufeZeilen
+              mindest={minStufe}
+              stufe={zeilen.find((z) => z.stufe)?.stufe ?? null}
+              gesperrt={gesperrt || eigenerVorgang != null || wartetAufBestaetigung}
+              onStufe={onStufe}
+            />
+          )}
+          {!g.schalten && !g.stufe && zeilen.map((z) => (
             <div key={z.rolle}>
               <div className="st-feldzeile">
                 <span className="st-etikett">{ROLLE[z.rolle].feld.replace('-Obergrenze', '')}: Planwert</span>
@@ -460,7 +497,7 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
               </div>
             </div>
           ))}
-          {!g.schalten && g.zuletztGesetzt && (
+          {!g.schalten && !g.stufe && g.zuletztGesetzt && (
             <div className="st-feldzeile">
               <span className="st-etikett">Zuletzt gesetzt<small>{g.vorher != null ? `vorher ${zahl(g.vorher)} ${r.einheit} (gemerkt)` : null}</small></span>
               <span className="st-nurlesen">{new Date(g.zuletztGesetzt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</span>

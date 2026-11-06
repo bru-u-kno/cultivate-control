@@ -15,6 +15,9 @@ interface Zustand {
   entfeuchterAm: number
   inArbeit: { phase: Phase; seit: string; clientId: string | null } | null
   /** Entfeuchter, den der Fork schaltet (statt Grenzwert): Urteil und Schaltstand. */
+  /** Mindeststufe der Abluft (0 = keine) und die Stufe, die das Gerät gerade hat. */
+  minStufe?: number
+  abluftStufe?: number
   schalten?: { urteil: string; modus: string; zustand: string; feuchte: number | null; zuletztUtc: string | null; zuletztAktion: string | null }
 }
 
@@ -26,16 +29,27 @@ const entfeuchterZeile = (z: Zustand) => z.schalten
   }
   : { rolle: 'entfeuchter', portName: 'DRY Dehumi', folgt: true, modus: 'Auto', wertAmGeraet: z.entfeuchterAm, einheit: '%', planWert: 60, urteil: z.entfeuchterAm === 60 ? 'passt' : 'weichtAb', vorher: null, zuletztGesetzt: null }
 
+const abluftZeile = (z: Zustand, rolle: 'abluft-feuchte' | 'abluft-temp') => {
+  const stufe = z.abluft && (z.minStufe ?? 0) > 0
+    ? { mindest: z.minStufe as number, jetzt: z.abluftStufe ?? 3, zustand: (z.abluftStufe ?? 3) < (z.minStufe as number) ? 'hebtAn' : 'haelt', modus: 'On', gescheitert: false }
+    : null
+  return {
+    rolle, portName: 'DRY Out Venti', folgt: z.abluft, modus: 'On', wertAmGeraet: null, einheit: null, planWert: rolle === 'abluft-feuchte' ? 60 : 18,
+    urteil: stufe ? (stufe.zustand === 'haelt' ? 'haeltStufe' : 'hebtStufeAn') : 'ohneAutomatik', vorher: null, zuletztGesetzt: null, stufe,
+  }
+}
+
 const stand = (z: Zustand) => ({
   trocknet: true, betrieb: z.betrieb, portsErreichbar: true, tag: 7, tageGeplant: 10, etappe: 'Ausklang',
   tempMin: 16, tempMax: 18, feuchteMin: 56, feuchteMax: 60,
   geraete: [
     entfeuchterZeile(z),
     { rolle: 'kuehlung', portName: 'DRY Clima', folgt: false, modus: 'Off', wertAmGeraet: null, einheit: null, planWert: 18, urteil: 'geraetAus', vorher: null, zuletztGesetzt: null },
-    { rolle: 'abluft-feuchte', portName: 'DRY Out Venti', folgt: z.abluft, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 60, urteil: 'ohneAutomatik', vorher: null, zuletztGesetzt: null },
-    { rolle: 'abluft-temp', portName: 'DRY Out Venti', folgt: z.abluft, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 18, urteil: 'ohneAutomatik', vorher: null, zuletztGesetzt: null },
+    abluftZeile(z, 'abluft-feuchte'),
+    abluftZeile(z, 'abluft-temp'),
   ],
   inArbeit: z.inArbeit,
+  abluftMinStufe: z.minStufe ?? 0,
 })
 
 async function nachstellen(page: Page, z: Zustand, opts: { putAntwort?: () => Promise<{ status: number; body: unknown }> } = {}) {
@@ -55,6 +69,7 @@ async function nachstellen(page: Page, z: Zustand, opts: { putAntwort?: () => Pr
       if (antwort.status !== 200) return route.fulfill({ status: antwort.status, json: antwort.body ?? { error: 'controller_nicht_erreichbar', message: 'Der Controller hat nicht geantwortet.' } })
       z.betrieb = body.betrieb as Zustand['betrieb']
       z.abluft = body.abluftFolgt === true
+      if (typeof body.abluftMinStufe === 'number') z.minStufe = body.abluftMinStufe
       z.inArbeit = null
       return route.fulfill({ json: stand(z) })
     }
@@ -240,4 +255,31 @@ test('Steht der Port des Entfeuchters auf Auto, nennt die Karte den Handgriff un
   const karte = page.locator('[data-audit="trocknung-entfeuchter"]').locator('xpath=ancestor::article[1]')
   await expect(karte).toContainText('Port steht auf Auto')
   await expect(page.locator('[data-audit="trocknung-erklaerung-entfeuchter"]')).toContainText('Stell den Port in der App des Controllers auf On')
+})
+
+test('Die Mindeststufe der Abluft: Stepper, Stufe jetzt, und ein Tipp auf Plus speichert die neue Stufe', async ({ page }) => {
+  const z: Zustand = { betrieb: 'regeln', abluft: true, entfeuchterAm: 60, inArbeit: null, minStufe: 2, abluftStufe: 3 }
+  const gesendet = await nachstellen(page, z)
+  await page.goto('/steuerung/trocknung', { waitUntil: 'networkidle' })
+
+  const karte = abluft(page)
+  await expect(karte).toContainText('hält Mindeststufe')
+  const zeilen = karte.locator('[data-audit="trocknung-stufe"]')
+  await expect(zeilen.locator('[data-audit="trocknung-stufe-wert"]')).toHaveText('2')
+  await expect(zeilen).toContainText('Stufe 3')
+  await expect(zeilen).toContainText('Port steht auf On')
+  // Keine Grenzen-Zeilen mehr: im Modus On gibt es keine Auslöser.
+  await expect(karte).not.toContainText('am Gerät')
+
+  await zeilen.getByRole('button', { name: 'Eine Stufe mehr' }).click()
+  await expect(zeilen.locator('[data-audit="trocknung-stufe-wert"]')).toHaveText('3', { timeout: 8000 })
+  expect(gesendet).toHaveLength(1)
+  expect(gesendet[0]).toMatchObject({ abluftMinStufe: 3, abluftFolgt: true })
+
+  // Ein zweites Mal, unter erschwerten Umständen: runter auf 0 (keine Mindeststufe).
+  for (const erwartet of ['2', '1', '0']) {
+    await zeilen.getByRole('button', { name: 'Eine Stufe weniger' }).click()
+    await expect(zeilen.locator('[data-audit="trocknung-stufe-wert"]')).toHaveText(erwartet, { timeout: 8000 })
+  }
+  await expect(zeilen.getByRole('button', { name: 'Eine Stufe weniger' })).toBeDisabled()
 })

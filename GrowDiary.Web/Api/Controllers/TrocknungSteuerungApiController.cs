@@ -71,9 +71,16 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         if (abluftFolgt && !zuordnung.ContainsKey(TrocknungZiel.RolleAbluft))
             return BadRequestError("kein_port", "Der Abluft ist noch kein Port zugeordnet.");
 
+        // Mindeststufe der Abluft: fehlt die Angabe, bleibt sie; 0 heißt „keine“.
+        var minStufe = request.AbluftMinStufe ?? _steuerung.Get(tentId).AbluftMinStufe;
+        if (!TrocknungAbluftStufe.Gueltig(minStufe))
+            return BadRequestError("stufe_ungueltig", $"Die Mindeststufe der Abluft ist eine ganze Zahl von 0 bis {TrocknungAbluftStufe.HoechstStufe}.");
+        if (minStufe > 0 && !zuordnung.ContainsKey(TrocknungZiel.RolleAbluft))
+            return BadRequestError("kein_port", "Der Abluft ist noch kein Port zugeordnet.");
+
         // Solange der Vorgang läuft, sieht jede Seite (auch die anderer Benutzer) im Stand „inArbeit“ mit der Phase.
         using var arbeit = _dienst.ArbeitBeginnen(tentId, request.ClientId);
-        _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt, abluftFolgt));
+        _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt, abluftFolgt, minStufe));
         // Sofort nachziehen, nicht erst im nächsten Takt: Wer „Regeln“ einschaltet, will das Ergebnis sehen.
         arbeit.Phase(TrocknungSteuerungService.PhaseAbgleichen);
         await _dienst.AbgleichenAsync(tentId, ct);
@@ -105,8 +112,10 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
             g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null,
             g.Schalten is { } sc ? new TrocknungSchaltDto(
                 sc.Zustand, sc.Feuchte, sc.EinAb, sc.AusUnter, sc.Modus,
-                sc.ZuletztUtc is { } sz ? DateTime.SpecifyKind(sz, DateTimeKind.Utc).ToString("O") : null, sc.ZuletztAktion, sc.Gescheitert) : null)).ToList(),
-        s.InArbeit is { } a ? new TrocknungArbeitDto(a.Phase, DateTime.SpecifyKind(a.SeitUtc, DateTimeKind.Utc).ToString("O"), a.ClientId) : null);
+                sc.ZuletztUtc is { } sz ? DateTime.SpecifyKind(sz, DateTimeKind.Utc).ToString("O") : null, sc.ZuletztAktion, sc.Gescheitert) : null,
+            g.Stufe is { } st ? new TrocknungStufeDto(st.Mindest, st.Jetzt, st.Zustand, st.Modus, st.Gescheitert) : null)).ToList(),
+        s.InArbeit is { } a ? new TrocknungArbeitDto(a.Phase, DateTime.SpecifyKind(a.SeitUtc, DateTimeKind.Utc).ToString("O"), a.ClientId) : null,
+        s.AbluftMinStufe);
 }
 
 public sealed class TrocknungSteuerungRequest
@@ -125,13 +134,19 @@ public sealed class TrocknungSteuerungRequest
     /// </summary>
     public bool? AbluftFolgt { get; set; }
 
+    /// <summary>Mindeststufe der Abluft, 0 (keine) bis 10. Fehlt die Angabe, bleibt der gespeicherte Wert. Wirkt im Modus On des Abluft-Ports und nur bei eingebundener Abluft.</summary>
+    public int? AbluftMinStufe { get; set; }
+
     /// <summary>Kennung der Seite, die speichert (frei gewählt, nur zum Wiedererkennen): damit weiß jede Seite, ob der Vorgang ihr gehört oder einem anderen Benutzer.</summary>
     public string? ClientId { get; set; }
 }
 
 public sealed record TrocknungSteuerungGeraetDto(
     string Rolle, string? PortName, bool Folgt, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert,
-    string Urteil, double? Vorher, string? ZuletztGesetzt, TrocknungSchaltDto? Schalten = null);
+    string Urteil, double? Vorher, string? ZuletztGesetzt, TrocknungSchaltDto? Schalten = null, TrocknungStufeDto? Stufe = null);
+
+/// <summary>Die Abluft mit Mindeststufe: Zustand (haelt, hebtAn, portNichtOn, keinWert), die Stufe jetzt und der Modus des Ports.</summary>
+public sealed record TrocknungStufeDto(int Mindest, double? Jetzt, string Zustand, string? Modus, bool Gescheitert);
 
 /// <summary>Der Entfeuchter, den der Fork schaltet: Zustand (laeuft, steht, wartet, schaltetEin, schaltetAus, portNichtSchaltbar, keinMesswert), Schwellen und letzter Schaltvorgang.</summary>
 public sealed record TrocknungSchaltDto(
@@ -140,7 +155,7 @@ public sealed record TrocknungSchaltDto(
 public sealed record TrocknungSteuerungDto(
     bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,
     double? TempMin, double? TempMax, double? FeuchteMin, double? FeuchteMax, IReadOnlyList<TrocknungSteuerungGeraetDto> Geraete,
-    TrocknungArbeitDto? InArbeit);
+    TrocknungArbeitDto? InArbeit, int AbluftMinStufe = 0);
 
 /// <summary>Ein Vorgang läuft gerade: Phase „speichern“, „abgleichen“ oder „pruefen“; clientId nennt, welche Seite ihn angestoßen hat.</summary>
 public sealed record TrocknungArbeitDto(string Phase, string Seit, string? ClientId);

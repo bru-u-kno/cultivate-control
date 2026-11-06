@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, schalterVon, schaltText, wuerdeSchalten, wuerdeSchreiben, type SteuerungGeraet, type SteuerungSchalten } from './steuerung-text'
+import { einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, schalterVon, schaltText, stufeText, wuerdeSchalten, wuerdeSchreiben, type SteuerungGeraet, type SteuerungSchalten, type SteuerungStufe } from './steuerung-text'
 
 const g = (teil: Partial<SteuerungGeraet>): SteuerungGeraet => ({
   rolle: 'kuehlung', portName: 'Port K', folgt: true, modus: 'Auto', wertAmGeraet: 24, einheit: '°C', planWert: 21,
@@ -156,5 +156,35 @@ describe('Entfeuchter, den der Fork schaltet', () => {
   it('das größte Problem bestimmt den Kopf der Karte', () => {
     const z = kopfZeile([entfeuchter('schaltet'), entfeuchter('schaltetNicht')])
     expect(z.urteil).toBe('schaltetNicht')
+  })
+})
+
+describe('Abluft mit Mindeststufe', () => {
+  const stufe = (z: Partial<SteuerungStufe> = {}): SteuerungStufe => ({ mindest: 2, jetzt: 3, zustand: 'haelt', modus: 'On', gescheitert: false, ...z })
+  const abluft = (urteil: SteuerungGeraet['urteil'], z: Partial<SteuerungStufe> = {}): SteuerungGeraet => ({
+    rolle: 'abluft-feuchte', portName: 'DRY Out Venti', folgt: true, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 60, urteil,
+    vorher: null, zuletztGesetzt: null, stufe: stufe(z),
+  })
+
+  it('Plakette und Ton je Zustand', () => {
+    expect(plakette(abluft('haeltStufe'), 'regeln')).toEqual({ text: 'hält Mindeststufe', ton: 'ok' })
+    expect(plakette(abluft('haeltStufe'), 'melden')).toEqual({ text: 'würde Mindeststufe halten', ton: 'grau' })
+    expect(plakette(abluft('hebtStufeAn', { jetzt: 1, zustand: 'hebtAn' }), 'regeln')).toEqual({ text: 'hebt Stufe an', ton: 'warn' })
+    expect(plakette({ ...abluft('stufePortNichtOn'), modus: 'Off' }, 'regeln')).toEqual({ text: 'Port steht auf Aus', ton: 'warn' })
+    expect(plakette(abluft('stufeNichtAnhebbar'), 'regeln')).toEqual({ text: 'kann nicht anheben', ton: 'warn' })
+  })
+
+  it('der Satz nennt Stufe jetzt gegen Mindeststufe und was zu tun ist', () => {
+    expect(stufeText(stufe(), 'haeltStufe', 'regeln')).toContain('läuft auf Stufe 3')
+    expect(stufeText(stufe(), 'haeltStufe', 'regeln')).toContain('nimmt eine höhere Stufe nie zurück')
+    expect(stufeText(stufe({ jetzt: 1, zustand: 'hebtAn' }), 'hebtStufeAn', 'regeln')).toContain('hebt sie jetzt auf Stufe 2 an')
+    expect(stufeText(stufe({ modus: 'Off', zustand: 'portNichtOn' }), 'stufePortNichtOn', 'regeln')).toContain('auf On')
+    expect(erklaerung([abluft('haeltStufe')], 'regeln')).toContain('Mindeststufe 2')
+  })
+
+  it('der Haken der Abluft sagt, was die Mindeststufe bewirkt', () => {
+    expect(einbindenHinweis('abluft', true, 'regeln', 2)).toContain('mindestens auf der Mindeststufe')
+    expect(einbindenHinweis('abluft', false, 'regeln', 2)).toContain('nie unter die Mindeststufe')
+    expect(einbindenHinweis('abluft', true, 'regeln', 0)).toContain('Planwert') // ohne Mindeststufe bleibt es der alte Text
   })
 })

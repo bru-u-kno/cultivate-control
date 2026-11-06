@@ -5,6 +5,17 @@ export type Betrieb = 'melden' | 'regeln'
 export type SteuerungUrteil = 'nichtZugeordnet' | 'unbekannt' | 'geraetAus' | 'ohneAutomatik' | 'keinAusloeser' | 'keinPlan' | 'passt' | 'weichtAb'
   // Entfeuchter, den der Fork ein- und ausschaltet (06.11.2026):
   | 'schaltet' | 'portNichtSchaltbar' | 'keinMesswert' | 'schaltetNicht'
+  // Abluft mit Mindeststufe (07.11.2026):
+  | 'haeltStufe' | 'hebtStufeAn' | 'stufeNichtAnhebbar' | 'stufePortNichtOn' | 'stufeKeinWert'
+
+/** Die Abluft mit Mindeststufe: gewählte Stufe, Stufe jetzt, Zustand und Modus des Ports. */
+export interface SteuerungStufe {
+  mindest: number
+  jetzt: number | null
+  zustand: 'haelt' | 'hebtAn' | 'portNichtOn' | 'keinWert'
+  modus: string | null
+  gescheitert: boolean
+}
 
 /** Der Entfeuchter, den der Fork schaltet: Schwellen aus dem Plan, Luftfeuchte im Zelt und der letzte Schaltvorgang. */
 export interface SteuerungSchalten {
@@ -31,6 +42,8 @@ export interface SteuerungGeraet {
   zuletztGesetzt: string | null
   /** Nur beim Entfeuchter, solange er eingebunden ist und eine Charge trocknet. */
   schalten?: SteuerungSchalten | null
+  /** Nur bei der Abluft, solange sie eingebunden ist und eine Mindeststufe gilt. */
+  stufe?: SteuerungStufe | null
 }
 
 export interface TrocknungSteuerung {
@@ -45,6 +58,8 @@ export interface TrocknungSteuerung {
   feuchteMin: number | null
   feuchteMax: number | null
   geraete: SteuerungGeraet[]
+  /** Mindeststufe der Abluft, 0 (keine) bis 10. */
+  abluftMinStufe: number
   /** Ein Vorgang läuft gerade (auch von einer anderen Seite angestoßen); fehlt, wenn nichts läuft. */
   inArbeit?: { phase: ArbeitPhase; seit: string; clientId: string | null } | null
 }
@@ -68,7 +83,7 @@ export const schalterVon = (rolle: SteuerungGeraet['rolle']): Schalter => (rolle
 export type PlaketteTon = 'warn' | 'ok' | 'grau'
 
 /** Die Zeile, die Kopf, Plakette und Erklärung der Karte bestimmt: die mit dem größten Problem, sonst die erste. */
-const VORRANG: SteuerungUrteil[] = ['schaltetNicht', 'portNichtSchaltbar', 'keinMesswert', 'unbekannt', 'keinAusloeser', 'ohneAutomatik', 'geraetAus', 'weichtAb', 'keinPlan']
+const VORRANG: SteuerungUrteil[] = ['stufeNichtAnhebbar', 'stufePortNichtOn', 'stufeKeinWert', 'schaltetNicht', 'portNichtSchaltbar', 'keinMesswert', 'unbekannt', 'keinAusloeser', 'ohneAutomatik', 'geraetAus', 'weichtAb', 'keinPlan']
 export const kopfZeile = (zeilen: SteuerungGeraet[]): SteuerungGeraet => {
   // Bei der Abluft (zwei Grenzen) bestimmt die Zeile mit dem größten Problem die Karte — „hält den Plan“ erst, wenn keine etwas zu melden hat.
   for (const urteil of VORRANG) {
@@ -81,6 +96,11 @@ export const kopfZeile = (zeilen: SteuerungGeraet[]): SteuerungGeraet => {
 export function plakette(g: SteuerungGeraet, betrieb: Betrieb): { text: string; ton: PlaketteTon } {
   if (g.urteil === 'nichtZugeordnet') return { text: 'kein Port zugeordnet', ton: 'grau' }
   if (!g.folgt) return { text: 'nicht eingebunden', ton: 'grau' }
+  if (g.urteil === 'haeltStufe') return { text: betrieb === 'regeln' ? 'hält Mindeststufe' : 'würde Mindeststufe halten', ton: betrieb === 'regeln' ? 'ok' : 'grau' }
+  if (g.urteil === 'hebtStufeAn') return { text: 'hebt Stufe an', ton: 'warn' }
+  if (g.urteil === 'stufeNichtAnhebbar') return { text: 'kann nicht anheben', ton: 'warn' }
+  if (g.urteil === 'stufePortNichtOn') return { text: g.modus === 'Off' ? 'Port steht auf Aus' : 'Port nicht auf On', ton: 'warn' }
+  if (g.urteil === 'stufeKeinWert') return { text: 'Stufe nicht lesbar', ton: 'warn' }
   if (g.urteil === 'schaltet') return { text: betrieb === 'regeln' ? 'schaltet nach Plan' : 'würde schalten', ton: betrieb === 'regeln' ? 'ok' : 'grau' }
   if (g.urteil === 'schaltetNicht') return { text: 'kann nicht schalten', ton: 'warn' }
   if (g.urteil === 'portNichtSchaltbar') return { text: g.modus === 'Auto' ? 'Port steht auf Auto' : 'Port nicht schaltbar', ton: 'warn' }
@@ -105,7 +125,13 @@ const planText = (zeilen: SteuerungGeraet[]) =>
   zeilen.filter((z) => z.planWert != null).map((z) => `${zahl(z.planWert as number)} ${ROLLE[z.rolle].einheit}`).join(' und ')
 
 /** Der Hinweis unter „Gerät einbinden“: was der Haken bewirkt — je nach Betriebsart. */
-export function einbindenHinweis(schalter: Schalter, eingebunden: boolean, betrieb: Betrieb = 'regeln'): string {
+export function einbindenHinweis(schalter: Schalter, eingebunden: boolean, betrieb: Betrieb = 'regeln', minStufe = 0): string {
+  if (schalter === 'abluft' && minStufe > 0) {
+    if (!eingebunden) return 'Setze den Haken, damit die Steuerung die Abluft nie unter die Mindeststufe fallen lässt.'
+    return betrieb === 'regeln'
+      ? 'Eingebunden: Die Steuerung hält die Abluft mindestens auf der Mindeststufe (jede Minute geprüft). Den Modus ändert sie nie.'
+      : 'Eingebunden: Im Modus „Nur anzeigen“ zeigt die Steuerung, ob die Abluft unter der Mindeststufe läuft. Mit „Regeln“ hebt sie sie an.'
+  }
   if (schalter === 'entfeuchter') {
     if (!eingebunden) return 'Setze den Haken, damit die Steuerung den Entfeuchter nach der Luftfeuchte im Zelt ein- und ausschaltet.'
     return betrieb === 'regeln'
@@ -134,6 +160,7 @@ export function erklaerung(zeilen: SteuerungGeraet[], betrieb: Betrieb): string 
   const plan = g.planWert == null ? '–' : `${zahl(g.planWert)} ${einheit}`
   if (g.urteil === 'nichtZugeordnet') return 'Diesem Gerät ist noch kein Port zugeordnet. Das geht unter „Ports bearbeiten“.'
   if (!g.folgt) return ohneEinbindungText(zeilen)
+  if (g.stufe && g.urteil.match(/^(haeltStufe|hebtStufeAn|stufeNichtAnhebbar|stufePortNichtOn|stufeKeinWert)$/)) return stufeText(g.stufe, g.urteil, betrieb)
   if (g.urteil === 'schaltet' && g.schalten) return schaltText(g.schalten, betrieb)
   if (g.urteil === 'schaltetNicht') return 'Der Entfeuchter ließ sich nicht schalten: Die Cloud des Controllers hat den Befehl nicht angenommen. Die Steuerung versucht es jede Minute erneut und meldet es dir nach 10 Minuten per Push.'
   if (g.urteil === 'portNichtSchaltbar') {
@@ -157,6 +184,23 @@ export function erklaerung(zeilen: SteuerungGeraet[], betrieb: Betrieb): string 
   return betrieb === 'regeln'
     ? `Am Gerät steht ${wert}, der Plan verlangt ${plan}. Die Steuerung stellt das Gerät jetzt auf ${plan} und prüft es alle 5 Minuten.`
     : `Am Gerät steht ${wert}, der Plan verlangt ${plan}. Im Modus „Nur anzeigen“ ändert die Steuerung nichts — sie zeigt nur, was sie tun würde.`
+}
+
+/** Der Satz zur Abluft mit Mindeststufe: Stufe jetzt gegen Mindeststufe, oder was zu tun ist. */
+export function stufeText(s: SteuerungStufe, urteil: SteuerungUrteil, betrieb: Betrieb): string {
+  const jetzt = s.jetzt == null ? '–' : `Stufe ${zahl(s.jetzt)}`
+  if (urteil === 'stufePortNichtOn') {
+    const modus = s.modus ? ` (aktuell: ${s.modus})` : ''
+    return `Der Port steht nicht auf On${modus}. Stelle ihn in der App des Controllers auf On, dann hält die Steuerung die Mindeststufe ${s.mindest}. Den Modus ändert sie nie selbst.`
+  }
+  if (urteil === 'stufeKeinWert') return 'Die Stufe der Abluft lässt sich gerade nicht lesen. Die Steuerung schreibt in dieser Zeit nichts.'
+  if (urteil === 'stufeNichtAnhebbar') return `Die Abluft läuft auf ${jetzt}, die Mindeststufe ist ${s.mindest}. Die Cloud des Controllers hat den Befehl nicht angenommen. Die Steuerung versucht es jede Minute erneut und meldet es dir nach 10 Minuten per Push.`
+  if (urteil === 'hebtStufeAn') {
+    return betrieb === 'regeln'
+      ? `Die Abluft läuft auf ${jetzt}, die Mindeststufe ist ${s.mindest}. Die Steuerung hebt sie jetzt auf Stufe ${s.mindest} an.`
+      : `Die Abluft läuft auf ${jetzt}, die Mindeststufe ist ${s.mindest}. Im Modus „Nur anzeigen“ ändert die Steuerung nichts.`
+  }
+  return `Die Abluft läuft auf ${jetzt} und damit über oder auf der Mindeststufe ${s.mindest}. Die Steuerung greift nur ein, wenn sie darunter fällt, und nimmt eine höhere Stufe nie zurück.`
 }
 
 /** Der Satz zum Entfeuchter, den die Steuerung schaltet: Schwellen, Messwert und wohin sie gerade schaltet. */
