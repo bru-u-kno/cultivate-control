@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, schalterVon, wuerdeSchreiben, type SteuerungGeraet } from './steuerung-text'
+import { einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, schalterVon, schaltText, wuerdeSchalten, wuerdeSchreiben, type SteuerungGeraet, type SteuerungSchalten } from './steuerung-text'
 
 const g = (teil: Partial<SteuerungGeraet>): SteuerungGeraet => ({
   rolle: 'kuehlung', portName: 'Port K', folgt: true, modus: 'Auto', wertAmGeraet: 24, einheit: '°C', planWert: 21,
@@ -65,8 +65,8 @@ describe('Trocknung: Steuerung', () => {
   })
 
   it('Haken „Gerät einbinden“: der Hinweis sagt, was er bewirkt', () => {
-    expect(einbindenHinweis('entfeuchter', true, 'melden')).toContain('Im Modus „Nur anzeigen“ zeigt die Steuerung, was sie einstellen würde')
-    expect(einbindenHinweis('entfeuchter', true)).toBe('Eingebunden: Die Steuerung versucht, die Luftfeuchte auf den Planwert zu bringen und dort zu halten.')
+    expect(einbindenHinweis('kuehlung', true, 'melden')).toContain('Im Modus „Nur anzeigen“ zeigt die Steuerung, was sie einstellen würde')
+    expect(einbindenHinweis('kuehlung', true)).toBe('Eingebunden: Die Steuerung versucht, die Temperatur auf den Planwert zu bringen und dort zu halten.')
     expect(einbindenHinweis('abluft', false)).toBe('Setze den Haken, damit die Steuerung Luftfeuchte und Temperatur auf den Planwert bringt und dort hält.')
   })
 
@@ -105,5 +105,56 @@ describe('Trocknung: Steuerung', () => {
       { rolle: 'abluft-temp', portName: 'Port A', feld: 'Temperatur-Obergrenze', von: 24, nach: 21, einheit: '°C' },
     ])
     expect(wuerdeSchreiben(geraete, { entfeuchter: true, kuehlung: true })).toEqual([])
+  })
+})
+
+describe('Entfeuchter, den der Fork schaltet', () => {
+  const schalten = (z: Partial<SteuerungSchalten> = {}): SteuerungSchalten => ({
+    zustand: 'laeuft', feuchte: 56.6, einAb: 58, ausUnter: 56, modus: 'On', zuletztUtc: null, zuletztAktion: null, gescheitert: false, ...z,
+  })
+  const entfeuchter = (urteil: SteuerungGeraet['urteil'], z: Partial<SteuerungSchalten> = {}): SteuerungGeraet => ({
+    rolle: 'entfeuchter', portName: 'DRY Dehumi', folgt: true, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 60, urteil,
+    vorher: null, zuletztGesetzt: null, schalten: schalten(z),
+  })
+
+  it('zeigt Plakette und Ton je Zustand', () => {
+    expect(plakette(entfeuchter('schaltet'), 'regeln')).toEqual({ text: 'schaltet nach Plan', ton: 'ok' })
+    expect(plakette(entfeuchter('schaltet'), 'melden')).toEqual({ text: 'würde schalten', ton: 'grau' })
+    expect(plakette({ ...entfeuchter('portNichtSchaltbar'), modus: 'Auto' }, 'regeln')).toEqual({ text: 'Port steht auf Auto', ton: 'warn' })
+    expect(plakette(entfeuchter('schaltetNicht'), 'regeln')).toEqual({ text: 'kann nicht schalten', ton: 'warn' })
+    expect(plakette(entfeuchter('keinMesswert'), 'regeln')).toEqual({ text: 'kein Messwert', ton: 'warn' })
+  })
+
+  it('nennt bei Auto den Handgriff und sagt, dass Auto nie gestellt wird', () => {
+    const t = erklaerung([{ ...entfeuchter('portNichtSchaltbar'), modus: 'Auto' }], 'regeln')
+    expect(t).toContain('auf On')
+    expect(t).toContain('Auto stellt sie nie selbst ein')
+  })
+
+  it('schaltText nennt Schwellen und Messwert, ohne Schaltvorgang kein „zuletzt“', () => {
+    const t = schaltText(schalten(), 'regeln')
+    expect(t).toContain('ein ab 58 %')
+    expect(t).toContain('aus unter 56 %')
+    expect(t).toContain('Jetzt: 56,6 %')
+    expect(t).not.toContain('Zuletzt geschaltet')
+    expect(schaltText(schalten({ zustand: 'wartet' }), 'regeln')).toContain('Mindestpause von 3 Minuten')
+    expect(schaltText(schalten(), 'melden')).toContain('schaltet die Steuerung nichts')
+  })
+
+  it('der Haken bewirkt beim Entfeuchter das Schalten, nicht eine Grenze', () => {
+    expect(einbindenHinweis('entfeuchter', true, 'regeln')).toContain('ein und aus')
+    expect(einbindenHinweis('entfeuchter', false, 'regeln')).toContain('ein- und ausschaltet')
+    expect(einbindenHinweis('kuehlung', true, 'regeln')).toContain('Planwert')
+  })
+
+  it('die Rückfrage nennt die Schwellen nur bei eingebundenem Entfeuchter mit Werten', () => {
+    expect(wuerdeSchalten([entfeuchter('schaltet')], { entfeuchter: true })).toEqual({ portName: 'DRY Dehumi', einAb: 58, ausUnter: 56 })
+    expect(wuerdeSchalten([entfeuchter('schaltet')], { entfeuchter: false })).toBeNull()
+    expect(wuerdeSchalten([{ ...entfeuchter('schaltet'), schalten: null }], { entfeuchter: true })).toBeNull()
+  })
+
+  it('das größte Problem bestimmt den Kopf der Karte', () => {
+    const z = kopfZeile([entfeuchter('schaltet'), entfeuchter('schaltetNicht')])
+    expect(z.urteil).toBe('schaltetNicht')
   })
 })

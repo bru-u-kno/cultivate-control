@@ -44,8 +44,8 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
 
     /// <summary>
     /// Betriebsart und „Folgt dem Plan“ je Gerät setzen. Das PUT ersetzt alle Angaben; nur „abluftFolgt“ darf fehlen (dann bleibt es). Bei „regeln“ zieht der Fork die
-    /// Grenzen sofort nach (danach alle fünf Minuten); bei „melden“ schreibt er nichts. Ändert nur die Grenzwerte der Auslöser,
-    /// nie den Modus des Ports.
+    /// Grenzen sofort nach (danach alle fünf Minuten) und schaltet den Entfeuchter ein und aus (jede Minute); bei „melden“ schreibt er nichts. Die Grenzwerte
+    /// ändern nur die Auslöser; den Port des Entfeuchters schaltet er nur zwischen On und Off, nie auf Auto.
     /// </summary>
     [HttpPut("{tentId:int}/trocknung/steuerung")]
     [KiStufe(KiStufe.GeraeteSchalten)]
@@ -102,7 +102,10 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         s.Trocknet, s.Betrieb, s.PortsErreichbar, s.Tag, s.TageGeplant, s.Etappe, s.TempMin, s.TempMax, s.FeuchteMin, s.FeuchteMax,
         s.Geraete.Select(g => new TrocknungSteuerungGeraetDto(
             g.Rolle, g.PortName, g.Folgt, g.Modus, g.WertAmGeraet, g.Einheit, g.PlanWert, g.Urteil, g.Vorher,
-            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null)).ToList(),
+            g.ZuletztGesetztUtc is { } z ? DateTime.SpecifyKind(z, DateTimeKind.Utc).ToString("O") : null,
+            g.Schalten is { } sc ? new TrocknungSchaltDto(
+                sc.Zustand, sc.Feuchte, sc.EinAb, sc.AusUnter, sc.Modus,
+                sc.ZuletztUtc is { } sz ? DateTime.SpecifyKind(sz, DateTimeKind.Utc).ToString("O") : null, sc.ZuletztAktion, sc.Gescheitert) : null)).ToList(),
         s.InArbeit is { } a ? new TrocknungArbeitDto(a.Phase, DateTime.SpecifyKind(a.SeitUtc, DateTimeKind.Utc).ToString("O"), a.ClientId) : null);
 }
 
@@ -111,7 +114,7 @@ public sealed class TrocknungSteuerungRequest
     /// <summary>„melden“ (nichts schreiben, nur zeigen) oder „regeln“ (Grenzen auf den Plan setzen).</summary>
     public string Betrieb { get; set; } = TrocknungSteuerungRepository.BetriebMelden;
 
-    /// <summary>Folgt die Luftfeuchte-Obergrenze am Entfeuchter-Port dem Plan?</summary>
+    /// <summary>Schaltet der Fork den Entfeuchter-Port nach dem Plan ein und aus (ab dem Ziel der Etappe, aus unter dem Band)?</summary>
     public bool EntfeuchterFolgt { get; set; }
 
     /// <summary>Folgt die Temperatur-Obergrenze am Kühlungs-Port dem Plan?</summary>
@@ -128,7 +131,11 @@ public sealed class TrocknungSteuerungRequest
 
 public sealed record TrocknungSteuerungGeraetDto(
     string Rolle, string? PortName, bool Folgt, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert,
-    string Urteil, double? Vorher, string? ZuletztGesetzt);
+    string Urteil, double? Vorher, string? ZuletztGesetzt, TrocknungSchaltDto? Schalten = null);
+
+/// <summary>Der Entfeuchter, den der Fork schaltet: Zustand (laeuft, steht, wartet, schaltetEin, schaltetAus, portNichtSchaltbar, keinMesswert), Schwellen und letzter Schaltvorgang.</summary>
+public sealed record TrocknungSchaltDto(
+    string Zustand, double? Feuchte, double? EinAb, double? AusUnter, string? Modus, string? ZuletztUtc, string? ZuletztAktion, bool Gescheitert);
 
 public sealed record TrocknungSteuerungDto(
     bool Trocknet, string Betrieb, bool PortsErreichbar, int? Tag, int? TageGeplant, string? Etappe,

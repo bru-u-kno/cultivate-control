@@ -3,6 +3,20 @@ import { formatNumber } from '../../utils'
 /** Antwort von `GET/PUT /api/tents/{id}/trocknung/steuerung` (A-029, Etappe 3, Teil B). */
 export type Betrieb = 'melden' | 'regeln'
 export type SteuerungUrteil = 'nichtZugeordnet' | 'unbekannt' | 'geraetAus' | 'ohneAutomatik' | 'keinAusloeser' | 'keinPlan' | 'passt' | 'weichtAb'
+  // Entfeuchter, den der Fork ein- und ausschaltet (06.11.2026):
+  | 'schaltet' | 'portNichtSchaltbar' | 'keinMesswert' | 'schaltetNicht'
+
+/** Der Entfeuchter, den der Fork schaltet: Schwellen aus dem Plan, Luftfeuchte im Zelt und der letzte Schaltvorgang. */
+export interface SteuerungSchalten {
+  zustand: 'laeuft' | 'steht' | 'wartet' | 'schaltetEin' | 'schaltetAus' | 'portNichtSchaltbar' | 'keinMesswert'
+  feuchte: number | null
+  einAb: number | null
+  ausUnter: number | null
+  modus: string | null
+  zuletztUtc: string | null
+  zuletztAktion: 'ein' | 'aus' | null
+  gescheitert: boolean
+}
 
 export interface SteuerungGeraet {
   rolle: 'entfeuchter' | 'kuehlung' | 'abluft-feuchte' | 'abluft-temp'
@@ -15,6 +29,8 @@ export interface SteuerungGeraet {
   urteil: SteuerungUrteil
   vorher: number | null
   zuletztGesetzt: string | null
+  /** Nur beim Entfeuchter, solange er eingebunden ist und eine Charge trocknet. */
+  schalten?: SteuerungSchalten | null
 }
 
 export interface TrocknungSteuerung {
@@ -52,7 +68,7 @@ export const schalterVon = (rolle: SteuerungGeraet['rolle']): Schalter => (rolle
 export type PlaketteTon = 'warn' | 'ok' | 'grau'
 
 /** Die Zeile, die Kopf, Plakette und Erklärung der Karte bestimmt: die mit dem größten Problem, sonst die erste. */
-const VORRANG: SteuerungUrteil[] = ['unbekannt', 'keinAusloeser', 'ohneAutomatik', 'geraetAus', 'weichtAb', 'keinPlan']
+const VORRANG: SteuerungUrteil[] = ['schaltetNicht', 'portNichtSchaltbar', 'keinMesswert', 'unbekannt', 'keinAusloeser', 'ohneAutomatik', 'geraetAus', 'weichtAb', 'keinPlan']
 export const kopfZeile = (zeilen: SteuerungGeraet[]): SteuerungGeraet => {
   // Bei der Abluft (zwei Grenzen) bestimmt die Zeile mit dem größten Problem die Karte — „hält den Plan“ erst, wenn keine etwas zu melden hat.
   for (const urteil of VORRANG) {
@@ -65,6 +81,10 @@ export const kopfZeile = (zeilen: SteuerungGeraet[]): SteuerungGeraet => {
 export function plakette(g: SteuerungGeraet, betrieb: Betrieb): { text: string; ton: PlaketteTon } {
   if (g.urteil === 'nichtZugeordnet') return { text: 'kein Port zugeordnet', ton: 'grau' }
   if (!g.folgt) return { text: 'nicht eingebunden', ton: 'grau' }
+  if (g.urteil === 'schaltet') return { text: betrieb === 'regeln' ? 'schaltet nach Plan' : 'würde schalten', ton: betrieb === 'regeln' ? 'ok' : 'grau' }
+  if (g.urteil === 'schaltetNicht') return { text: 'kann nicht schalten', ton: 'warn' }
+  if (g.urteil === 'portNichtSchaltbar') return { text: g.modus === 'Auto' ? 'Port steht auf Auto' : 'Port nicht schaltbar', ton: 'warn' }
+  if (g.urteil === 'keinMesswert') return { text: 'kein Messwert', ton: 'warn' }
   if (g.urteil === 'unbekannt') return { text: 'Wert nicht lesbar', ton: 'warn' }
   if (g.urteil === 'geraetAus') return { text: 'Port steht auf Aus', ton: 'warn' }
   if (g.urteil === 'ohneAutomatik') return { text: 'Port nicht auf Auto', ton: 'warn' }
@@ -86,6 +106,12 @@ const planText = (zeilen: SteuerungGeraet[]) =>
 
 /** Der Hinweis unter „Gerät einbinden“: was der Haken bewirkt — je nach Betriebsart. */
 export function einbindenHinweis(schalter: Schalter, eingebunden: boolean, betrieb: Betrieb = 'regeln'): string {
+  if (schalter === 'entfeuchter') {
+    if (!eingebunden) return 'Setze den Haken, damit die Steuerung den Entfeuchter nach der Luftfeuchte im Zelt ein- und ausschaltet.'
+    return betrieb === 'regeln'
+      ? 'Eingebunden: Die Steuerung schaltet den Entfeuchter ein und aus (jede Minute geprüft). Der Auto-Modus am Gerät wird nicht gebraucht.'
+      : 'Eingebunden: Im Modus „Nur anzeigen“ zeigt die Steuerung, wann sie schalten würde. Mit „Regeln“ schaltet sie den Entfeuchter selbst.'
+  }
   if (!eingebunden) return `Setze den Haken, damit die Steuerung ${ZIEL_TEXT[schalter]} auf den Planwert bringt und dort hält.`
   return betrieb === 'regeln'
     ? `Eingebunden: Die Steuerung versucht, ${ZIEL_TEXT[schalter]} auf den Planwert zu bringen und dort zu halten.`
@@ -108,6 +134,13 @@ export function erklaerung(zeilen: SteuerungGeraet[], betrieb: Betrieb): string 
   const plan = g.planWert == null ? '–' : `${zahl(g.planWert)} ${einheit}`
   if (g.urteil === 'nichtZugeordnet') return 'Diesem Gerät ist noch kein Port zugeordnet. Das geht unter „Ports bearbeiten“.'
   if (!g.folgt) return ohneEinbindungText(zeilen)
+  if (g.urteil === 'schaltet' && g.schalten) return schaltText(g.schalten, betrieb)
+  if (g.urteil === 'schaltetNicht') return 'Der Entfeuchter ließ sich nicht schalten: Die Cloud des Controllers hat den Befehl nicht angenommen. Die Steuerung versucht es jede Minute erneut und meldet es dir nach 10 Minuten per Push.'
+  if (g.urteil === 'portNichtSchaltbar') {
+    const modus = g.modus ? ` (aktuell: ${g.modus})` : ''
+    return `Der Port steht nicht auf On oder Off${modus}. Im Auto-Modus nimmt der Controller keine Änderung an. Stell den Port in der App des Controllers auf On, dann schaltet die Steuerung den Entfeuchter. Auto stellt sie nie selbst ein.`
+  }
+  if (g.urteil === 'keinMesswert') return 'Die Luftfeuchte im Trockenzelt lässt sich gerade nicht lesen. Die Steuerung schaltet in dieser Zeit nichts: Der Entfeuchter bleibt, wie er ist.'
   if (g.urteil === 'unbekannt') return 'Der Wert am Gerät lässt sich gerade nicht lesen. Die Steuerung schreibt in dieser Zeit nichts.'
   if (g.urteil === 'geraetAus') return 'Das Gerät ist am Controller ausgeschaltet. Stell den Port auf Auto, dann kann die Steuerung ihn regeln. Den Modus ändert sie nie selbst.'
   if (g.urteil === 'ohneAutomatik') {
@@ -124,6 +157,24 @@ export function erklaerung(zeilen: SteuerungGeraet[], betrieb: Betrieb): string 
   return betrieb === 'regeln'
     ? `Am Gerät steht ${wert}, der Plan verlangt ${plan}. Die Steuerung stellt das Gerät jetzt auf ${plan} und prüft es alle 5 Minuten.`
     : `Am Gerät steht ${wert}, der Plan verlangt ${plan}. Im Modus „Nur anzeigen“ ändert die Steuerung nichts — sie zeigt nur, was sie tun würde.`
+}
+
+/** Der Satz zum Entfeuchter, den die Steuerung schaltet: Schwellen, Messwert und wohin sie gerade schaltet. */
+export function schaltText(s: SteuerungSchalten, betrieb: Betrieb): string {
+  const ein = s.einAb == null ? '–' : `${zahl(s.einAb)} %`
+  const aus = s.ausUnter == null ? '–' : `${zahl(s.ausUnter)} %`
+  const jetzt = s.feuchte == null ? '' : ` Jetzt: ${zahl(s.feuchte)} %.`
+  const wann = s.zuletztUtc ? ` Zuletzt geschaltet: ${new Date(s.zuletztUtc).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr (${s.zuletztAktion ?? '–'}).` : ''
+  if (betrieb !== 'regeln') return `Im Modus „Nur anzeigen“ schaltet die Steuerung nichts. Mit „Regeln“ schaltet sie den Entfeuchter ein ab ${ein} und aus unter ${aus}.${jetzt}`
+  const lage = s.zustand === 'wartet' ? ' Sie wartet noch die Mindestpause von 3 Minuten seit dem letzten Schaltvorgang ab.' : ''
+  return `Die Steuerung schaltet den Entfeuchter ein ab ${ein} und aus unter ${aus} (Ziel und Untergrenze der Etappe).${jetzt}${wann}${lage}`
+}
+
+/** Was beim Einschalten von „Regeln“ für den Entfeuchter gilt: die Schwellen, wenn er eingebunden ist und Werte hat. */
+export function wuerdeSchalten(geraete: SteuerungGeraet[], folgt: Partial<Folgt>) {
+  const g = geraete.find((x) => x.rolle === 'entfeuchter')
+  if (!g || !folgt.entfeuchter || !g.schalten || g.schalten.einAb == null || g.schalten.ausUnter == null) return null
+  return { portName: g.portName ?? ROLLE.entfeuchter.titel, einAb: g.schalten.einAb, ausUnter: g.schalten.ausUnter }
 }
 
 /** Die Schritte eines laufenden Vorgangs in der Reihenfolge, in der der Fork sie abarbeitet. */

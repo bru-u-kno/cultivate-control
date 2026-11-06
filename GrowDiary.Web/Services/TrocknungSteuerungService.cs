@@ -25,11 +25,15 @@ public sealed class TrocknungSteuerungService
     private readonly TrocknungSteuerungRepository _steuerung;
     private readonly TrocknungZielService _ziel;
     private readonly ILogger<TrocknungSteuerungService> _logger;
+    // Der Push-Dienst lebt je Anfrage (scoped), dieser Dienst als Einzelstück: er holt sich den Push-Dienst erst beim Senden.
+    private readonly IServiceScopeFactory? _bereiche;
 
     public TrocknungSteuerungService(
         GrowRepository grows, HarvestRepository ernten, TrocknungPlanQuelle plan, TrocknungPortRepository ports,
-        TrocknungSteuerungRepository steuerung, TrocknungZielService ziel, ILogger<TrocknungSteuerungService> logger)
+        TrocknungSteuerungRepository steuerung, TrocknungZielService ziel, ILogger<TrocknungSteuerungService> logger,
+        IServiceScopeFactory? bereiche = null)
     {
+        _bereiche = bereiche;
         _grows = grows;
         _ernten = ernten;
         _plan = plan;
@@ -41,7 +45,11 @@ public sealed class TrocknungSteuerungService
 
     public sealed record Geraet(
         string Rolle, string? PortName, bool Folgt, string? Modus, double? WertAmGeraet, string? Einheit, double? PlanWert,
-        string Urteil, double? Vorher, DateTime? ZuletztGesetztUtc);
+        string Urteil, double? Vorher, DateTime? ZuletztGesetztUtc, SchaltStand? Schalten = null);
+
+    /// <summary>Der Zustand des Entfeuchters, den der Fork schaltet (nur Rolle Entfeuchter): Schwellen, Luftfeuchte, letzter Schaltvorgang.</summary>
+    public sealed record SchaltStand(
+        string Zustand, double? Feuchte, double? EinAb, double? AusUnter, string? Modus, DateTime? ZuletztUtc, string? ZuletztAktion, bool Gescheitert);
 
     /// <summary>Ein Vorgang läuft gerade (Speichern der Haken, Abgleich mit dem Controller): damit sehen auch andere Benutzer, dass die Seite noch arbeitet.</summary>
     public sealed record Arbeit(string Phase, DateTime SeitUtc, string? ClientId);
@@ -138,6 +146,15 @@ public sealed class TrocknungSteuerungService
                 continue;
             }
 
+            if (rolle == TrocknungZiel.RolleEntfeuchter && folgt && trocknung is { } laufend)
+            {
+                // Der Entfeuchter wird geschaltet, nicht über einen Grenzwert geführt: Zustand und Schwellen statt „Wert am Gerät“.
+                var lage = await SchaltLageAsync(tentId, port, laufend, ct);
+                var schalt = SchaltStandAus(tentId, lage);
+                geraete.Add(new Geraet(rolle, port.Name, folgt, lage.Modus, null, null, planGrenze, SchaltUrteil(schalt), m?.Vorher, m?.GesetztAtUtc, schalt));
+                continue;
+            }
+
             var wunsch = await WunschAsync(rolle, port, planGrenze, ct);
             geraete.Add(new Geraet(rolle, port.Name, folgt, wunsch.Modus, wunsch.Jetzt, wunsch.Einheit, wunsch.Plan ?? planGrenze, wunsch.Urteil, m?.Vorher, m?.GesetztAtUtc));
         }
@@ -154,6 +171,120 @@ public sealed class TrocknungSteuerungService
         var zustaende = await Task.WhenAll(entitaeten.Select(async e => (e, Zustand: await _ziel.ZustandAsync(e, ct))));
         var nachId = zustaende.ToDictionary(z => z.e, z => z.Zustand, StringComparer.OrdinalIgnoreCase);
         return TrocknungZiel.Entscheide(rolle, port, e => nachId.GetValueOrDefault(e), planGrenze);
+    }
+
+    // ------------------------------------------------------------------ Entfeuchter schalten
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (DateTime Utc, string Aktion)> _zuletztGeschaltet = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _problemZyklen = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _letzterSchaltFehler = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _problemGemeldet = new();
+
+    /// <summary>Wie viele Läufe (je eine Minute) ein Problem dauern muss, bis der Fork es per Push meldet.</summary>
+    public const int ProblemBisPush = 10;
+
+    private sealed record SchaltLage(double? Feuchte, string? Modus, double? EinAb, double? AusUnter);
+
+    private async Task<SchaltLage> SchaltLageAsync(int tentId, TrocknungZiel.Port port, DryingWindow.Stand trocknung, CancellationToken ct)
+    {
+        var etappe = _plan.Fuer(tentId, trocknung);
+        double? einAb = null, ausUnter = null;
+        if (etappe.Etappe is { } e && etappe.Band is { } b)
+        {
+            var (ein, aus) = TrocknungSchalten.Schwellen(e.Etappe.LuftfeuchteZiel, b.FeuchteMin);
+            einAb = ein;
+            ausUnter = aus;
+        }
+
+        var modus = (await _ziel.ZustandAsync(port.ModusEntity, ct))?.State;
+        var sensor = _grows.GetTent(tentId)?.Sensors.FirstOrDefault(x => x.MetricType == SensorMetricType.Humidity && x.IsActive && x.HaEntityId.Length > 0);
+        double? feuchte = sensor is null ? null : Zahlenlesen.Maschine((await _ziel.ZustandAsync(sensor.HaEntityId, ct))?.State);
+        return new SchaltLage(feuchte, modus, einAb, ausUnter);
+    }
+
+    private SchaltStand SchaltStandAus(int tentId, SchaltLage lage)
+    {
+        _zuletztGeschaltet.TryGetValue(tentId, out var z);
+        var entscheidung = lage.EinAb is { } ein && lage.AusUnter is { } aus
+            ? TrocknungSchalten.Entscheide(lage.Feuchte, lage.Modus, ein, aus, z == default ? null : z.Utc, DateTime.UtcNow)
+            : new TrocknungSchalten.Entscheidung(TrocknungSchalten.ZustandKeinMesswert, TrocknungSchalten.Aktion.Nichts);
+        return new SchaltStand(
+            entscheidung.Zustand, lage.Feuchte, lage.EinAb, lage.AusUnter, lage.Modus,
+            z == default ? null : z.Utc, z == default ? null : z.Aktion, _letzterSchaltFehler.GetValueOrDefault(tentId));
+    }
+
+    private static string SchaltUrteil(SchaltStand s) => s.Gescheitert ? "schaltetNicht" : s.Zustand switch
+    {
+        TrocknungSchalten.ZustandKeinMesswert => "keinMesswert",
+        TrocknungSchalten.ZustandPortNichtSchaltbar => "portNichtSchaltbar",
+        _ => "schaltet",
+    };
+
+    /// <summary>
+    /// Ein Schaltlauf (jede Minute): schaltet den Entfeuchter an den Planwerten ein und aus, nur im Betrieb „Regeln“, nur mit „eingebunden“,
+    /// nur während eine Charge trocknet. Gibt zurück, ob geschaltet wurde. Ein Problem, das länger als <see cref="ProblemBisPush"/> Läufe dauert, geht einmal als Push raus.
+    /// </summary>
+    public async Task<bool> SchaltenAsync(int tentId, CancellationToken ct)
+    {
+        var einstellung = _steuerung.Get(tentId);
+        if (einstellung.Betrieb != TrocknungSteuerungRepository.BetriebRegeln || !einstellung.EntfeuchterFolgt) { Erholt(tentId); return false; }
+        if (DryingWindow.StandFor(_grows, _ernten, tentId, DateTime.Today) is not { } trocknung) { Erholt(tentId); return false; }
+        if (!_ports.Get(tentId).TryGetValue(TrocknungZiel.RolleEntfeuchter, out var deviceId)) return false;
+        var ports = await _ziel.PortsAsync(frisch: false, ct);
+        if (ports?.FirstOrDefault(p => p.DeviceId == deviceId) is not { } port) { await ProblemAsync(tentId, "Home Assistant liefert den Port des Entfeuchters nicht.", ct); return false; }
+
+        var lage = await SchaltLageAsync(tentId, port, trocknung, ct);
+        if (lage.EinAb is not { } ein || lage.AusUnter is not { } aus) return false;
+        _zuletztGeschaltet.TryGetValue(tentId, out var z);
+        var entscheidung = TrocknungSchalten.Entscheide(lage.Feuchte, lage.Modus, ein, aus, z == default ? null : z.Utc, DateTime.UtcNow);
+
+        if (entscheidung.Aktion == TrocknungSchalten.Aktion.Nichts)
+        {
+            _letzterSchaltFehler[tentId] = false;
+            if (entscheidung.Zustand is TrocknungSchalten.ZustandPortNichtSchaltbar or TrocknungSchalten.ZustandKeinMesswert)
+                await ProblemAsync(tentId, entscheidung.Zustand == TrocknungSchalten.ZustandPortNichtSchaltbar
+                    ? $"Der Port „{port.Name}“ steht auf {lage.Modus ?? "unbekannt"}: Der Fork kann den Entfeuchter nur schalten, wenn der Port auf On oder Off steht."
+                    : "Die Luftfeuchte im Trockenzelt lässt sich nicht lesen: Der Entfeuchter bleibt, wie er ist.", ct);
+            else Erholt(tentId);
+            return false;
+        }
+
+        var option = entscheidung.Aktion == TrocknungSchalten.Aktion.Einschalten ? "On" : "Off";
+        if (await _ziel.SetzeModusAsync(port.ModusEntity, option, ct))
+        {
+            _zuletztGeschaltet[tentId] = (DateTime.UtcNow, option == "On" ? "ein" : "aus");
+            _letzterSchaltFehler[tentId] = false;
+            Erholt(tentId);
+            _logger.LogInformation("Trocknung Zelt {Zelt}: Entfeuchter {Port} auf {Option} (Luftfeuchte {Feuchte} %, ein ab {Ein}, aus unter {Aus}).", tentId, port.Name, option, lage.Feuchte, ein, aus);
+            return true;
+        }
+
+        _letzterSchaltFehler[tentId] = true;
+        _logger.LogWarning("Trocknung Zelt {Zelt}: Entfeuchter {Port} ließ sich nicht auf {Option} schalten.", tentId, port.Name, option);
+        await ProblemAsync(tentId, $"Der Entfeuchter „{port.Name}“ ließ sich nicht auf {option} schalten. Die Cloud des Controllers hat den Befehl nicht angenommen.", ct);
+        return false;
+    }
+
+    private void Erholt(int tentId)
+    {
+        _problemZyklen.TryRemove(tentId, out _);
+        _problemGemeldet.TryRemove(tentId, out _);
+    }
+
+    private async Task ProblemAsync(int tentId, string text, CancellationToken ct)
+    {
+        var zyklen = _problemZyklen.AddOrUpdate(tentId, 1, (_, n) => n + 1);
+        if (zyklen < ProblemBisPush || _problemGemeldet.GetValueOrDefault(tentId) || _bereiche is null) return;
+        _problemGemeldet[tentId] = true;
+        try
+        {
+            using var bereich = _bereiche.CreateScope();
+            await bereich.ServiceProvider.GetRequiredService<NotificationService>().SendAsync(NotificationCategory.System, "Trockenzelt: Entfeuchter wird nicht geschaltet", text, ct, trotzRuhezeit: true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Trocknung Zelt {Zelt}: Push zur Störung des Entfeuchters nicht gesendet.", tentId);
+        }
     }
 
     /// <summary>Anzahl der Grenzen, die dieser Durchlauf an Home Assistant geschrieben hat.</summary>
@@ -178,6 +309,8 @@ public sealed class TrocknungSteuerungService
         int geschrieben = 0, gescheitert = 0;
         foreach (var rolle in Rollen)
         {
+            // Der Entfeuchter wird nicht über einen Grenzwert geführt, sondern vom Schaltlauf ein- und ausgeschaltet.
+            if (rolle == TrocknungZiel.RolleEntfeuchter) continue;
             if (!einstellung.Folgt(rolle) || !zuordnung.TryGetValue(TrocknungZiel.PortRolle(rolle), out var deviceId)) continue;
             var port = ports.FirstOrDefault(p => p.DeviceId == deviceId);
             if (port is null) continue;
@@ -239,7 +372,8 @@ public sealed class TrocknungSteuerungService
         }
 
         // „Zurück“ heißt: der Fork fasst nichts mehr an, auch wenn eine Rolle nicht zurückging (dann bleibt ihr Merker stehen).
-        _steuerung.Set(tentId, einstellung with { Betrieb = TrocknungSteuerungRepository.BetriebMelden });
+        // Den Entfeuchter hält kein Merker (er wird geschaltet, nicht über eine Grenze geführt): er hört einfach auf zu schalten und bleibt, wie er steht.
+        _steuerung.Set(tentId, einstellung with { Betrieb = TrocknungSteuerungRepository.BetriebMelden, EntfeuchterFolgt = false });
         return new Abgleich(geschrieben, gescheitert);
     }
 }

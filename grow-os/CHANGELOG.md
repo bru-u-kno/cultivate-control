@@ -5,6 +5,21 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.335
+
+**Trocknung: Der Fork schaltet den Entfeuchter am Trockenzelt selbst ein und aus — nach der Luftfeuchte im Zelt und den Werten des Trocknungsplans, ohne dass jemand von Hand schalten muss.**
+
+- **Warum:** Die Cloud des Controllers lehnt das Schreiben von Grenzwerten im Modus Auto ab („Operation failed“). Der Entfeuchter blieb dadurch bei seinem alten Wert und trocknete zu stark. Das Schalten von On und Off dagegen wird angenommen.
+- **So arbeitet die Steuerung:** Ist der Entfeuchter in Steuerung › Trocknung eingebunden und die Betriebsart „Regeln“ eingeschaltet, schaltet der Fork den Port jede Minute: **ein ab dem Ziel der Etappe, aus unter dem unteren Rand des Bands** (Ziel 58 %, Band 56–60 % ergibt: ein ab 58 %, aus unter 56 %). Beim Etappenwechsel ändern sich die Werte von selbst.
+- **Mindestpause:** Zwischen zwei Schaltvorgängen liegen mindestens 3 Minuten, damit der Kompressor nicht ständig an- und ausgeht.
+- **Der Port muss auf On oder Off stehen:** Auto stellt der Fork nie ein. Steht der Port auf Auto, zeigt die Karte „Port steht auf Auto“ und sagt, was zu tun ist (Port in der App des Controllers auf On stellen).
+- **Ohne Messwert wird nichts geschaltet:** Lässt sich die Luftfeuchte im Zelt nicht lesen, bleibt der Entfeuchter, wie er ist; die Karte zeigt „kein Messwert“.
+- **Störung wird gemeldet:** Dauert ein Problem (Port auf Auto, Befehl nicht angenommen, kein Messwert) zehn Minuten, kommt einmal eine Push-Meldung.
+- **Karte „Entfeuchter“:** Zeigt „Schaltet ein ab“, „Schaltet aus unter“ und „Jetzt“ mit der Luftfeuchte im Zelt und dem letzten Schaltvorgang. Die Rückfrage beim Einschalten von „Regeln“ nennt die Schwellen.
+- **Unverändert:** Kühlung und Abluft folgen weiter über Grenzwerte dem Plan. „Alte Werte zurück“ stellt den Entfeuchter nicht um; er hört einfach auf zu schalten und bleibt, wie er steht.
+- **Schnittstelle:** Beim Entfeuchter nennt der Stand der Trocknungs-Steuerung unter `schalten` den Zustand (`laeuft`, `steht`, `wartet`, `schaltetEin`, `schaltetAus`, `portNichtSchaltbar`, `keinMesswert`), die Schwellen, die Luftfeuchte, den Modus und den letzten Schaltvorgang. Neue Urteile: `schaltet`, `portNichtSchaltbar`, `keinMesswert`, `schaltetNicht`.
+- **Getestet:** Ein ab dem Ziel, aus unter dem Band und dazwischen unverändert (an den Rändern geprüft); Mindestpause; Auto, nicht verfügbar und andere Modi werden nie überschrieben; ohne Messwert kein Schalten; ein abgelehnter Befehl wird erneut versucht; Nur anzeigen und nicht eingebunden schalten nichts; der Entfeuchter bekommt keinen Grenzwert mehr, Kühlung und Abluft schon.
+
 ## 2.0.0-cc.334
 
 **Trocknung: „Gerät einbinden“ — der Haken erscheint sofort, die Meldungen sagen in Klartext, was die Steuerung tut, und ein laufender Vorgang wird angezeigt, bis er fertig ist.**

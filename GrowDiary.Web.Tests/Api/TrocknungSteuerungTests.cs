@@ -26,6 +26,8 @@ public sealed class TrocknungSteuerungTests : IDisposable
     private readonly Dictionary<string, HomeAssistantState> _ha = [];
     private readonly List<(string Entity, double Wert)> _gesetzt = [];
     private bool _setzenGelingt = true;
+    private readonly List<(string Entity, string Option)> _modusGesetzt = [];
+    private bool _schaltenGelingt = true;
     private Action? _beimSetzen;
 
     private static readonly IReadOnlyList<TrocknungZiel.Port> Ports =
@@ -78,6 +80,12 @@ public sealed class TrocknungSteuerungTests : IDisposable
                 _beimSetzen?.Invoke();
                 if (_setzenGelingt) ZustandSetzen(id, wert.ToString(System.Globalization.CultureInfo.InvariantCulture), _ha[id].UnitOfMeasurement);
                 return Task.FromResult(_setzenGelingt);
+            },
+            (id, option, _) =>
+            {
+                _modusGesetzt.Add((id, option));
+                if (_schaltenGelingt) ZustandSetzen(id, option);
+                return Task.FromResult(_schaltenGelingt);
             });
         return new TrocknungSteuerungService(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(_paths)), _ports, _steuerung, ziel, NullLogger<TrocknungSteuerungService>.Instance);
     }
@@ -138,16 +146,16 @@ public sealed class TrocknungSteuerungTests : IDisposable
         var c = Controller();
         await c.Setzen(_trockenZelt.Id, Anfrage("regeln", true, true), default);
         var nachErstem = _gesetzt.Count;
-        Assert.Equal(2, nachErstem);
+        Assert.Equal(1, nachErstem); // nur die Kühlung: der Entfeuchter wird geschaltet, nicht über eine Grenze geführt
 
         Assert.Equal(0, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
         Assert.Equal(nachErstem, _gesetzt.Count);
 
-        // Nutzer verstellt von Hand: der nächste Lauf zieht nach, der Wert davor bleibt der allererste (24 bzw. 50).
+        // Nutzer verstellt von Hand: der nächste Lauf zieht nach, der Wert davor bleibt der allererste (24).
         ZustandSetzen("number.clima_temp", "23", "°C");
         Assert.Equal(1, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
         Assert.Equal(24, _steuerung.Merkers(_trockenZelt.Id)["kuehlung"].Vorher);
-        Assert.Equal(50, _steuerung.Merkers(_trockenZelt.Id)["entfeuchter"].Vorher);
+        Assert.False(_steuerung.Merkers(_trockenZelt.Id).ContainsKey("entfeuchter")); // keine Grenze am Entfeuchter, kein Merker
     }
 
     [Fact]
@@ -156,16 +164,16 @@ public sealed class TrocknungSteuerungTests : IDisposable
         ErnteImTrockenzelt(); // Tag 2: Etappe 1 „Anfang“, oben 21 °C und 62 %
         await Controller().Setzen(_trockenZelt.Id, Anfrage("regeln", true, true), default);
         Assert.Equal("21", _ha["number.clima_temp"].State);
-        Assert.Equal("62", _ha["number.dehumi_feuchte"].State);
+        Assert.Equal("50", _ha["number.dehumi_feuchte"].State); // der Entfeuchter bekommt keinen Grenzwert mehr
 
         // Tag 5 = Etappe 2 „Hauptphase“ (19 °C, 58 %): oben 20 °C und 60 %.
         var ernte = _ernten.GetForGrow(_growId)!;
         ernte.HarvestedAt = DateTime.Today.AddDays(-4);
         _ernten.Update(ernte);
-        Assert.Equal(2, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
+        Assert.Equal(1, (await Dienst().AbgleichenAsync(_trockenZelt.Id, default)).Geschrieben);
 
         Assert.Equal("20", _ha["number.clima_temp"].State);
-        Assert.Equal("60", _ha["number.dehumi_feuchte"].State);
+        Assert.Equal("50", _ha["number.dehumi_feuchte"].State);
         Assert.Equal(24, _steuerung.Merkers(_trockenZelt.Id)["kuehlung"].Vorher); // Wert des Nutzers, nicht der der Etappe davor
     }
 
@@ -175,11 +183,11 @@ public sealed class TrocknungSteuerungTests : IDisposable
         ErnteImTrockenzelt();
         var c = Controller();
         await c.Setzen(_trockenZelt.Id, Anfrage("regeln", true, true), default);
-        Assert.Equal("62", _ha["number.dehumi_feuchte"].State);
+        Assert.Equal("21", _ha["number.clima_temp"].State);
 
         var zurueck = Wert(await c.Zuruecksetzen(_trockenZelt.Id, default));
 
-        Assert.Equal(2, zurueck.Zurueck);
+        Assert.Equal(1, zurueck.Zurueck);
         Assert.Equal("50", _ha["number.dehumi_feuchte"].State);
         Assert.Equal("24", _ha["number.clima_temp"].State);
         Assert.Equal("melden", zurueck.Stand.Betrieb);
@@ -293,6 +301,124 @@ public sealed class TrocknungSteuerungTests : IDisposable
         Assert.Equal("21", _ha["number.clima_temp"].State);
     }
 
+    // ---------------------------------------------------------------- Entfeuchter schalten (06.11.2026)
+
+    private void FeuchteSensor(string wert)
+    {
+        if (_grows.GetTent(_trockenZelt.Id)!.Sensors.All(x => x.MetricType != SensorMetricType.Humidity))
+            _grows.AddTentSensor(new TentSensor { TentId = _trockenZelt.Id, MetricType = SensorMetricType.Humidity, HaEntityId = "sensor.zelt_feuchte", IsActive = true });
+        ZustandSetzen("sensor.zelt_feuchte", wert, "%");
+    }
+
+    private async Task<bool> Schalten(string betrieb = "regeln")
+    {
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung(betrieb, true, false));
+        return await Dienst().SchaltenAsync(_trockenZelt.Id, default);
+    }
+
+    [Fact]
+    public async Task Der_Fork_schaltet_den_Entfeuchter_ein_ab_dem_Ziel_und_aus_unter_dem_Band_und_schreibt_nie_eine_Grenze()
+    {
+        ErnteImTrockenzelt(); // Tag 2: Etappe 1, Ziel 60 %, Band 58–62
+        ZustandSetzen("select.dehumi_modus", "Off");
+        FeuchteSensor("61");
+
+        Assert.True(await Schalten());
+        Assert.Equal([("select.dehumi_modus", "On")], _modusGesetzt);
+        Assert.Empty(_gesetzt); // keine Zahl, kein Grenzwert
+
+        // Innerhalb der Hysterese (58–60) bleibt der Entfeuchter an.
+        FeuchteSensor("59");
+        Assert.False(await Dienst().SchaltenAsync(_trockenZelt.Id, default));
+        Assert.Single(_modusGesetzt);
+    }
+
+    [Fact]
+    public async Task Unter_dem_Band_schaltet_der_Fork_aus_aber_erst_nach_der_Mindestpause()
+    {
+        ErnteImTrockenzelt();
+        ZustandSetzen("select.dehumi_modus", "Off");
+        FeuchteSensor("61");
+        var dienst = Dienst();
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", true, false));
+        Assert.True(await dienst.SchaltenAsync(_trockenZelt.Id, default)); // ein
+
+        FeuchteSensor("55");                                                // sofort darunter: Pause läuft noch
+        Assert.False(await dienst.SchaltenAsync(_trockenZelt.Id, default));
+        Assert.Equal("wartet", (await dienst.StandAsync(_trockenZelt.Id, default)).Geraete.Single(g => g.Rolle == "entfeuchter").Schalten!.Zustand);
+        Assert.Single(_modusGesetzt);
+    }
+
+    [Fact]
+    public async Task Steht_der_Port_auf_Auto_schaltet_der_Fork_nicht_und_der_Stand_sagt_es()
+    {
+        ErnteImTrockenzelt();
+        FeuchteSensor("65"); // weit über dem Ziel, Port steht auf Auto (so ist das Zelt im Fixture)
+
+        Assert.False(await Schalten());
+        Assert.Empty(_modusGesetzt);
+        Assert.Equal("Auto", _ha["select.dehumi_modus"].State); // Auto wird nie überschrieben
+        var g = Wert(await Controller().Lesen(_trockenZelt.Id, default)).Geraete.Single(x => x.Rolle == "entfeuchter");
+        Assert.Equal("portNichtSchaltbar", g.Urteil);
+        Assert.Equal("portNichtSchaltbar", g.Schalten!.Zustand);
+    }
+
+    [Fact]
+    public async Task Ohne_Messwert_bleibt_der_Entfeuchter_wie_er_ist()
+    {
+        ErnteImTrockenzelt();
+        ZustandSetzen("select.dehumi_modus", "On");
+        FeuchteSensor("unavailable");
+
+        Assert.False(await Schalten());
+        Assert.Empty(_modusGesetzt);
+        var g = Wert(await Controller().Lesen(_trockenZelt.Id, default)).Geraete.Single(x => x.Rolle == "entfeuchter");
+        Assert.Equal("keinMesswert", g.Urteil);
+    }
+
+    [Fact]
+    public async Task Lehnt_das_Geraet_den_Schaltbefehl_ab_meldet_der_Stand_schaltetNicht_und_der_naechste_Lauf_versucht_es_wieder()
+    {
+        ErnteImTrockenzelt();
+        ZustandSetzen("select.dehumi_modus", "Off");
+        FeuchteSensor("62");
+        _schaltenGelingt = false;
+        var dienst = Dienst(); // der Dienst ist im Betrieb ein Einzelstück und merkt sich den Fehlschlag
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", true, false));
+
+        Assert.False(await dienst.SchaltenAsync(_trockenZelt.Id, default));
+        Assert.Equal("schaltetNicht", (await dienst.StandAsync(_trockenZelt.Id, default)).Geraete.Single(x => x.Rolle == "entfeuchter").Urteil);
+
+        _schaltenGelingt = true;
+        Assert.True(await dienst.SchaltenAsync(_trockenZelt.Id, default));
+        Assert.Equal("On", _ha["select.dehumi_modus"].State);
+    }
+
+    [Fact]
+    public async Task Nur_melden_oder_nicht_eingebunden_schaltet_nichts()
+    {
+        ErnteImTrockenzelt();
+        ZustandSetzen("select.dehumi_modus", "Off");
+        FeuchteSensor("70");
+
+        Assert.False(await Schalten("melden"));
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", false, false));
+        Assert.False(await Dienst().SchaltenAsync(_trockenZelt.Id, default));
+        Assert.Empty(_modusGesetzt);
+    }
+
+    [Fact]
+    public async Task Eine_Stoerung_von_zehn_Laeufen_geht_einmal_als_Push_raus()
+    {
+        ErnteImTrockenzelt();
+        FeuchteSensor("65"); // Port auf Auto: Störung
+        var dienst = Dienst();
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", true, false));
+        for (var i = 0; i < TrocknungSteuerungService.ProblemBisPush + 3; i++) await dienst.SchaltenAsync(_trockenZelt.Id, default);
+        // Ohne NotificationService im Test kein Push; die Zählung selbst bleibt stumm und wirft nicht.
+        Assert.Empty(_modusGesetzt);
+    }
+
     private void AbluftEinrichten(string modus = "Auto")
     {
         _ports.Set(_trockenZelt.Id, "abluft", "dev-abluft");
@@ -385,7 +511,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
         // Ein anderer Benutzer liest den Stand, während der Fork gerade an den Controller schreibt.
         _beimSetzen = () => mittendrin ??= dienst.StandAsync(_trockenZelt.Id, default).GetAwaiter().GetResult().InArbeit;
 
-        var anfrage = Anfrage("regeln", true, false);
+        var anfrage = Anfrage("regeln", false, true);
         anfrage.ClientId = "seite-a";
         var stand = Wert(await c.Setzen(_trockenZelt.Id, anfrage, default));
 
@@ -404,7 +530,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
         var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst);
         _beimSetzen = () => throw new InvalidOperationException("Controller antwortet nicht");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => c.Setzen(_trockenZelt.Id, Anfrage("regeln", true, false), default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => c.Setzen(_trockenZelt.Id, Anfrage("regeln", false, true), default));
 
         Assert.Null((await dienst.StandAsync(_trockenZelt.Id, default)).InArbeit);
     }

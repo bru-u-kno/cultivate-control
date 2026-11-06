@@ -14,13 +14,23 @@ interface Zustand {
   abluft: boolean
   entfeuchterAm: number
   inArbeit: { phase: Phase; seit: string; clientId: string | null } | null
+  /** Entfeuchter, den der Fork schaltet (statt Grenzwert): Urteil und Schaltstand. */
+  schalten?: { urteil: string; modus: string; zustand: string; feuchte: number | null; zuletztUtc: string | null; zuletztAktion: string | null }
 }
+
+const entfeuchterZeile = (z: Zustand) => z.schalten
+  ? {
+    rolle: 'entfeuchter', portName: 'DRY Dehumi', folgt: true, modus: z.schalten.modus, wertAmGeraet: null, einheit: null, planWert: 60,
+    urteil: z.schalten.urteil, vorher: null, zuletztGesetzt: null,
+    schalten: { zustand: z.schalten.zustand, feuchte: z.schalten.feuchte, einAb: 58, ausUnter: 56, modus: z.schalten.modus, zuletztUtc: z.schalten.zuletztUtc, zuletztAktion: z.schalten.zuletztAktion, gescheitert: z.schalten.urteil === 'schaltetNicht' },
+  }
+  : { rolle: 'entfeuchter', portName: 'DRY Dehumi', folgt: true, modus: 'Auto', wertAmGeraet: z.entfeuchterAm, einheit: '%', planWert: 60, urteil: z.entfeuchterAm === 60 ? 'passt' : 'weichtAb', vorher: null, zuletztGesetzt: null }
 
 const stand = (z: Zustand) => ({
   trocknet: true, betrieb: z.betrieb, portsErreichbar: true, tag: 7, tageGeplant: 10, etappe: 'Ausklang',
   tempMin: 16, tempMax: 18, feuchteMin: 56, feuchteMax: 60,
   geraete: [
-    { rolle: 'entfeuchter', portName: 'DRY Dehumi', folgt: true, modus: 'Auto', wertAmGeraet: z.entfeuchterAm, einheit: '%', planWert: 60, urteil: z.entfeuchterAm === 60 ? 'passt' : 'weichtAb', vorher: null, zuletztGesetzt: null },
+    entfeuchterZeile(z),
     { rolle: 'kuehlung', portName: 'DRY Clima', folgt: false, modus: 'Off', wertAmGeraet: null, einheit: null, planWert: 18, urteil: 'geraetAus', vorher: null, zuletztGesetzt: null },
     { rolle: 'abluft-feuchte', portName: 'DRY Out Venti', folgt: z.abluft, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 60, urteil: 'ohneAutomatik', vorher: null, zuletztGesetzt: null },
     { rolle: 'abluft-temp', portName: 'DRY Out Venti', folgt: z.abluft, modus: 'On', wertAmGeraet: null, einheit: null, planWert: 18, urteil: 'ohneAutomatik', vorher: null, zuletztGesetzt: null },
@@ -194,4 +204,40 @@ test('Die Rückfrage bestätigt mit dem frischen Stand: ein zwischenzeitlich ge�
   await page.getByRole('button', { name: 'Ja, einbinden' }).click()
   await expect.poll(() => gesendet.length).toBe(1)
   expect(gesendet[0]).toMatchObject({ abluftFolgt: true, kuehlungFolgt: true })
+})
+
+test('Der Entfeuchter, den der Fork schaltet, zeigt Schwellen und Luftfeuchte statt eines Grenzwerts', async ({ page }) => {
+  const z: Zustand = {
+    betrieb: 'regeln', abluft: false, entfeuchterAm: 60, inArbeit: null,
+    schalten: { urteil: 'schaltet', modus: 'Off', zustand: 'steht', feuchte: 56.6, zuletztUtc: new Date().toISOString(), zuletztAktion: 'aus' },
+  }
+  await nachstellen(page, z)
+  await page.goto('/steuerung/trocknung', { waitUntil: 'networkidle' })
+
+  const karte = page.locator('[data-audit="trocknung-entfeuchter"]').locator('xpath=ancestor::article[1]')
+  await expect(karte).toContainText('schaltet nach Plan')
+  const zeilen = karte.locator('[data-audit="trocknung-schalten"]')
+  await expect(zeilen).toContainText('Schaltet ein ab')
+  await expect(zeilen).toContainText('58 %')
+  await expect(zeilen).toContainText('Schaltet aus unter')
+  await expect(zeilen).toContainText('56 %')
+  await expect(zeilen).toContainText('Luftfeuchte im Zelt 56,6 %')
+  await expect(zeilen).toContainText(/aus seit \d\d:\d\d/)
+  // Kein Grenzwert am Gerät, kein „Zuletzt gesetzt“: der Entfeuchter wird geschaltet, nicht über eine Grenze geführt.
+  await expect(karte).not.toContainText('Luftfeuchte: am Gerät')
+  await expect(karte).not.toContainText('Zuletzt gesetzt')
+  await expect(page.locator('[data-audit="trocknung-erklaerung-entfeuchter"]')).toContainText('ein ab 58 % und aus unter 56 %')
+})
+
+test('Steht der Port des Entfeuchters auf Auto, nennt die Karte den Handgriff und warnt', async ({ page }) => {
+  const z: Zustand = {
+    betrieb: 'regeln', abluft: false, entfeuchterAm: 60, inArbeit: null,
+    schalten: { urteil: 'portNichtSchaltbar', modus: 'Auto', zustand: 'portNichtSchaltbar', feuchte: 62, zuletztUtc: null, zuletztAktion: null },
+  }
+  await nachstellen(page, z)
+  await page.goto('/steuerung/trocknung', { waitUntil: 'networkidle' })
+
+  const karte = page.locator('[data-audit="trocknung-entfeuchter"]').locator('xpath=ancestor::article[1]')
+  await expect(karte).toContainText('Port steht auf Auto')
+  await expect(page.locator('[data-audit="trocknung-erklaerung-entfeuchter"]')).toContainText('Stell den Port in der App des Controllers auf On')
 })

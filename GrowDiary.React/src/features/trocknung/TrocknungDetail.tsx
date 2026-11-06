@@ -10,15 +10,17 @@ import './ziel.css'
 import { PortBlatt } from './PortBlatt'
 import {
   ARBEIT_SCHRITTE, ARBEIT_TITEL, betriebText, einbindenHinweis, erklaerung, kopfZeile, ohneEinbindungText, plakette, ROLLE, SCHALTER, schalterVon,
-  wuerdeSchreiben, zahl,
-  type ArbeitPhase, type Betrieb, type Folgt, type Schalter, type SteuerungGeraet, type TrocknungSteuerung,
+  wuerdeSchalten, wuerdeSchreiben, zahl,
+  type ArbeitPhase, type Betrieb, type Folgt, type Schalter, type SteuerungGeraet, type SteuerungSchalten, type TrocknungSteuerung,
 } from './steuerung-text'
 
 /**
  * Steuerung › Trocknung (A-029, Etappe 3, Teil B): welche Geräte am Trockenzelt bindet der Nutzer ein?
  *
  * Eingebundene Geräte bringt die Steuerung auf die Planwerte des Trocknungsplans und hält sie dort. Technisch ändert der Fork nur
- * die Grenzen der Auslöser an den Ports des Controllers, nie deren Modus; der Controller regelt weiter selbst. „Nur anzeigen“
+ * die Grenzen der Auslöser an den Ports des Controllers; der Controller regelt weiter selbst. Eine Ausnahme ist der Entfeuchter
+ * (06.11.2026): Ihn schaltet der Fork selbst ein und aus (On/Off des Ports, nie Auto), weil die Cloud des Controllers das Schreiben
+ * der Grenzen im Modus Auto ablehnt. „Nur anzeigen“
  * schreibt nichts und zeigt, was geschrieben würde. Auf „Regeln“ stellt man erst nach einer Rückfrage, die genau auflistet,
  * was geschrieben wird.
  *
@@ -327,6 +329,15 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
       >
         <div className="zj-rueckfrage">
           <p>Die Steuerung stellt die Geräte ab jetzt auf den Planwert:</p>
+          {rueckfrage && (() => {
+            const w = wuerdeSchalten(stand.geraete, rueckfrage.folgt)
+            return w ? (
+              <div className="zj-wert" data-audit="rueckfrage-entfeuchter-schalten">
+                <span>{w.portName} · schaltet nach der Luftfeuchte</span>
+                <strong>ein ab {zahl(w.einAb)} %, aus unter {zahl(w.ausUnter)} %</strong>
+              </div>
+            ) : null
+          })()}
           {rueckfrage && wuerdeSchreiben(stand.geraete, rueckfrage.folgt).map((w) => (
             <div key={w.rolle} className="zj-wert" data-audit={`rueckfrage-${w.rolle}`}>
               <span>{w.portName} · {w.feld}</span>
@@ -334,8 +345,8 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
             </div>
           ))}
           <p className="fe-hinweis">
-            Nicht angefasst: alle Geräte, die nicht eingebunden sind, und der Modus der Ports. Die Steuerung merkt sich die alten Werte; „Alte Werte zurück“
-            setzt sie wieder ein. {betriebText('regeln')} gilt, bis du auf „Nur anzeigen“ zurückstellst.
+            Nicht angefasst: alle Geräte, die nicht eingebunden sind. Den Modus eines Ports ändert die Steuerung nur beim Entfeuchter (On und Off, nie Auto).
+            Bei den übrigen merkt sie sich die alten Werte; „Alte Werte zurück“ setzt sie wieder ein. {betriebText('regeln')} gilt, bis du auf „Nur anzeigen“ zurückstellst.
           </p>
         </div>
       </V1Sheet>
@@ -348,6 +359,28 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
       />
       <Kurzmeldung text={kurz?.text ?? null} ton={kurz?.ton} nr={kurz?.nr} onSchliessen={kurzSchliessen} />
     </V1Page>
+  )
+}
+
+/** Die drei Zeilen des Entfeuchters, den der Fork schaltet: Schwellen, Luftfeuchte jetzt, letzter Schaltvorgang. */
+function SchaltZeilen({ s }: { s: SteuerungSchalten }) {
+  const seit = s.zuletztUtc ? new Date(s.zuletztUtc).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : null
+  const jetzt = s.modus === 'On' ? 'an' : s.modus === 'Off' ? 'aus' : (s.modus ?? '–')
+  return (
+    <div data-audit="trocknung-schalten">
+      <div className="st-feldzeile">
+        <span className="st-etikett">Schaltet ein ab</span>
+        <span className="st-nurlesen">{s.einAb == null ? '–' : `${zahl(s.einAb)} %`}</span>
+      </div>
+      <div className="st-feldzeile">
+        <span className="st-etikett">Schaltet aus unter</span>
+        <span className="st-nurlesen">{s.ausUnter == null ? '–' : `${zahl(s.ausUnter)} %`}</span>
+      </div>
+      <div className="st-feldzeile">
+        <span className="st-etikett">Jetzt<small>{s.feuchte == null ? 'Luftfeuchte im Zelt nicht lesbar' : `Luftfeuchte im Zelt ${zahl(s.feuchte)} %`}</small></span>
+        <span className="st-nurlesen">{seit && s.zuletztAktion === (s.modus === 'On' ? 'ein' : 'aus') ? `${jetzt} seit ${seit}` : jetzt}</span>
+      </div>
+    </div>
   )
 }
 
@@ -412,7 +445,10 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
           {!eigenerVorgang && !wartetAufBestaetigung && (
             <p className="zj-erklaerung" data-audit={`trocknung-erklaerung-${schalter}`}><b>Was das jetzt heißt:</b> {erklaerung(angezeigt, betrieb)}</p>
           )}
-          {zeilen.map((z) => (
+          {g.schalten && g.urteil !== 'nichtZugeordnet' && (
+            <SchaltZeilen s={g.schalten} />
+          )}
+          {!g.schalten && zeilen.map((z) => (
             <div key={z.rolle}>
               <div className="st-feldzeile">
                 <span className="st-etikett">{ROLLE[z.rolle].feld.replace('-Obergrenze', '')}: Planwert</span>
@@ -424,7 +460,7 @@ function GeraetKarte({ schalter, zeilen, betrieb, eingebunden, wartetAufBestaeti
               </div>
             </div>
           ))}
-          {g.zuletztGesetzt && (
+          {!g.schalten && g.zuletztGesetzt && (
             <div className="st-feldzeile">
               <span className="st-etikett">Zuletzt gesetzt<small>{g.vorher != null ? `vorher ${zahl(g.vorher)} ${r.einheit} (gemerkt)` : null}</small></span>
               <span className="st-nurlesen">{new Date(g.zuletztGesetzt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</span>

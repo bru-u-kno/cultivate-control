@@ -19,6 +19,7 @@ public sealed class TrocknungZielService
     private readonly Func<CancellationToken, Task<IReadOnlyList<TrocknungZiel.Port>?>> _ports;
     private readonly Func<string, CancellationToken, Task<HomeAssistantState?>> _zustand;
     private readonly Func<string, double, CancellationToken, Task<bool>> _setze;
+    private readonly Func<string, string, CancellationToken, Task<bool>> _setzeModus;
     private readonly object _sperre = new();
     private (DateTime Zeit, IReadOnlyList<TrocknungZiel.Port>? Ports)? _gemerkt;
 
@@ -34,7 +35,10 @@ public sealed class TrocknungZielService
             (entityId, ct) => ha.GetEntityStateAsync(einstellungen.GetEffectiveHomeAssistantSettings(), entityId, ct),
             (entityId, wert, ct) => ha.CallEntityServiceAsync(
                 einstellungen.GetEffectiveHomeAssistantSettings(), "number", "set_value", entityId, ct,
-                new Dictionary<string, object> { ["value"] = wert }))
+                new Dictionary<string, object> { ["value"] = wert }),
+            (entityId, option, ct) => ha.CallEntityServiceAsync(
+                einstellungen.GetEffectiveHomeAssistantSettings(), "select", "select_option", entityId, ct,
+                new Dictionary<string, object> { ["option"] = option }))
     {
     }
 
@@ -42,11 +46,13 @@ public sealed class TrocknungZielService
     public TrocknungZielService(
         Func<CancellationToken, Task<IReadOnlyList<TrocknungZiel.Port>?>> ports,
         Func<string, CancellationToken, Task<HomeAssistantState?>> zustand,
-        Func<string, double, CancellationToken, Task<bool>>? setze = null)
+        Func<string, double, CancellationToken, Task<bool>>? setze = null,
+        Func<string, string, CancellationToken, Task<bool>>? setzeModus = null)
     {
         _ports = ports;
         _zustand = zustand;
         _setze = setze ?? ((_, _, _) => Task.FromResult(false));
+        _setzeModus = setzeModus ?? ((_, _, _) => Task.FromResult(false));
     }
 
     public Task<HomeAssistantState?> ZustandAsync(string entityId, CancellationToken ct) => _zustand(entityId, ct);
@@ -58,6 +64,15 @@ public sealed class TrocknungZielService
     public Task<bool> SetzeZahlAsync(string entityId, double wert, CancellationToken ct)
         => entityId.StartsWith("number.", StringComparison.OrdinalIgnoreCase) && double.IsFinite(wert)
             ? _setze(entityId, wert, ct)
+            : Task.FromResult(false);
+
+    /// <summary>
+    /// Schaltet den Modus eines Ports zwischen <c>On</c> und <c>Off</c> (Entfeuchter am Trockenzelt). Nur diese beiden Werte an einer
+    /// <c>select</c>-Entität: Auto und alle anderen Modi stellt der Fork nie ein.
+    /// </summary>
+    public Task<bool> SetzeModusAsync(string entityId, string option, CancellationToken ct)
+        => entityId.StartsWith("select.", StringComparison.OrdinalIgnoreCase) && option is "On" or "Off"
+            ? _setzeModus(entityId, option, ct)
             : Task.FromResult(false);
 
     /// <summary>Alle Ports mit eigener Automatik; <c>null</c>, wenn Home Assistant sich nicht erreichen lässt.</summary>
