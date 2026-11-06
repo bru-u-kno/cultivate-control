@@ -53,11 +53,17 @@ public sealed class TrocknungSteuerungWorker : BackgroundService
     {
         var repository = _serviceProvider.GetRequiredService<TrocknungSteuerungRepository>();
         var dienst = _serviceProvider.GetRequiredService<TrocknungSteuerungService>();
+        var zuluft = _serviceProvider.GetRequiredService<TrocknungZuluftService>();
         var geschrieben = 0;
-        foreach (var zelt in repository.ZelteImBetrieb(TrocknungSteuerungRepository.BetriebRegeln))
+        var imBetrieb = repository.ZelteImBetrieb(TrocknungSteuerungRepository.BetriebRegeln);
+        // Ein Zelt, dessen Zuluft der Fork gerade führt, aber nicht mehr auf „Regeln“ steht, bekommt noch einen Lauf: Er gibt die Zuluft zurück.
+        foreach (var zelt in zuluft.GefuehrteZelte().Except(imBetrieb))
+            await zuluft.LaufAsync(zelt, ct);
+        foreach (var zelt in imBetrieb)
         {
             if (await dienst.SchaltenAsync(zelt, ct)) geschrieben++;
             if (await dienst.AbluftStufeAsync(zelt, ct)) geschrieben++;
+            if (await zuluft.LaufAsync(zelt, ct)) geschrieben++;
             if (grenzen) geschrieben += (await dienst.AbgleichenAsync(zelt, ct)).Geschrieben;
         }
 

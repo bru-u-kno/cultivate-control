@@ -348,6 +348,11 @@ public sealed class RundwegVollstaendigTests
             "Die Betriebsart ist ein Wort aus zwei erlaubten (\"melden\", \"regeln\"); die feste Probe \"1\" lehnt das PUT mit 400 ab, "
             + "und ein Schalter ohne zugeordneten Port ebenso. Setzen, Zurücksetzen, die Merker und dass nur number-Entitäten beschrieben "
             + "werden, fährt TrocknungSteuerungTests.",
+        // cc.337
+        ["TrocknungZuluftRequest"] =
+            "Nimmt nur Zahlen und einen Haken: Die Höchststufe (1 bis 10) und der Abstand (0 bis 20) haben feste Grenzen, die Proben "
+            + "0, 11, -1 und 21 lehnt das PUT mit 400 ab, und der Haken ohne zugeordneten Schalter ebenso. Speichern, Rest stehen lassen und "
+            + "Altbestand fährt TrocknungSteuerungTests (Zuluft_…); die Entscheidung des Forks (ohne Gerät) fährt TrocknungZuluftTests.",
         // cc.277
         ["ZeltRuheAuswahlRequest"] =
             "Eine Liste von Kennungen, kein Formular mit Feldern, die einzeln zurückkommen könnten, und das PUT lehnt "

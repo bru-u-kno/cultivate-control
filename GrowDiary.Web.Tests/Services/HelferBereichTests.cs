@@ -32,6 +32,15 @@ public sealed class HelferBereichTests
     }
 
     [Fact]
+    public void ZelttemperaturMinDerZuluftWirdAufDenKatalogBereichGeweitet()
+    {
+        // Der Fall vom 06.11.2026: Die Seite erlaubt 10–30 °C, der Helfer stand auf 15–26 — 14 °C lehnte Home Assistant mit 400 ab.
+        var katalog = GrowDiary.Web.Models.SteuerungBauteile.FindenNachId(ZuluftSteuerungService.Entitaeten.ZeltTemperaturMin);
+        Assert.NotNull(katalog);
+        Assert.Equal((10d, 30d), HelferBereichService.Weiten(15, 26, 14, katalog!.Min, katalog.Max));
+    }
+
+    [Fact]
     public void DerBereichWirdNieEnger()
     {
         // Katalog 30–90 liegt im Helfer 10–100: der Helfer behält seine Grenzen, nur der Wert muss hinein.

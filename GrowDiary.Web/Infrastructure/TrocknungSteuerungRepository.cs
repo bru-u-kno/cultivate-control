@@ -16,7 +16,14 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
     public const string BetriebMelden = "melden";
     public const string BetriebRegeln = "regeln";
 
-    public sealed record Einstellung(string Betrieb, bool EntfeuchterFolgt, bool KuehlungFolgt, bool AbluftFolgt = false, int AbluftMinStufe = 0)
+    /// <summary>Zuluft im Trocknungsbetrieb: stärker saugt sie nie als diese Stufe.</summary>
+    public const int ZuluftHoechststufeVorgabe = 4;
+
+    /// <summary>Zuluft im Trocknungsbetrieb: so viele Prozentpunkte unter dem Planwert bleibt sie aus.</summary>
+    public const int ZuluftAbstandVorgabe = 3;
+
+    public sealed record Einstellung(string Betrieb, bool EntfeuchterFolgt, bool KuehlungFolgt, bool AbluftFolgt = false, int AbluftMinStufe = 0,
+        bool ZuluftFolgt = false, int ZuluftHoechststufe = ZuluftHoechststufeVorgabe, int ZuluftAbstandProzent = ZuluftAbstandVorgabe)
     {
         public static Einstellung Standard { get; } = new(BetriebMelden, false, false);
 
@@ -54,6 +61,9 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
                 KuehlungFolgt INTEGER NOT NULL,
                 AbluftFolgt INTEGER NOT NULL DEFAULT 0,
                 AbluftMinStufe INTEGER NOT NULL DEFAULT 0,
+                ZuluftFolgt INTEGER NOT NULL DEFAULT 0,
+                ZuluftHoechststufe INTEGER NOT NULL DEFAULT 4,
+                ZuluftAbstandProzent INTEGER NOT NULL DEFAULT 3,
                 UpdatedAtUtc TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS ForkTrocknungMerker (
@@ -89,17 +99,26 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
             stufe.CommandText = "ALTER TABLE ForkTrocknungSteuerung ADD COLUMN AbluftMinStufe INTEGER NOT NULL DEFAULT 0;";
             stufe.ExecuteNonQuery();
         }
+
+        foreach (var (name, vorgabe) in new[] { ("ZuluftFolgt", 0), ("ZuluftHoechststufe", ZuluftHoechststufeVorgabe), ("ZuluftAbstandProzent", ZuluftAbstandVorgabe) })
+        {
+            if (vorhanden.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
+            using var neu = connection.CreateCommand();
+            neu.CommandText = $"ALTER TABLE ForkTrocknungSteuerung ADD COLUMN {name} INTEGER NOT NULL DEFAULT {vorgabe};";
+            neu.ExecuteNonQuery();
+        }
     }
 
     public Einstellung Get(int tentId)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe FROM ForkTrocknungSteuerung WHERE TentId = $tentId;";
+        command.CommandText = "SELECT Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe, ZuluftFolgt, ZuluftHoechststufe, ZuluftAbstandProzent FROM ForkTrocknungSteuerung WHERE TentId = $tentId;";
         command.Parameters.AddWithValue("$tentId", tentId);
         using var reader = command.ExecuteReader();
         return reader.Read()
-            ? new Einstellung(reader.GetString(0), reader.GetInt32(1) != 0, reader.GetInt32(2) != 0, reader.GetInt32(3) != 0, reader.GetInt32(4))
+            ? new Einstellung(reader.GetString(0), reader.GetInt32(1) != 0, reader.GetInt32(2) != 0, reader.GetInt32(3) != 0, reader.GetInt32(4),
+                reader.GetInt32(5) != 0, reader.GetInt32(6), reader.GetInt32(7))
             : Einstellung.Standard;
     }
 
@@ -108,10 +127,11 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ForkTrocknungSteuerung (TentId, Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe, UpdatedAtUtc)
-            VALUES ($tentId, $betrieb, $e, $k, $a, $s, $jetzt)
+            INSERT INTO ForkTrocknungSteuerung (TentId, Betrieb, EntfeuchterFolgt, KuehlungFolgt, AbluftFolgt, AbluftMinStufe, ZuluftFolgt, ZuluftHoechststufe, ZuluftAbstandProzent, UpdatedAtUtc)
+            VALUES ($tentId, $betrieb, $e, $k, $a, $s, $zf, $zh, $za, $jetzt)
             ON CONFLICT(TentId) DO UPDATE SET Betrieb = excluded.Betrieb, EntfeuchterFolgt = excluded.EntfeuchterFolgt,
                 KuehlungFolgt = excluded.KuehlungFolgt, AbluftFolgt = excluded.AbluftFolgt, AbluftMinStufe = excluded.AbluftMinStufe,
+                ZuluftFolgt = excluded.ZuluftFolgt, ZuluftHoechststufe = excluded.ZuluftHoechststufe, ZuluftAbstandProzent = excluded.ZuluftAbstandProzent,
                 UpdatedAtUtc = excluded.UpdatedAtUtc;
             """;
         command.Parameters.AddWithValue("$tentId", tentId);
@@ -120,6 +140,9 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
         command.Parameters.AddWithValue("$k", einstellung.KuehlungFolgt ? 1 : 0);
         command.Parameters.AddWithValue("$a", einstellung.AbluftFolgt ? 1 : 0);
         command.Parameters.AddWithValue("$s", einstellung.AbluftMinStufe);
+        command.Parameters.AddWithValue("$zf", einstellung.ZuluftFolgt ? 1 : 0);
+        command.Parameters.AddWithValue("$zh", einstellung.ZuluftHoechststufe);
+        command.Parameters.AddWithValue("$za", einstellung.ZuluftAbstandProzent);
         command.Parameters.AddWithValue("$jetzt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
     }

@@ -4,6 +4,7 @@ import { V1Alert, V1Button, V1Card, V1LinkButton, V1Page, V1Section, V1Skeleton,
 import { V1Sheet } from '../../components/V1Sheet'
 import { Kurzmeldung, type KurzmeldungTon } from '../../components/Kurzmeldung'
 import { SteuerungWechsel } from '../steuerung/SteuerungWechsel'
+import { ZuluftTrocknungAnzeige } from '../steuerung/ZuluftTrocknungAnzeige'
 import type { SteuerungModul } from '../steuerung/steuerung-typen'
 import '../steuerung/steuerung.css'
 import './ziel.css'
@@ -306,6 +307,8 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
             />
           )
         })}
+
+        <ZuluftTrocknungAnzeige />
 
         <div className="zj-aktionen">
           {!regeln && <V1Button variant="primary" disabled={gesperrt || !SCHALTER.some((s) => folgt[s])} onClick={() => anfrage('regeln', folgt, null)}>Auf „Regeln“ stellen…</V1Button>}

@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.337
+
+**Trocknung: Die Zuluft folgt dem Trocknungsplan. Dazu lässt sich „Zelttemperatur min.“ der Zuluft wieder speichern.**
+
+- **Trocknungsbetrieb der Zuluft:** Auf der Seite Steuerung › Zuluft gibt es oben im Reiter „Regel“ die Karte „Trocknungsbetrieb“ (nur wenn es ein Zelt mit dem Zweck „Trocknung“ gibt) mit dem Haken „Folgt dem Trocknungsplan“. Ist er gesetzt und das Zelt trocknet, entscheidet der Fork jede Minute selbst, ob die Zuluft ansaugt: wenn das Zelt feuchter ist als der Planwert der heutigen Etappe **und** die Außenluft absolut trockener ist als die Zeltluft. Die Stufe wächst mit dem Unterschied, bis zur eingestellten Höchststufe (Vorgabe 4). Die Zuluft springt einen Prozentpunkt vor dem Entfeuchter an, damit die Außenluft zuerst arbeitet; der Entfeuchter bleibt die Rückfallebene. Ohne den Haken ändert sich nichts.
+- **Schutz vor Übertrocknen und Auskühlen:** Liegt das Zelt mehr als „Abstand unter Plan“ Prozentpunkte unter dem Planwert (Vorgabe 3), bleibt die Zuluft aus. Dazu gelten die beiden Sperren der Zuluft weiter, jetzt mit den Fühlern des Trockenzelts: „Zelttemperatur min.“ (wieder frei ab dieser Grenze plus 1 °C) und der Frostschutz „Außentemperatur min.“. Fehlt ein Messwert, bleibt die Zuluft aus.
+- **Die Regelung für den Keller ruht so lange:** Im Trocknungsbetrieb hält der Fork die Automatik der Zuluft in Home Assistant an und gibt sie zurück, sobald der Haken gelöscht wird, die Betriebsart „Nur anzeigen“ steht oder die Trocknung endet. Am Controller ändert er nie den Modus, nur Ein, Aus und die Stufe, mit der Mindestlaufzeit und Mindestpause der Zuluft.
+- **Störung wird gemeldet:** Lässt sich die Zuluft zehn Minuten lang nicht schalten oder ein Messwert nicht lesen, kommt einmal eine Push-Meldung.
+- **Steuerung › Trocknung:** Folgt die Zuluft dem Plan, zeigt die Seite eine Karte „Zuluft“ mit Zustand, Luftfeuchte im Zelt, Stufe und einem Link zur Zuluft-Steuerung. Eingestellt wird nur auf der Zuluft-Seite.
+- **Reparatur „Zelttemperatur min.“:** Die Seite erlaubt 10 bis 30 °C, aber der Helfer in Home Assistant konnte engere Grenzen tragen (15 bis 26 °C). 14 °C lehnte Home Assistant ab, und die Seite meldete nur „nicht alle Helfer haben den Wert angenommen“. Der Fork weitet den Bereich des Helfers jetzt vor dem Schreiben, wie es der Entfeuchter schon tat. Er verengt ihn nie.
+- **Schnittstelle:** `GET` und `PUT` auf `/api/trocknung/zuluft` (Haken, `hoechststufe` 1 bis 10, `abstandProzent` 0 bis 20; beim Einschalten stellt der Fork die Betriebsart auf „regeln“). Das Speichern der Trocknungs-Steuerung lässt die neuen Angaben unberührt.
+- **Getestet:** Die Entscheidung in allen Zuständen an den Rändern (Sperren mit Hysterese, Einschaltpunkt, Haltebereich, Stufe, fehlende Messwerte), die Texte der Karte und der geweitete Bereich des Helfers.
+
 ## 2.0.0-cc.336
 
 **Trocknung: Die Abluft läuft nie unter eine Mindeststufe, die du selbst einstellst.**

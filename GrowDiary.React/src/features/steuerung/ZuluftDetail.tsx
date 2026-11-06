@@ -16,6 +16,7 @@ import { BestandAbschnitt, BestandHinweis } from './Bestand'
 import { useBestand } from './bestand-laden'
 import { InstanzBlock, InstanzLoeschen } from './InstanzBlock'
 import { useInstanzen } from './instanzen'
+import { ZuluftTrocknungKarte } from './ZuluftTrocknungKarte'
 
 /**
  * Fork AI (forkai.76): Steuerung › Zuluft — die Kellerzuluft, die bisher als
@@ -220,6 +221,8 @@ export default function ZuluftDetail({ module, aktiv, onWechsel, modul = 'zuluft
       </section>
 
       <V1Tabs items={ZULUFT_REITER} active={reiter} onChange={setReiter} label="Bereich" insBild />
+
+      {reiter === 'regel' && !weitere && <ZuluftTrocknungKarte />}
 
       {reiter === 'regel' && (
         <V1Section title="Regel">

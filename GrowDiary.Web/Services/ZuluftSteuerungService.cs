@@ -47,6 +47,10 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         public const string PortStatus = "port_status";
         public const string PortIstStufe = "port_ist_stufe";
 
+        /// <summary>Was den Lüfter wirklich umlegt (bei AC Infinity der Modus-Auswahlpunkt) und die Stufe, die der Fork im Trocknungsbetrieb setzt.</summary>
+        public const string PortSchalter = "port_schalter";
+        public const string PortStufe = "port_stufe";
+
         /// <summary>Fork AI (forkai.128): Zelttemperatur für die Kälte-Pause.</summary>
         public const string ZeltTemp = "zelt_temp";
     }
@@ -127,13 +131,20 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
 
     private string E(string basisKennung) => Kennung(basisKennung, _nummer);
 
+    private readonly HelferBereichService _bereiche;
+    private readonly ZuluftFuehrung? _fuehrung;
+
     public ZuluftSteuerungService(
         SteuerungRepository repo,
         HomeAssistantService ha,
         HomeAssistantSettingsRepository haSettings,
         SteuerungGeraeteService geraete,
-        ILogger<ZuluftSteuerungService> logger)
+        HelferBereichService bereiche,
+        ILogger<ZuluftSteuerungService> logger,
+        ZuluftFuehrung? fuehrung = null)
     {
+        _fuehrung = fuehrung;
+        _bereiche = bereiche;
         _repo = repo;
         _ha = ha;
         _haSettings = haSettings;
@@ -305,6 +316,10 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
 
         var zahlen = Startwerte.Nur(Schreibliste(e, _nummer), nur);
 
+        // Ein von Hand angelegter Helfer kann engere Grenzen tragen als der Katalog (Zelttemperatur min. stand auf 15–26, die Seite
+        // erlaubt 10–30): Home Assistant lehnt den Wert dann mit 400 ab. Vorher auf den Bereich des Katalogs weiten.
+        await _bereiche.SichernAsync(settings, zahlen, ct);
+
         var alles = true;
         foreach (var (entity, wert) in zahlen)
         {
@@ -315,8 +330,11 @@ public sealed class ZuluftSteuerungService : IStartwertDienst
         // Beim Schreiben einzelner Helfer (nur) bleibt die Regelung unberührt.
         if (nur is null)
         {
+            // Führt der Fork die Zuluft gerade im Trocknungsbetrieb, bleibt die HA-Automatik aus (cc.337): Sie ginge sonst für eine
+            // Minute gegen die Entscheidung des Forks. Der Wunsch der Seite bleibt gespeichert und gilt wieder nach dem Trocknungsbetrieb.
+            var automatik = e.AutomatikAktiv && !(_nummer is null && _fuehrung is { Gefuehrt: true });
             alles &= await _ha.CallEntityServiceAsync(
-                settings, "automation", e.AutomatikAktiv ? "turn_on" : "turn_off", E(Entitaeten.Automatik), ct);
+                settings, "automation", automatik ? "turn_on" : "turn_off", E(Entitaeten.Automatik), ct);
         }
 
         if (!alles) _logger.LogWarning("Zuluft-Sollwerte: nicht alle Helfer in Home Assistant angenommen.");

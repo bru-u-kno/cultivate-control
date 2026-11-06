@@ -90,7 +90,28 @@ public sealed class TrocknungSteuerungTests : IDisposable
         return new TrocknungSteuerungService(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(_paths)), _ports, _steuerung, ziel, NullLogger<TrocknungSteuerungService>.Instance);
     }
 
-    private TrocknungSteuerungApiController Controller() => new(_grows, _ports, _steuerung, Dienst());
+    private TrocknungSteuerungApiController Controller() => new(_grows, _ports, _steuerung, Dienst(), ZuluftDienst(), Geraete());
+
+    private sealed class LeererHaHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+    }
+
+    private SteuerungGeraeteService Geraete() => new(new SteuerungRepository(_paths));
+
+    /// <summary>Der Dienst der Zuluft im Trocknungsbetrieb ohne erreichbares Home Assistant (nicht eingerichtet): er liest nichts und schaltet nichts.</summary>
+    private TrocknungZuluftService ZuluftDienst()
+    {
+        var ha = new HomeAssistantService(new GrowDiary.Web.Tests.TestFakes.StubHttpClientFactory(new LeererHaHandler()), NullLogger<HomeAssistantService>.Instance);
+        var einstellungen = new HomeAssistantSettingsRepository(_paths);
+        var steuerung = new SteuerungRepository(_paths);
+        var geraete = new SteuerungGeraeteService(steuerung);
+        var zuluft = new ZuluftSteuerungService(steuerung, ha, einstellungen, geraete, new HelferBereichService(NullLogger<HelferBereichService>.Instance), NullLogger<ZuluftSteuerungService>.Instance);
+        var bereiche = new ServiceCollection().AddSingleton(zuluft).AddSingleton(geraete).BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        return new(_grows, _ernten, new TrocknungPlanQuelle(new KnowledgeBaseLoader(_paths, NullLogger<KnowledgeBaseLoader>.Instance), new TrocknungPlanRepository(_paths)),
+            _steuerung, ha, einstellungen, bereiche, new ZuluftFuehrung(), NullLogger<TrocknungZuluftService>.Instance);
+    }
 
     private static T Wert<T>(ActionResult<T> ergebnis) where T : class
         => (ergebnis.Result as ObjectResult)?.Value as T ?? ergebnis.Value ?? throw new InvalidOperationException("Keine Antwort: " + ergebnis.Result);
@@ -291,7 +312,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
         ErnteImTrockenzelt();
         var dienst = Dienst();
         var provider = new ServiceCollection()
-            .AddSingleton(_steuerung).AddSingleton(dienst).BuildServiceProvider();
+            .AddSingleton(_steuerung).AddSingleton(dienst).AddSingleton(ZuluftDienst()).BuildServiceProvider();
         _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("melden", false, true));
         var worker = new TrocknungSteuerungWorker(provider, NullLogger<TrocknungSteuerungWorker>.Instance);
         Assert.Equal(0, await worker.EinmalAsync(default)); // Nur melden: kein Zelt im Betrieb
@@ -622,7 +643,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
     {
         ErnteImTrockenzelt();
         var dienst = Dienst();
-        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst);
+        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst, ZuluftDienst(), Geraete());
         TrocknungSteuerungService.Arbeit? mittendrin = null;
         // Ein anderer Benutzer liest den Stand, während der Fork gerade an den Controller schreibt.
         _beimSetzen = () => mittendrin ??= dienst.StandAsync(_trockenZelt.Id, default).GetAwaiter().GetResult().InArbeit;
@@ -643,7 +664,7 @@ public sealed class TrocknungSteuerungTests : IDisposable
     {
         ErnteImTrockenzelt();
         var dienst = Dienst();
-        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst);
+        var c = new TrocknungSteuerungApiController(_grows, _ports, _steuerung, dienst, ZuluftDienst(), Geraete());
         _beimSetzen = () => throw new InvalidOperationException("Controller antwortet nicht");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => c.Setzen(_trockenZelt.Id, Anfrage("regeln", false, true), default));
@@ -717,5 +738,74 @@ public sealed class TrocknungSteuerungTests : IDisposable
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             try { Directory.Delete(wurzel, recursive: true); } catch { }
         }
+    }
+
+    // ------------------------------------------------------------------ Zuluft im Trocknungsbetrieb (cc.337)
+
+    [Fact]
+    public async Task Zuluft_ohne_Trockenzelt_meldet_kein_Trockenzelt()
+    {
+        var leer = new GrowRepository(_paths);
+        foreach (var t in leer.GetTents().Where(t => t.TentType == TentType.Drying)) leer.DeleteTent(t.Id);
+
+        var dto = Wert(await Controller().ZuluftLesen(default));
+        Assert.False(dto.Trockenzelt);
+        Assert.False(dto.Folgt);
+
+        var antwort = await Controller().ZuluftSetzen(new TrocknungZuluftRequest { Folgt = true }, default);
+        Assert.IsType<BadRequestObjectResult>(antwort.Result);
+    }
+
+    [Fact]
+    public async Task Zuluft_einschalten_ohne_zugeordneten_Schalter_wird_abgelehnt_und_nichts_gespeichert()
+    {
+        var antwort = await Controller().ZuluftSetzen(new TrocknungZuluftRequest { Folgt = true }, default);
+        Assert.IsType<BadRequestObjectResult>(antwort.Result);
+        Assert.False(_steuerung.Get(_trockenZelt.Id).ZuluftFolgt);
+    }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(11, null)]
+    [InlineData(null, -1)]
+    [InlineData(null, 21)]
+    public async Task Zuluft_Hoechststufe_und_Abstand_haben_Grenzen(int? stufe, int? abstand)
+    {
+        var antwort = await Controller().ZuluftSetzen(new TrocknungZuluftRequest { Hoechststufe = stufe, AbstandProzent = abstand }, default);
+        Assert.IsType<BadRequestObjectResult>(antwort.Result);
+    }
+
+    [Fact]
+    public async Task Zuluft_Hoechststufe_und_Abstand_werden_gespeichert_und_lassen_den_Rest_stehen()
+    {
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("regeln", true, false, true, 2));
+
+        var dto = Wert(await Controller().ZuluftSetzen(new TrocknungZuluftRequest { Hoechststufe = 6, AbstandProzent = 5 }, default));
+
+        Assert.Equal(6, dto.Hoechststufe);
+        Assert.Equal(5, dto.AbstandProzent);
+        var s = _steuerung.Get(_trockenZelt.Id);
+        Assert.Equal(("regeln", true, false, true, 2, false), (s.Betrieb, s.EntfeuchterFolgt, s.KuehlungFolgt, s.AbluftFolgt, s.AbluftMinStufe, s.ZuluftFolgt));
+    }
+
+    [Fact]
+    public async Task Das_Speichern_der_Trocknungs_Steuerung_laesst_die_Zuluft_Einstellungen_stehen()
+    {
+        _steuerung.Set(_trockenZelt.Id, new TrocknungSteuerungRepository.Einstellung("melden", false, false, false, 0, true, 7, 9));
+
+        await Controller().Setzen(_trockenZelt.Id, Anfrage("melden", false, false), default);
+
+        var s = _steuerung.Get(_trockenZelt.Id);
+        Assert.Equal((true, 7, 9), (s.ZuluftFolgt, s.ZuluftHoechststufe, s.ZuluftAbstandProzent));
+    }
+
+    [Fact]
+    public void Zuluft_Einstellungen_ueberleben_die_Datenbank_und_Altbestand_bekommt_Vorgaben()
+    {
+        Assert.Equal((false, TrocknungSteuerungRepository.ZuluftHoechststufeVorgabe, TrocknungSteuerungRepository.ZuluftAbstandVorgabe),
+            (TrocknungSteuerungRepository.Einstellung.Standard.ZuluftFolgt, TrocknungSteuerungRepository.Einstellung.Standard.ZuluftHoechststufe, TrocknungSteuerungRepository.Einstellung.Standard.ZuluftAbstandProzent));
+        _steuerung.Set(_trockenZelt.Id, TrocknungSteuerungRepository.Einstellung.Standard with { ZuluftFolgt = true, ZuluftHoechststufe = 5, ZuluftAbstandProzent = 2 });
+        var neu = new TrocknungSteuerungRepository(_paths).Get(_trockenZelt.Id);
+        Assert.Equal((true, 5, 2), (neu.ZuluftFolgt, neu.ZuluftHoechststufe, neu.ZuluftAbstandProzent));
     }
 }

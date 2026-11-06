@@ -20,9 +20,14 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
     private readonly TrocknungPortRepository _ports;
     private readonly TrocknungSteuerungRepository _steuerung;
     private readonly TrocknungSteuerungService _dienst;
+    private readonly TrocknungZuluftService _zuluft;
+    private readonly SteuerungGeraeteService _geraete;
 
-    public TrocknungSteuerungApiController(GrowRepository grows, TrocknungPortRepository ports, TrocknungSteuerungRepository steuerung, TrocknungSteuerungService dienst)
+    public TrocknungSteuerungApiController(GrowRepository grows, TrocknungPortRepository ports, TrocknungSteuerungRepository steuerung, TrocknungSteuerungService dienst,
+        TrocknungZuluftService zuluft, SteuerungGeraeteService geraete)
     {
+        _zuluft = zuluft;
+        _geraete = geraete;
         _grows = grows;
         _ports = ports;
         _steuerung = steuerung;
@@ -80,7 +85,7 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
 
         // Solange der Vorgang läuft, sieht jede Seite (auch die anderer Benutzer) im Stand „inArbeit“ mit der Phase.
         using var arbeit = _dienst.ArbeitBeginnen(tentId, request.ClientId);
-        _steuerung.Set(tentId, new TrocknungSteuerungRepository.Einstellung(request.Betrieb, request.EntfeuchterFolgt, request.KuehlungFolgt, abluftFolgt, minStufe));
+        _steuerung.Set(tentId, _steuerung.Get(tentId) with { Betrieb = request.Betrieb, EntfeuchterFolgt = request.EntfeuchterFolgt, KuehlungFolgt = request.KuehlungFolgt, AbluftFolgt = abluftFolgt, AbluftMinStufe = minStufe });
         // Sofort nachziehen, nicht erst im nächsten Takt: Wer „Regeln“ einschaltet, will das Ergebnis sehen.
         arbeit.Phase(TrocknungSteuerungService.PhaseAbgleichen);
         await _dienst.AbgleichenAsync(tentId, ct);
@@ -89,6 +94,54 @@ public sealed class TrocknungSteuerungApiController : ApiControllerBase
         // Die Antwort gilt erst nach dem Ende: sie meldet „fertig“, nicht „in Arbeit“.
         return Ok(Dto(stand with { InArbeit = null }));
     }
+
+    /// <summary>
+    /// Die Zuluft im Trocknungsbetrieb (cc.337): Folgt sie dem Trocknungsplan, mit Höchststufe und Abstand unter dem Planwert, dazu die
+    /// Messwerte und was der Fork gerade entscheidet. Das Zelt ist das erste mit dem Zweck „Trocknung“; gibt es keines, steht
+    /// <c>trockenzelt</c> auf false. Nur lesend.
+    /// </summary>
+    [HttpGet("~/api/trocknung/zuluft")]
+    [ProducesResponseType(typeof(TrocknungZuluftDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<TrocknungZuluftDto>> ZuluftLesen(CancellationToken ct)
+    {
+        if (_zuluft.Trockenzelt() is not { } zelt) return Ok(TrocknungZuluftDto.Kein);
+        return Ok(ZuluftDto(await _zuluft.StandAsync(zelt.Id, ct)));
+    }
+
+    /// <summary>
+    /// Schalter „Folgt dem Trocknungsplan“, Höchststufe und Abstand unter dem Planwert der Zuluft setzen. Beim Einschalten stellt der Fork die
+    /// Betriebsart auf „regeln“ (die anderen Geräte folgen nur mit ihrem eigenen Haken). Fehlt eine Angabe, bleibt sie.
+    /// </summary>
+    [HttpPut("~/api/trocknung/zuluft")]
+    [KiStufe(KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(TrocknungZuluftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TrocknungZuluftDto>> ZuluftSetzen([FromBody] TrocknungZuluftRequest request, CancellationToken ct)
+    {
+        if (_zuluft.Trockenzelt() is not { } zelt)
+            return BadRequestError("kein_trockenzelt", "Die Zuluft im Trocknungsbetrieb gibt es nur mit einem Zelt mit dem Zweck „Trocknung“.");
+
+        var jetzt = _steuerung.Get(zelt.Id);
+        var hoechst = request.Hoechststufe ?? jetzt.ZuluftHoechststufe;
+        var abstand = request.AbstandProzent ?? jetzt.ZuluftAbstandProzent;
+        if (hoechst is < 1 or > 10) return BadRequestError("stufe_ungueltig", "Die Höchststufe ist eine ganze Zahl von 1 bis 10.");
+        if (abstand is < 0 or > 20) return BadRequestError("abstand_ungueltig", "Der Abstand unter dem Planwert ist eine ganze Zahl von 0 bis 20 Prozentpunkten.");
+
+        var folgt = request.Folgt ?? jetzt.ZuluftFolgt;
+        if (folgt && string.IsNullOrWhiteSpace(_geraete.EntitiesFuerModul(ZuluftSteuerungService.Modul).GetValueOrDefault(ZuluftSteuerungService.Rollen.PortSchalter)))
+            return BadRequestError("kein_port", "Der Zuluft ist noch kein Schalter zugeordnet (Steuerung › Zuluft › Geräte).");
+
+        var betrieb = folgt && !jetzt.ZuluftFolgt ? TrocknungSteuerungRepository.BetriebRegeln : jetzt.Betrieb;
+        _steuerung.Set(zelt.Id, jetzt with { Betrieb = betrieb, ZuluftFolgt = folgt, ZuluftHoechststufe = hoechst, ZuluftAbstandProzent = abstand });
+        // Sofort einen Lauf, nicht erst im nächsten Takt: Wer einschaltet, will das Ergebnis sehen; wer ausschaltet, die Rückgabe an die Regelung.
+        await _zuluft.LaufAsync(zelt.Id, ct);
+        return Ok(ZuluftDto(await _zuluft.StandAsync(zelt.Id, ct)));
+    }
+
+    internal static TrocknungZuluftDto ZuluftDto(TrocknungZuluftService.Stand s) => new(
+        s.Trockenzelt, s.TentId, s.ZeltName, s.Trocknet, s.Folgt, s.Regelt, s.Hoechststufe, s.AbstandProzent,
+        s.ZeltTempC, s.ZeltRhProzent, s.ZeltAbsolutGm3, s.AussenAbsolutGm3, s.PlanRhProzent, s.PlanTempC, s.Tag, s.TageGeplant,
+        s.Zustand, s.Stufe, s.Differenz, s.LaeuftStufe, s.Gescheitert);
 
     /// <summary>
     /// „Alte Werte zurück“: setzt die Grenzen auf den Stand vor der ersten Übernahme und stellt auf „melden“. Eine Grenze, die
@@ -161,3 +214,29 @@ public sealed record TrocknungSteuerungDto(
 public sealed record TrocknungArbeitDto(string Phase, string Seit, string? ClientId);
 
 public sealed record TrocknungZuruecksetzenDto(int Zurueck, int Gescheitert, TrocknungSteuerungDto Stand);
+
+public sealed class TrocknungZuluftRequest
+{
+    /// <summary>Folgt die Zuluft dem Trocknungsplan? Fehlt die Angabe, bleibt der Schalter.</summary>
+    public bool? Folgt { get; set; }
+
+    /// <summary>Höchststufe im Trocknungsbetrieb, 1 bis 10. Fehlt die Angabe, bleibt sie.</summary>
+    public int? Hoechststufe { get; set; }
+
+    /// <summary>Liegt das Zelt mehr als so viele Prozentpunkte unter dem Planwert, bleibt die Zuluft aus (0 bis 20). Fehlt die Angabe, bleibt sie.</summary>
+    public int? AbstandProzent { get; set; }
+}
+
+/// <summary>
+/// Zuluft im Trocknungsbetrieb. <c>zustand</c>: saugt, zeltZuKalt, frost, zeltZuTrocken, zeltImPlan, aussenFeuchter, keinMesswert;
+/// <c>stufe</c> die Stufe, die der Fork jetzt will (0 = aus); <c>regelt</c>: der Fork führt die Zuluft gerade wirklich.
+/// </summary>
+public sealed record TrocknungZuluftDto(
+    bool Trockenzelt, int? TentId, string? ZeltName, bool Trocknet, bool Folgt, bool Regelt, int Hoechststufe, int AbstandProzent,
+    double? ZeltTempC, double? ZeltRhProzent, double? ZeltAbsolutGm3, double? AussenAbsolutGm3, double? PlanRhProzent, double? PlanTempC,
+    int? Tag, int? TageGeplant, string Zustand, int Stufe, double? Differenz, double? LaeuftStufe, bool Gescheitert)
+{
+    public static TrocknungZuluftDto Kein { get; } = new(
+        false, null, null, false, false, false, TrocknungSteuerungRepository.ZuluftHoechststufeVorgabe, TrocknungSteuerungRepository.ZuluftAbstandVorgabe,
+        null, null, null, null, null, null, null, null, "keinMesswert", 0, null, null, false);
+}

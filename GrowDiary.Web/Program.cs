@@ -66,6 +66,8 @@ builder.Services.AddSingleton<TrocknungPlanRepository>();
 builder.Services.AddSingleton<TrocknungPlanQuelle>();
 builder.Services.AddSingleton<TrocknungSteuerungRepository>();
 builder.Services.AddSingleton<TrocknungSteuerungService>();
+builder.Services.AddSingleton<ZuluftFuehrung>();
+builder.Services.AddSingleton<TrocknungZuluftService>(); // cc.337: Zuluft folgt dem Trocknungsplan
 builder.Services.AddSingleton<CuringRepository>();
 builder.Services.AddSingleton<PhenoRepository>();
 builder.Services.AddSingleton<DashboardLayoutRepository>();
