@@ -66,6 +66,13 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
                 ZuluftAbstandProzent INTEGER NOT NULL DEFAULT 3,
                 UpdatedAtUtc TEXT NOT NULL
             );
+            -- cc.338: Der Fork führt die Zuluft dieses Zelts (Trocknungsbetrieb). Die Zeile überlebt einen Neustart: Danach weiß der Fork
+            -- noch, dass er die HA-Automatik der Zuluft angehalten hat und wie sie vorher stand (NULL = unbekannt).
+            CREATE TABLE IF NOT EXISTS ForkTrocknungZuluftFuehrung (
+                TentId INTEGER NOT NULL PRIMARY KEY,
+                AutomatikVorher INTEGER NULL,
+                SeitUtc TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS ForkTrocknungMerker (
                 TentId INTEGER NOT NULL,
                 Rolle TEXT NOT NULL,
@@ -145,6 +152,54 @@ public sealed class TrocknungSteuerungRepository : RepositoryBase
         command.Parameters.AddWithValue("$za", einstellung.ZuluftAbstandProzent);
         command.Parameters.AddWithValue("$jetzt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
+    }
+
+    /// <summary>Die Führung der Zuluft: Ob die Automatik vorher an (<c>true</c>), aus (<c>false</c>) oder unbekannt (<c>null</c>) war.</summary>
+    public sealed record Fuehrung(bool? AutomatikVorher);
+
+    /// <summary>Merkt, dass der Fork die Zuluft dieses Zelts führt. Eine schon vorhandene Zeile bleibt (der Zustand von VOR der ersten Übernahme zählt).</summary>
+    public void FuehrungBeginnen(int tentId, bool? automatikVorher)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "INSERT OR IGNORE INTO ForkTrocknungZuluftFuehrung (TentId, AutomatikVorher, SeitUtc) VALUES ($t, $v, $jetzt);";
+        command.Parameters.AddWithValue("$t", tentId);
+        command.Parameters.AddWithValue("$v", automatikVorher is { } v ? (v ? 1 : 0) : DBNull.Value);
+        command.Parameters.AddWithValue("$jetzt", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary><c>null</c>, wenn der Fork die Zuluft dieses Zelts nicht führt.</summary>
+    public Fuehrung? FuehrungLesen(int tentId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT AutomatikVorher FROM ForkTrocknungZuluftFuehrung WHERE TentId = $t;";
+        command.Parameters.AddWithValue("$t", tentId);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        return new Fuehrung(reader.IsDBNull(0) ? null : reader.GetInt32(0) != 0);
+    }
+
+    public void FuehrungBeenden(int tentId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM ForkTrocknungZuluftFuehrung WHERE TentId = $t;";
+        command.Parameters.AddWithValue("$t", tentId);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Alle Zelte, deren Zuluft der Fork führt — auch nach einem Neustart.</summary>
+    public IReadOnlyList<int> FuehrungZelte()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT TentId FROM ForkTrocknungZuluftFuehrung;";
+        using var reader = command.ExecuteReader();
+        var zelte = new List<int>();
+        while (reader.Read()) zelte.Add(reader.GetInt32(0));
+        return zelte;
     }
 
     /// <summary>Alle Zelte, die gerade auf „Regeln“ stehen — der Hintergrundlauf geht nur diese durch.</summary>

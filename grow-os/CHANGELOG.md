@@ -5,6 +5,15 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.338
+
+**Trocknung: Die Zuluft im Trocknungsbetrieb wird auch nach einem Neustart sicher an die Regelung zurückgegeben.**
+
+- **Der Fehler:** Im Trocknungsbetrieb hält der Fork die HA-Automatik der Zuluft an. Startete das Add-on in dieser Zeit neu (zum Beispiel bei einem Update) und endete die Trocknung danach, wusste der Fork nicht mehr, dass er die Automatik angehalten hatte, und sie blieb aus. Die Zuluft lief dann ohne Regelung.
+- **Die Korrektur:** Der Fork merkt sich in seiner Datenbank, dass er die Zuluft eines Zelts führt und wie die Automatik davor stand. Nach einem Neustart findet er das wieder und gibt die Zuluft zurück, sobald der Haken gelöscht ist, die Betriebsart „Nur anzeigen“ steht oder die Trocknung endet. Hat die Zuluft-Seite nie etwas für die Automatik gespeichert, gilt ihr Stand von vor der Übernahme, sonst „an“.
+- **Erst zurück, wenn Home Assistant es angenommen hat:** Lehnt Home Assistant den Befehl ab oder ist nicht erreichbar, bleibt die Führung gemerkt, und der nächste Lauf (jede Minute) versucht es noch einmal. Vorher galt die Zuluft nach einem abgelehnten Befehl als zurückgegeben.
+- **Getestet:** Der Weg von der Entscheidung bis zum Schaltbefehl gegen eine Home-Assistant-Attrappe, die jeden Aufruf mitschreibt: erst Stufe, dann Ein; die Mindestlaufzeit hält die Zuluft an; die Stufe wird nachgeführt, ohne den Modus anzufassen; Rückgabe nach dem Löschen des Hakens, nach einem Neustart und nach einem abgelehnten Befehl; der Wunsch der Seite (Automatik aus) bleibt erhalten. Ohne die Korrektur wird der Test zum abgelehnten Befehl rot.
+
 ## 2.0.0-cc.337
 
 **Trocknung: Die Zuluft folgt dem Trocknungsplan. Dazu lässt sich „Zelttemperatur min.“ der Zuluft wieder speichern.**

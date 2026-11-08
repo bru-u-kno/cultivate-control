@@ -34,9 +34,6 @@ public sealed class TrocknungZuluftService
     private readonly ConcurrentDictionary<int, DateTime> _zuletztGeschaltetUtc = new();
     private readonly ConcurrentDictionary<int, int> _problemLaeufe = new();
     private readonly ConcurrentDictionary<int, bool> _problemGemeldet = new();
-    private readonly ConcurrentDictionary<int, bool> _gefuehrt = new();
-    // Wie die Automatik stand, bevor der Fork sie anhielt — gilt, wenn die Seite nie etwas für sie gespeichert hat.
-    private readonly ConcurrentDictionary<int, bool> _automatikVorher = new();
 
     /// <summary>Wie viele Läufe (je eine Minute) eine Störung dauern muss, bis der Fork sie per Push meldet.</summary>
     public const int ProblemBisPush = 10;
@@ -55,6 +52,8 @@ public sealed class TrocknungZuluftService
         _bereiche = bereiche;
         _fuehrung = fuehrung;
         _logger = logger;
+        // Nach einem Neustart weiß der Fork aus der Datenbank, dass er die Zuluft noch führt.
+        _fuehrung.Gefuehrt = _steuerung.FuehrungZelte().Count > 0;
     }
 
     /// <summary>Der Stand für die Seite: die Einstellung, die Messwerte und was der Fork gerade entscheiden würde. Nur lesend.</summary>
@@ -64,7 +63,7 @@ public sealed class TrocknungZuluftService
         int? Tag, int? TageGeplant, string Zustand, int Stufe, double? Differenz, double? LaeuftStufe, bool Gescheitert);
 
     /// <summary>Die Zelte, deren Zuluft der Fork gerade führt.</summary>
-    public IReadOnlyList<int> GefuehrteZelte() => _gefuehrt.Keys.ToList();
+    public IReadOnlyList<int> GefuehrteZelte() => _steuerung.FuehrungZelte();
 
     /// <summary>Das Trockenzelt, dem die Zuluft folgt: das erste Zelt mit dem Zweck „Trocknung“; <c>null</c>, wenn es keines gibt.</summary>
     public Tent? Trockenzelt() => _grows.GetTents().FirstOrDefault(t => t.TentType == TentType.Drying);
@@ -162,9 +161,9 @@ public sealed class TrocknungZuluftService
         // Die Automatik der Zuluft hält an, solange der Fork führt. Jede Minute geprüft: ein Speichern oder ein Neustart von Home Assistant
         // schaltet sie sonst wieder ein.
         _fuehrung.Gefuehrt = true;
-        if (!_gefuehrt.ContainsKey(tentId) && Zustand(await _ha.GetEntityStateAsync(s, ZuluftSteuerungService.Entitaeten.Automatik, ct)) is { } vorher)
-            _automatikVorher[tentId] = vorher;
-        _gefuehrt[tentId] = true;
+        // Wie die Automatik stand, bevor der Fork sie anhielt — in der Datenbank, damit es einen Neustart übersteht.
+        if (_steuerung.FuehrungLesen(tentId) is null)
+            _steuerung.FuehrungBeginnen(tentId, Zustand(await _ha.GetEntityStateAsync(s, ZuluftSteuerungService.Entitaeten.Automatik, ct)));
         await _ha.CallEntityServiceAsync(s, "automation", "turn_off", ZuluftSteuerungService.Entitaeten.Automatik, ct);
 
         var e = TrocknungZuluft.Entscheide(
@@ -240,15 +239,21 @@ public sealed class TrocknungZuluftService
     {
         _saugte.TryRemove(tentId, out _);
         Erholt(tentId);
-        if (!_gefuehrt.TryRemove(tentId, out _)) { _fuehrung.Gefuehrt = _gefuehrt.Count > 0; return; }
+        if (_steuerung.FuehrungLesen(tentId) is not { } fuehrung) return;
 
-        _fuehrung.Gefuehrt = _gefuehrt.Count > 0;
         var u = await UmfeldAsync(ct);
         var s = _haSettings.GetEffectiveHomeAssistantSettings();
         // Gilt der Wunsch der Seite; hat die Seite nie gespeichert, der Stand von vorher; sonst an (die Regelung ist der Normalfall).
-        var vorher = _automatikVorher.TryRemove(tentId, out var v) ? v : (bool?)null;
-        var an = u.GespeicherteAutomatik ?? vorher ?? true;
-        await _ha.CallEntityServiceAsync(s, "automation", an ? "turn_on" : "turn_off", ZuluftSteuerungService.Entitaeten.Automatik, ct);
+        var an = u.GespeicherteAutomatik ?? fuehrung.AutomatikVorher ?? true;
+        // Erst wenn Home Assistant den Befehl angenommen hat, gilt die Zuluft als zurückgegeben; sonst versucht der nächste Lauf es noch einmal.
+        if (!await _ha.CallEntityServiceAsync(s, "automation", an ? "turn_on" : "turn_off", ZuluftSteuerungService.Entitaeten.Automatik, ct))
+        {
+            _logger.LogWarning("Trocknung Zelt {Zelt}: Die Zuluft ließ sich nicht an die Regelung zurückgeben; neuer Versuch im nächsten Lauf.", tentId);
+            return;
+        }
+
+        _steuerung.FuehrungBeenden(tentId);
+        _fuehrung.Gefuehrt = _steuerung.FuehrungZelte().Count > 0;
         _logger.LogInformation("Trocknung Zelt {Zelt}: Zuluft zurück an die Regelung (Automatik {Automatik}).", tentId, an ? "an" : "aus");
     }
 
