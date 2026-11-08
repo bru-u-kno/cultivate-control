@@ -9,6 +9,7 @@ import type { ControllerStand, ControllerWaechterAntwort, ControllerWaechterEint
 import { entitaetsOptionen } from './entitaets-optionen'
 import { vorbereiten } from './entitaets-passung'
 import { haWert } from '../../utils'
+import { ablaufText, hatSteckdose } from './controller-waechter-logik'
 import '../steuerung/steuerung.css'
 
 const URL = '/api/steuerung/controller-waechter'
@@ -146,11 +147,11 @@ export function ControllerWaechter({ entities }: { entities: HomeAssistantEntity
     }
   }
 
-  const wert = (id: string | null): string | undefined => {
+  const wert = (id: string | null | undefined): string | undefined => {
     const e = id ? entities.find((x) => x.entityId === id) : undefined
     return e ? (haWert(e.state, e.unitOfMeasurement) ?? undefined) : undefined
   }
-  const waehlbar = (liste: V1Option[], aktuell: string | null): V1Option[] => [
+  const waehlbar = (liste: V1Option[], aktuell: string | null | undefined): V1Option[] => [
     { wert: '', text: '— keins —', hinweis: 'Diese Rolle bleibt leer.', betont: true },
     ...(aktuell && !liste.some((o) => o.wert === aktuell) ? [{ wert: aktuell, text: aktuell, hinweis: 'Home Assistant kennt diese Entität gerade nicht.' }] : []),
     ...liste,
@@ -175,7 +176,7 @@ export function ControllerWaechter({ entities }: { entities: HomeAssistantEntity
         const f = (name: string) => feldFehler[`controller[${i}].${name}`]
         const befund = s ? BEFUND[s.befund] : null
         const neustart = c.modus === 'neustart'
-        const dose = c.steckdoseEntity !== null
+        const dose = hatSteckdose(c)
         return (
           <div key={c.id || `neu-${i}`}>
             {s && s.befund !== 'Gesund' && s.befund !== 'NichtPruefbar' && (
@@ -248,12 +249,7 @@ export function ControllerWaechter({ entities }: { entities: HomeAssistantEntity
                 )}
 
                 <p className="zj-erklaerung">
-                  <b>{dose && neustart ? 'So läuft es ab:' : 'Heute:'}</b>{' '}
-                  {dose && neustart
-                    ? `Nach ${c.meldenNachMin} Min. Ausfall kommt der Push, nach ${c.neustartNachMin} Min. wird die Steckdose ${c.ausDauerSek} Sek. ausgeschaltet und wieder eingeschaltet. Ist der Controller 5 Min. danach noch offline, gibt es einen Push und eine Stunde Ruhe; höchstens ${c.maxNeustartsProTag}× pro Tag.`
-                    : neustart
-                      ? 'Keine schaltbare Steckdose gewählt — der Wächter meldet nur. Der Neustart läuft erst, wenn du oben eine Steckdose wählst.'
-                      : `Der Wächter meldet nach ${c.meldenNachMin} Min. Ausfall und ändert nichts.`}
+                  <b>{dose && neustart ? 'So läuft es ab:' : 'Heute:'}</b> {ablaufText(c)}
                 </p>
 
                 {s && c.id && (

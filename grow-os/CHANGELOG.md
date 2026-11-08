@@ -5,6 +5,13 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.340
+
+**Controller-Wächter: Die Seite versprach einen Neustart, obwohl keine Steckdose gewählt war.**
+
+- **Was war:** Im Reiter „Controller · Wächter“ stand bei einem Controller ohne Steckdose „Nur sie wird zum Neustart aus- und wieder eingeschaltet“ und darunter der Ablauf mit Steckdose („nach 15 Min. wird die Steckdose 15 Sek. ausgeschaltet …“) — als gäbe es eine. Der Wächter selbst verhielt sich richtig und meldete nur; falsch war nur, was die Seite darüber sagte. Ursache: Home Assistant und das Backend lassen leere Felder weg, die Seite verglich aber mit „leer“ statt mit „fehlt“.
+- **Jetzt:** Ohne gewählte Steckdose steht dort „Noch keine schaltbare Steckdose gewählt …“ und „Heute: Keine schaltbare Steckdose gewählt — der Wächter meldet nur“. Ein Test deckt die Fälle „Feld fehlt“, „leer“ und „gewählt“ ab und wird mit der alten Fassung rot.
+
 ## 2.0.0-cc.339
 
 **Controller-Wächter: Fällt ein AC-Infinity-Controller aus, bekommst du einen Push — und er startet sich über eine schaltbare Steckdose selbst neu.**

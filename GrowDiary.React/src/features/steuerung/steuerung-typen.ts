@@ -353,9 +353,10 @@ export type LichtWaechterStand = {
 export type ControllerWaechterEintrag = {
   id: string
   name: string
-  statusEntity: string | null
-  feuchteEntity: string | null
-  steckdoseEntity: string | null
+  /** Das Backend lässt leere Felder weg: „keine“ kommt als fehlendes Feld an, nicht als `null`. */
+  statusEntity?: string | null
+  feuchteEntity?: string | null
+  steckdoseEntity?: string | null
   aktiv: boolean
   /** `neustart` oder `melden`. */
   modus: 'neustart' | 'melden'
@@ -363,7 +364,7 @@ export type ControllerWaechterEintrag = {
   neustartNachMin: number
   ausDauerSek: number
   maxNeustartsProTag: number
-  pauseBisUtc: string | null
+  pauseBisUtc?: string | null
 }
 
 export type ControllerStand = {
