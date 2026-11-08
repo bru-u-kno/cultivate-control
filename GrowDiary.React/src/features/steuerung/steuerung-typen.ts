@@ -349,6 +349,40 @@ export type LichtWaechterStand = {
   letzter: { phase: string; hell: boolean; ergebnis: 'ok' | 'korrigiert' | 'gemeldet'; text: string; geprueftUtc: string } | null
 }
 
+/** Controller-Wächter (Geräte › Technik › Rollen › Controller · Wächter): ein überwachter Controller. */
+export type ControllerWaechterEintrag = {
+  id: string
+  name: string
+  statusEntity: string | null
+  feuchteEntity: string | null
+  steckdoseEntity: string | null
+  aktiv: boolean
+  /** `neustart` oder `melden`. */
+  modus: 'neustart' | 'melden'
+  meldenNachMin: number
+  neustartNachMin: number
+  ausDauerSek: number
+  maxNeustartsProTag: number
+  pauseBisUtc: string | null
+}
+
+export type ControllerStand = {
+  controller: ControllerWaechterEintrag
+  /** `Gesund`, `Offline`, `Eingefroren` oder `NichtPruefbar`. */
+  befund: 'Gesund' | 'Offline' | 'Eingefroren' | 'NichtPruefbar'
+  seitUtc: string | null
+  statusZustand: string | null
+  feuchteZustand: string | null
+  steckdoseZustand: string | null
+  steckdoseSchaltbar: boolean
+  neustartsHeute: number
+  pausiert: boolean
+  letzteMeldung: string | null
+  geprueftUtc: string | null
+}
+
+export type ControllerWaechterAntwort = { controller: ControllerStand[] }
+
 export type LichtSeite = {
   einstellungen: LichtEinstellungen
   live: LichtLive

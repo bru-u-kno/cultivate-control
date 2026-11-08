@@ -926,6 +926,40 @@ public sealed class SteuerungApiController : ApiControllerBase
         return Ok(await _waechter.StandAsync(ct));
     }
 
+    /// <summary>Der Controller-Wächter: alle überwachten Controller mit Einstellungen und dem, was sie gerade melden.</summary>
+    [HttpGet("controller-waechter")]
+    [ProducesResponseType(typeof(ControllerWaechterAntwort), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ControllerWaechterAntwort>> ControllerWaechter([FromServices] ControllerWaechterService dienst, CancellationToken ct)
+        => Ok(new ControllerWaechterAntwort(await dienst.StandAsync(ct)));
+
+    /// <summary>Die Liste der Controller mit ihren Einstellungen speichern. Pausen bleiben unberührt.</summary>
+    [HttpPut("controller-waechter")]
+    [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(ControllerWaechterAntwort), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ControllerWaechterAntwort>> ControllerWaechterSpeichern([FromServices] ControllerWaechterService dienst, [FromBody] ControllerWaechterEinstellungen request, CancellationToken ct)
+    {
+        if (request is null) return BadRequestError("controller_waechter_invalid", "Es wurde nichts übergeben.");
+        var (gespeichert, fehler) = dienst.Speichern(request);
+        if (gespeichert is null)
+        {
+            foreach (var (feld, meldung) in fehler) ModelState.AddModelError(feld, meldung);
+            return ValidationError();
+        }
+        return Ok(new ControllerWaechterAntwort(await dienst.StandAsync(ct)));
+    }
+
+    /// <summary>Ein Controller schweigt für 1 Stunde oder 72 Stunden — oder die Pause wird mit 0 aufgehoben.</summary>
+    [HttpPost("controller-waechter/{id}/pause")]
+    [KiStufe(KiStufe.Verwaltung | KiStufe.GeraeteSchalten)]
+    [ProducesResponseType(typeof(ControllerWaechterAntwort), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ControllerWaechterAntwort>> ControllerWaechterPause([FromServices] ControllerWaechterService dienst, string id, [FromBody] LichtWaechterPauseRequest request, CancellationToken ct)
+    {
+        if (request is null || request.Stunden is not (0 or 1 or 72))
+            return BadRequestError("pause_invalid", "Pause: 0 (aufheben), 1 oder 72 Stunden.");
+        if (!dienst.Pausieren(id, request.Stunden)) return NotFoundError("controller_unknown", "Diesen Controller gibt es nicht.");
+        return Ok(new ControllerWaechterAntwort(await dienst.StandAsync(ct)));
+    }
+
     /// <summary>Der Lichtplan: Kalibrierung, Kurve Stufe → Lichtwert, Planwochen mit Stufenvorschlag, die Phase aus dem Grow-Plan.</summary>
     [HttpGet("licht/plan")]
     [ProducesResponseType(typeof(LichtPlanStand), StatusCodes.Status200OK)]

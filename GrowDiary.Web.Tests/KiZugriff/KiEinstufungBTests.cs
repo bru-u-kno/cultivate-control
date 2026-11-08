@@ -86,6 +86,9 @@ public sealed class KiEinstufungBTests
         // aber, ob er später den Zeitplan am Controller zurücksetzt — deshalb beide Stufen.
         ["SteuerungApiController.LichtWaechterSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtWaechterPause"] = "GeraeteSchalten, Verwaltung",
+        // 08.11.2026: Controller-Wächter. Die Einstellung entscheidet, ob er später eine Steckdose schaltet.
+        ["SteuerungApiController.ControllerWaechterSpeichern"] = "GeraeteSchalten, Verwaltung",
+        ["SteuerungApiController.ControllerWaechterPause"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.LichtKalibrierungSpeichern"] = "GeraeteSchalten, Verwaltung",
         ["SteuerungApiController.Probeschaltung"] = "GeraeteSchalten",
         ["SteuerungApiController.AutomationenAnlegen"] = "Verwaltung",

@@ -363,6 +363,12 @@ public sealed class RundwegVollstaendigTests
             "Das PUT lehnt Proben wie Modus=1 mit 400 ab (nur \"korrigieren\" oder \"melden\"), und die "
             + "Pause wird vom PUT bewusst nicht überschrieben. Dass kein Feld beim Speichern "
             + "verlorengeht, fährt LichtWaechterServiceTests.",
+        // 08.11.2026: Controller-Wächter
+        ["ControllerWaechterEinstellungen"] =
+            "Eine Liste von Controllern mit Entitäten, Wörtern (Modus) und Zahlen mit festen Grenzen — die Probe 1 würde an der Regel "
+            + "\"Neustart nie vor der Meldung\" und an den Entitäts-Domänen (binary_sensor, sensor, switch) scheitern, das PUT lehnt "
+            + "sie mit 400 ab. Dass jedes Feld das Speichern übersteht, die Pause bleibt und Ungültiges abgewiesen wird, fährt "
+            + "ControllerWaechterServiceTests (JedesFeldUeberlebtDasSpeichern, Ungueltiges_…).",
         // Lichtplan
         ["LichtKalibrierung"] =
             "Die Merker der Automatik (AutoStufe, AutoWoche, HandBisWoche) gehoeren der Automatik und kommen beim PUT "

@@ -94,6 +94,16 @@ public sealed class AlertWatchWorker : BackgroundService
             _logger.LogWarning(ex, "Licht-Wächter fehlgeschlagen.");
         }
 
+        // Controller-Wächter: Ausfall des Controllers melden und ihn bei Bedarf über seine Steckdose neu starten.
+        try
+        {
+            await scope.ServiceProvider.GetRequiredService<ControllerWaechterService>().LaufAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Controller-Wächter fehlgeschlagen.");
+        }
+
         // Lichtplan: Stufe nach dem Plan, nur wenn der Nutzer die Automatik eingeschaltet hat (Voreinstellung aus).
         try
         {

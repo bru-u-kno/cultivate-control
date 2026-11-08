@@ -10,6 +10,7 @@ import type { HomeAssistantEntity } from '../../types'
 import type { GeraeteSeite, GeraetZeile } from '../steuerung/steuerung-typen'
 import { EntfeuchterNamen } from './EntfeuchterNamen'
 import { BluelabAnleitung } from './BluelabAnleitung'
+import { ControllerWaechter } from './ControllerWaechter'
 import { haZustandName } from '../../deutsche-woerter'
 import { haWert } from '../../utils'
 import { entitaetsOptionen } from './entitaets-optionen'
@@ -36,6 +37,9 @@ import '../steuerung/steuerung.css'
  * Zuordnung übernommen, wo es sie gab. Jede Zeile zeigt jetzt das Gerät, das
  * wirklich dahintersteht; optionale Rollen lassen sich mit „keins" leeren.
  */
+
+/** Der Wächter der Controller ist keine Steuerung mit Rollen-Zeilen, steht aber als Chip in derselben Reihe. */
+export const CONTROLLER_WAECHTER = 'controller-waechter'
 
 const GRUPPEN: Array<{ key: string; label: string }> = [
   { key: 'messen', label: 'Messen' },
@@ -108,6 +112,8 @@ export function RollenReiter({ modulVorwahl, onModul, nurModule, schlank, onUnge
     () => sichtbareModule.find((m) => m.modul === aktiv) ?? sichtbareModule[0] ?? null,
     [sichtbareModule, aktiv],
   )
+
+  const controllerAnsicht = !nurModule && aktiv === CONTROLLER_WAECHTER
 
   const entwurf = useMemo(() => {
     if (!modul) return {} as Record<string, string>
@@ -190,7 +196,7 @@ export function RollenReiter({ modulVorwahl, onModul, nurModule, schlank, onUnge
               type="button"
               role="tab"
               className="st-chip"
-              aria-current={eintrag.modul === modul?.modul}
+              aria-current={!controllerAnsicht && eintrag.modul === modul?.modul}
               onClick={() => { setAktiv(eintrag.modul); onModul?.(eintrag.modul) }}
             >
               <i className={luecken > 0 ? 'is-warn' : 'is-an'} />
@@ -198,71 +204,89 @@ export function RollenReiter({ modulVorwahl, onModul, nurModule, schlank, onUnge
             </button>
           )
         })}
+        {!nurModule && (
+          <button
+            type="button"
+            role="tab"
+            className="st-chip"
+            aria-current={controllerAnsicht}
+            onClick={() => { setAktiv(CONTROLLER_WAECHTER); onModul?.(CONTROLLER_WAECHTER) }}
+          >
+            <i className="is-an" />
+            Controller · Wächter
+          </button>
+        )}
       </div>}
 
-      {/* forkai.241: Die Fühler des Raums stehen im Reiter Räume — die Zuluft benutzt sie mit. */}
-      {modul?.modul === 'zuluft' && (
-        <p className="st-hinweis">
-          Raum-Fühler (Temperatur, Feuchte der Raumluft): <Link to={rollenPfad('raum')}>im Reiter „Räume“</Link> — dort einmal zuordnen, die Zuluft nutzt sie mit.
-        </p>
-      )}
-
-      {/* A-009: Der Anzeigename gilt für beide Entfeuchter — er steht bei beiden Steuerungen. */}
-      {(modul?.modul === 'entfeuchter' || modul?.modul === 'entfeuchter-zusatz') && <EntfeuchterNamen />}
-
-      {/* A-016 (Etappe 6): Was der Nutzer für die Bluelab-Übertragung in Home Assistant braucht — mit Häkchen aus dem Stand. */}
-      {modul?.modul === 'bluelab' && <BluelabAnleitung zeilen={modul.zeilen} />}
-
-      {modul && GRUPPEN.filter((gruppe) => modul.zeilen.some((zeile) => zeile.gruppe === gruppe.key)).map((gruppe) => {
-        const zeilen = modul.zeilen.filter((zeile) => zeile.gruppe === gruppe.key)
-        const gesetzt = zeilen.filter((zeile) => zeile.gefunden).length
-        return (
-          <V1Section key={gruppe.key} title={gruppe.label} action={<span className="st-nurlesen">{gesetzt} / {zeilen.length}</span>}>
-            {zeilen.map((zeile) => (
-              <RollenZeile
-                key={zeile.rolle}
-                zeile={zeile}
-                wert={entwurf[zeile.rolle] ?? ''}
-                fehler={feldFehler[zeile.rolle]}
-                vorbereitet={vorbereitet}
-                eigene={seite.eigene.map((g) => g.name)}
-                onChange={(wert) => setzeRolle(zeile.rolle, wert)}
-              />
-            ))}
-          </V1Section>
-        )
-      })}
-
-      <div className="st-knopfleiste">
-        {/* Fork AI (forkai.138, F-034): „Auf Vorgabe zurück" entfällt — es gibt
-            keine Werksvorgaben mehr, die Knopf-Wirkung wäre „alles leeren". */}
-        <V1Button variant="primary" disabled={speichert} onClick={() => void speichern()}>
-          {speichert ? 'Speichert…' : 'Speichern'}
-        </V1Button>
-      </div>
-
-      {offen > 0 && (
-        <p className="st-hinweis">
-          {offen === 1 ? 'Eine Rolle findet ihr Gerät nicht' : `${offen} Rollen finden ihr Gerät nicht`} —
-          die Regelung läuft dann ohne diesen Wert weiter.
-        </p>
-      )}
-
-      <EigeneGeraete
-        seite={seite}
-        entities={entities}
-        onSeite={(neu) => setSeite(neu)}
-        onFehler={(text) => setFehler(text)}
-      />
-
-      {!schlank && (
-        <V1Card>
+      {controllerAnsicht ? (
+        <ControllerWaechter entities={entities} />
+      ) : (
+        <>
+        {/* forkai.241: Die Fühler des Raums stehen im Reiter Räume — die Zuluft benutzt sie mit. */}
+        {modul?.modul === 'zuluft' && (
           <p className="st-hinweis">
-            Die Regelung selbst läuft weiter in Home Assistant; sie kennt ihre Entitäten dort noch fest.
-            Bis das umgestellt ist, wirkt eine Änderung hier auf Anzeige und Auswertung im Add-on.
+            Raum-Fühler (Temperatur, Feuchte der Raumluft): <Link to={rollenPfad('raum')}>im Reiter „Räume“</Link> — dort einmal zuordnen, die Zuluft nutzt sie mit.
           </p>
-          <V1Button onClick={() => navigate('/steuerung/co2')}>Zur CO₂-Steuerung</V1Button>
-        </V1Card>
+        )}
+
+        {/* A-009: Der Anzeigename gilt für beide Entfeuchter — er steht bei beiden Steuerungen. */}
+        {(modul?.modul === 'entfeuchter' || modul?.modul === 'entfeuchter-zusatz') && <EntfeuchterNamen />}
+
+        {/* A-016 (Etappe 6): Was der Nutzer für die Bluelab-Übertragung in Home Assistant braucht — mit Häkchen aus dem Stand. */}
+        {modul?.modul === 'bluelab' && <BluelabAnleitung zeilen={modul.zeilen} />}
+
+        {modul && GRUPPEN.filter((gruppe) => modul.zeilen.some((zeile) => zeile.gruppe === gruppe.key)).map((gruppe) => {
+          const zeilen = modul.zeilen.filter((zeile) => zeile.gruppe === gruppe.key)
+          const gesetzt = zeilen.filter((zeile) => zeile.gefunden).length
+          return (
+            <V1Section key={gruppe.key} title={gruppe.label} action={<span className="st-nurlesen">{gesetzt} / {zeilen.length}</span>}>
+              {zeilen.map((zeile) => (
+                <RollenZeile
+                  key={zeile.rolle}
+                  zeile={zeile}
+                  wert={entwurf[zeile.rolle] ?? ''}
+                  fehler={feldFehler[zeile.rolle]}
+                  vorbereitet={vorbereitet}
+                  eigene={seite.eigene.map((g) => g.name)}
+                  onChange={(wert) => setzeRolle(zeile.rolle, wert)}
+                />
+              ))}
+            </V1Section>
+          )
+        })}
+
+        <div className="st-knopfleiste">
+          {/* Fork AI (forkai.138, F-034): „Auf Vorgabe zurück" entfällt — es gibt
+              keine Werksvorgaben mehr, die Knopf-Wirkung wäre „alles leeren". */}
+          <V1Button variant="primary" disabled={speichert} onClick={() => void speichern()}>
+            {speichert ? 'Speichert…' : 'Speichern'}
+          </V1Button>
+        </div>
+
+        {offen > 0 && (
+          <p className="st-hinweis">
+            {offen === 1 ? 'Eine Rolle findet ihr Gerät nicht' : `${offen} Rollen finden ihr Gerät nicht`} —
+            die Regelung läuft dann ohne diesen Wert weiter.
+          </p>
+        )}
+
+        <EigeneGeraete
+          seite={seite}
+          entities={entities}
+          onSeite={(neu) => setSeite(neu)}
+          onFehler={(text) => setFehler(text)}
+        />
+
+        {!schlank && (
+          <V1Card>
+            <p className="st-hinweis">
+              Die Regelung selbst läuft weiter in Home Assistant; sie kennt ihre Entitäten dort noch fest.
+              Bis das umgestellt ist, wirkt eine Änderung hier auf Anzeige und Auswertung im Add-on.
+            </p>
+            <V1Button onClick={() => navigate('/steuerung/co2')}>Zur CO₂-Steuerung</V1Button>
+          </V1Card>
+        )}
+        </>
       )}
     </div>
   )

@@ -5,6 +5,19 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.339
+
+**Controller-Wächter: Fällt ein AC-Infinity-Controller aus, bekommst du einen Push — und er startet sich über eine schaltbare Steckdose selbst neu.**
+
+- **Was war:** Ein Controller kann für Stunden aus der Cloud fallen (gemessen: 14 Ausfälle in 10 Tagen, einer rund 20 Stunden lang). Home Assistant meldet seine Feuchte dann nicht als „nicht verfügbar“, sondern zeigt den letzten Wert weiter — im Trockenzelt blieb die Feuchte auf 54,0 % stehen, während sie in Wirklichkeit auf 68,6 % stieg. Niemand merkte es, bis der Controller über die Steckdose neu gestartet wurde.
+- **Neuer Reiter „Controller · Wächter“** unter Geräte › Technik › Rollen. Du legst einen Controller an und wählst seine Verbindung (der „…Status“ der AC-Infinity-Integration), seinen Feuchtefühler und — wenn vorhanden — die schaltbare Steckdose. Jeder Controller hat seine eigenen Einstellungen, denn dieselbe Hardware kann morgen etwas anderes steuern als heute.
+- **Was er prüft (jede Minute):** Meldet die Verbindung „aus“ oder „nicht verfügbar“, ist der Controller offline. Bleibt außerdem der Feuchtewert 15 Minuten lang gleich, obwohl die Verbindung „an“ zeigt, gilt er als eingefroren. Ist Home Assistant selbst nicht erreichbar, passiert nichts.
+- **Meldung:** Nach 10 Minuten Ausfall kommt ein Push (auch in der Ruhezeit), mit Dauer und letztem Feuchtewert. Kurze Aussetzer von Sekunden bleiben still. Kommt der Controller wieder, gibt es eine Entwarnung und einen Eintrag im Tagebuch.
+- **Neustart (voreingestellt: „Melden + neu starten“):** Nach 15 Minuten Ausfall schaltet er die gewählte Steckdose 15 Sekunden aus und wieder ein. Er prüft, dass sie wirklich aus und wieder an war, und schaltet sie auch dann wieder ein, wenn das Ausschalten nicht bestätigt wurde — die Steckdose bleibt nie aus. Ist der Controller 5 Minuten danach noch offline, gibt es einen Push und eine Stunde Ruhe; höchstens 2 Neustarts pro Tag, danach wird nur noch gemeldet. Ohne gewählte Steckdose meldet der Wächter nur, und die Seite sagt das. Der Neustart unterbricht alles, was am Controller hängt, für etwa 15 Sekunden.
+- **Marke auf der Trocknungsseite:** Steuerung › Trocknung zeigt „Controller online“ oder „Controller offline seit 11:54“ mit Weg zu den Einstellungen.
+- **Pause:** 1 Stunde oder 3 Tage, etwa wenn du den Controller selbst abklemmst. Sie wirkt sofort.
+- **Sicherungen im Wächter:** Er merkt sich Ausfall, Meldung und Neustarts in der Datenbank; ein Neustart der App vergisst nichts und löst keinen zweiten Neustart aus. Jeder Neustart steht im Prüfprotokoll (nur Dienst und Steckdose, keine Werte).
+
 ## 2.0.0-cc.338
 
 **Trocknung: Die Zuluft im Trocknungsbetrieb wird auch nach einem Neustart sicher an die Regelung zurückgegeben.**

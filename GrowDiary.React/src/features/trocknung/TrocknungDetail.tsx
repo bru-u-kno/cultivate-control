@@ -5,6 +5,7 @@ import { V1Sheet } from '../../components/V1Sheet'
 import { Kurzmeldung, type KurzmeldungTon } from '../../components/Kurzmeldung'
 import { SteuerungWechsel } from '../steuerung/SteuerungWechsel'
 import { ZuluftTrocknungAnzeige } from '../steuerung/ZuluftTrocknungAnzeige'
+import { ControllerMarke } from '../steuerung/ControllerMarke'
 import type { SteuerungModul } from '../steuerung/steuerung-typen'
 import '../steuerung/steuerung.css'
 import './ziel.css'
@@ -247,6 +248,8 @@ export default function TrocknungDetail({ module, aktiv, onWechsel }: {
           ? 'Die Steuerung versucht mit den eingebundenen Geräten, die Planwerte zu erreichen und zu halten.'
           : 'Es wird nichts an die Geräte geschrieben.'}
       />
+
+      <ControllerMarke />
 
       <section className="v1-kpi-grid">
         <V1Stat label="Plan Luft" value={bandText(stand.tempMin, stand.tempMax, '°C')} wortwert />
