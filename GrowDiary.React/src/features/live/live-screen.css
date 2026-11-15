@@ -37,11 +37,11 @@
   /* Etwas groesser als die 64/52 des Entwurfs: dort steht eine zweistellige
      Zahl, unser Score kann dreistellig werden (100). */
   .ls-ring {
-    width: 72px; aspect-ratio: 1; border-radius: 50%;
+    width: 72px; aspect-ratio: 1; border-radius: var(--ecke-rund);
     display: grid; place-items: center; flex: 0 0 auto;
   }
   .ls-ring-inner {
-    width: 58px; height: 58px; border-radius: 50%;
+    width: 58px; height: 58px; border-radius: var(--ecke-rund);
     background: var(--bg);
     display: grid; place-items: center; align-content: center; gap: 1px;
   }
@@ -56,15 +56,15 @@
   .ls-ring.is-warn .ls-ring-inner > span:not(.ls-ring-max) { color: var(--warn-text); }
   .ls-ring.is-ok .ls-ring-inner > span:not(.ls-ring-max) { color: var(--accent-text); }
   .ls-ring-inner > span.ls-ring-max {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .08em; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-8); color: var(--faint);
   }
 
   .ls-eyebrow {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .2em; color: var(--faint);
-    text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-15); color: var(--faint);
+    text-transform: var(--etikett-schreibung);
   }
   .ls-head-title h1 {
-    margin: 6px 0 0; font: 600 var(--fs-zahl)/1.1 var(--font-mono); letter-spacing: -.01em;
+    margin: 6px 0 0; font: 600 var(--fs-zahl)/1.1 var(--font-mono); letter-spacing: var(--sperrung-eng-1);
   }
   .ls-score-label.is-critical { color: var(--danger); }
   .ls-score-label.is-warn { color: var(--warn-text); }
@@ -73,11 +73,11 @@
 
   .ls-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 10px; border: 1px solid var(--hair-2); border-radius: 999px;
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: 5px 10px; border: 1px solid var(--hair-2); border-radius: var(--ecke-pille);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
     color: var(--accent-text); white-space: nowrap;
   }
-  .ls-pill i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .ls-pill i { width: 5px; height: 5px; border-radius: var(--ecke-rund); background: var(--accent); }
 
   .ls-head-meta { font: 400 var(--fs-klein)/1.4 var(--font-mono); color: var(--muted); }
   .ls-head-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -94,7 +94,7 @@
      anklickbar, ein zweiter Knopf darin wäre eine Falle. */
   .ls-pin {
     flex: 0 0 auto; margin-left: auto;
-    border: 1px solid var(--hair); border-radius: 999px; padding: 5px 10px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-pille); padding: 5px 10px;
     font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
   }
   .ls-pin.is-on { color: var(--accent-text); border-color: var(--accent-text); }
@@ -108,7 +108,7 @@
   .ls-syswarn {
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
     padding: 10px 14px;
-    border: 1px solid var(--warn); border-radius: 10px;
+    border: 1px solid var(--warn); border-radius: var(--ecke-10);
     background: var(--warn-wash);
     color: var(--ink); text-decoration: none;
   }
@@ -130,7 +130,7 @@
   .ls-editbar-warn {
     margin: 0; padding: 8px 13px;
     border-left: 2px solid var(--warn); background: var(--warn-wash);
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 var(--ecke-8) var(--ecke-8) 0;
     font: 400 var(--fs-klein)/1.5 var(--font-sans); color: var(--ink);
   }
   .ls-btn.is-ghost { border-style: dashed; color: var(--muted); }
@@ -148,9 +148,9 @@
   /* Breit genug fuer „Hydroponik · Naehrloesung": ein abgeschnittener Name
      sieht aus wie ein Fehler, und umbenennen kann man nur, was man liest. */
   .ls-band-rename {
-    background: transparent; border: 1px dashed var(--hair-2); border-radius: 6px;
-    color: var(--ink); font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .18em;
-    padding: 6px 8px; text-transform: uppercase;
+    background: transparent; border: 1px dashed var(--hair-2); border-radius: var(--ecke-6);
+    color: var(--ink); font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-14);
+    padding: 6px 8px; text-transform: var(--etikett-schreibung);
     flex: 0 1 320px; min-width: 150px;
   }
   .ls-band-rename:focus-visible { border-color: var(--accent); outline: none; }
@@ -165,7 +165,7 @@
      wuerde. Ohne beides zieht man am Handy blind: der Finger verdeckt genau das,
      was man treffen will. */
   .ls-tile-slot.is-dragging { opacity: .45; }
-  .ls-tile-slot.is-over { outline: 2px solid var(--accent); outline-offset: -1px; border-radius: 10px; }
+  .ls-tile-slot.is-over { outline: 2px solid var(--accent); outline-offset: -1px; border-radius: var(--ecke-10); }
   .gos-metric-row.is-editing { border-style: dashed; border-color: var(--hair-2); }
   /* Platz fuer Griff UND × zusammen: mit 36px stiess bei schmalen Kacheln der
      Status („daneben") noch ins Kreuz. */
@@ -185,12 +185,12 @@
     /* --faint statt --hint: der Griff ist das Element, das man im
        Anpassen-Modus SUCHT — bei 2,2:1 fand man ihn nur, wenn man wusste, wo
        er sitzt. --hint (30 % Deckkraft) ist fuer Andeutungen gedacht. */
-    color: var(--faint); font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: -1px;
+    color: var(--faint); font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: var(--sperrung-eng-4);
   }
   .ls-tile-tools .dots:active { cursor: grabbing; color: var(--ink); }
   .ls-tile-tools .x {
     display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
-    border: 1px solid var(--hair-2); border-radius: 50%;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-rund);
     background: var(--bg); color: var(--muted);
     font: 500 var(--fs-etikett)/1 var(--font-mono); cursor: pointer;
   }
@@ -198,7 +198,7 @@
 
   .ls-dropzone {
     flex: 1 1 150px; margin: -1px 0 0 -1px; min-height: 92px;
-    border: 1px dashed var(--hair-2); border-radius: 10px;
+    border: 1px dashed var(--hair-2); border-radius: var(--ecke-10);
     display: grid; place-items: center; text-align: center;
     /* Dasselbe fuer „hierher ziehen": eine Anweisung, die man lesen soll. */
     color: var(--faint); font: 400 var(--fs-etikett)/1.5 var(--font-mono);
@@ -222,11 +222,11 @@
   .ls-dialog-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .ls-dialog-field { display: grid; gap: 5px; min-width: 140px; }
   .ls-dialog-field.is-grow { flex: 1; }
-  .ls-dialog-field > span { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .16em; color: var(--faint); text-transform: uppercase; }
+  .ls-dialog-field > span { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-13); color: var(--faint); text-transform: var(--etikett-schreibung); }
   .ls-dialog-field select,
   .ls-dialog-field input {
     min-height: 34px; padding: 0 10px;
-    border: 1px solid var(--hair-2); border-radius: 8px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-klein)/1 var(--font-mono);
   }
   /* `min-width: 0` an Kasten UND Kindern: ohne das konnten die Auswahlzeilen
@@ -236,33 +236,33 @@
   .ls-dialog-cap {
     position: sticky; top: 0; z-index: 1; min-width: 0;
     padding: 8px 0 4px; background: var(--panel-2);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .16em; color: var(--faint); text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-13); color: var(--faint); text-transform: var(--etikett-schreibung);
   }
   .ls-dialog-empty { margin: 0; padding: 6px 2px; color: var(--faint); font-size: var(--fs-klein); }
   .ls-pick {
     display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
     min-height: 38px; padding: 8px 11px; text-align: left;
-    border: 1px solid var(--hair); border-radius: 8px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--muted);
     font: 400 var(--fs-klein)/1.3 var(--font-mono); cursor: pointer;
   }
   .ls-pick > * { min-width: 0; }
   .ls-pick:hover { border-color: var(--accent); color: var(--ink); }
-  .ls-pick .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hint); flex: 0 0 auto; }
+  .ls-pick .dot { width: 6px; height: 6px; border-radius: var(--ecke-rund); background: var(--hint); flex: 0 0 auto; }
   .ls-pick:hover .dot { background: var(--accent); }
   .ls-pick-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ls-pick-tag {
-    flex: 0 0 auto; padding: 2px 7px; border: 1px solid var(--info); border-radius: 999px;
-    color: var(--info); font-size: var(--fs-etikett); letter-spacing: .12em; text-transform: uppercase;
+    flex: 0 0 auto; padding: 2px 7px; border: 1px solid var(--info); border-radius: var(--ecke-pille);
+    color: var(--info); font-size: var(--fs-etikett); letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung);
   }
 
   /* ---------- Knöpfe ---------- */
   .ls-btn {
     display: inline-flex; align-items: center; justify-content: center;
     min-height: 32px; padding: 0 12px;
-    border: 1px solid var(--hair-2); border-radius: 8px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     background: transparent; color: var(--ink);
-    font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+    font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: var(--sperrung-4); text-transform: var(--etikett-schreibung);
     cursor: pointer; white-space: nowrap;
   }
   /* Gesperrt muss gesperrt AUSSEHEN. Fuer `.ls-btn` gab es diese Regel
@@ -323,12 +323,12 @@
   .ls-firstrun li {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding: 14px 16px 14px 12px;
-    border: 1px solid var(--hair); border-radius: 10px; background: var(--panel);
+    border: 1px solid var(--hair); border-radius: var(--ecke-10); background: var(--panel);
   }
   .ls-firstrun li::before {
     counter-increment: schritt; content: counter(schritt);
     flex: 0 0 28px; height: 28px; display: grid; place-items: center;
-    border-radius: 50%; background: var(--accent-wash); color: var(--accent-text);
+    border-radius: var(--ecke-rund); background: var(--accent-wash); color: var(--accent-text);
     font: 600 var(--fs-klein)/1 var(--font-mono);
   }
   .ls-firstrun li > div { flex: 1 1 260px; min-width: 0; display: grid; gap: 3px; }
@@ -342,14 +342,14 @@
   .ls-metrics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
   .ls-band-label { display: flex; align-items: center; gap: 8px; }
   .ls-band-label span {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-14); text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .ls-band-label i { flex: 1; height: 1px; background: var(--hair); }
   .ls-metrics .gos-metric-row + .ls-band-label { margin-top: 5px; }
 
   /* ---------- Panels ---------- */
   .ls-panel {
-    border: 1px solid var(--hair); border-radius: 10px; background: var(--panel);
+    border: 1px solid var(--hair); border-radius: var(--ecke-10); background: var(--panel);
     overflow: hidden;
   }
   .ls-panel-head {
@@ -357,7 +357,7 @@
     padding: 11px 14px; border-bottom: 1px solid var(--hair);
   }
   .ls-label {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-14); text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .ls-panel-meta { font: 400 var(--fs-etikett)/1.4 var(--font-mono); color: var(--muted); min-width: 0; }
   .ls-panel-body { padding: 14px; display: grid; gap: 8px; }
@@ -393,7 +393,7 @@
   .ls-tasks li:last-child { border-bottom: 0; }
   .ls-task-when {
     flex: 0 0 64px;
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .ls-task-when.is-due { color: var(--warn-text); }
   .ls-task-title { min-width: 0; font-size: var(--fs-text); overflow: hidden; text-overflow: ellipsis; }
@@ -404,7 +404,7 @@
     flex: 1 1 0; min-width: 0;
     display: grid; place-items: center;
     min-height: 26px; padding: 0 8px; border-radius: var(--r-sm);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   /* Auf der Detailseite stand „TROCKN" statt „Trocknen 10 T" — mitten im Wort
@@ -416,7 +416,7 @@
      Telefon dieselbe kleinere Schrift wie in der kompakten Variante — damit
      passt die Beschriftung, und die Anteile bleiben ehrlich. */
   @media (max-width: 720px) {
-    .ls-phase { font-size: var(--fs-etikett); letter-spacing: .04em; padding: 0 5px; }
+    .ls-phase { font-size: var(--fs-etikett); letter-spacing: var(--sperrung-4); padding: 0 5px; }
   }
   .ls-phase { position: relative; overflow: hidden; }
   /* Der innere span hatte keine eigene Kuerzung — deshalb stand da „TROCKI"
@@ -444,7 +444,7 @@
   .ls-ph-kopf strong { font: 600 var(--fs-text)/1.3 var(--font-mono); color: var(--accent-text); }
   .ls-ph-ernte { font: 400 var(--fs-etikett)/1.3 var(--font-mono); color: var(--muted); }
   .ls-ph-kopf .is-ueber, .ls-ph-liste .is-ueber .ls-ph-text, .ls-ph .ls-ph-flip.is-ueber { color: var(--warn-text); }
-  .ls-ph-balken .ls-phase { min-height: 10px; padding: 0; border-radius: 5px; }
+  .ls-ph-balken .ls-phase { min-height: 10px; padding: 0; border-radius: var(--ecke-5); }
   .ls-ph-liste { list-style: none; margin: 0; padding: 0; display: grid; }
   .ls-ph-liste li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-top: 1px solid var(--hair); font: 500 var(--fs-etikett)/1.3 var(--font-mono); color: var(--muted); }
   .ls-ph-liste li:first-child { border-top: 0; }
@@ -477,14 +477,14 @@
   .ls-cam-empty { padding: 24px; font-size: var(--fs-text); color: var(--faint); text-align: center; }
   .ls-cam-stale {
     position: absolute; top: 8px; right: 8px;
-    padding: 3px 8px; border-radius: 999px;
+    padding: 3px 8px; border-radius: var(--ecke-pille);
     background: var(--warn-wash); color: var(--warn-text);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-8); text-transform: var(--etikett-schreibung);
   }
   /* Umschalten mit Pfeilen: kein Wischen, der Name wird gekürzt statt breiter als der Bildschirm (cc.266). */
   .ls-cam-nav { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--hair); }
   .ls-cam-pfeil {
-    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--ecke-rund);
     border: 1px solid var(--hair-2); background: transparent; color: var(--text);
     font-size: 22px; line-height: 1; cursor: pointer;
   }
@@ -528,7 +528,7 @@
     }
   }
   .af-count {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
   }
   .af-count.is-crit { color: var(--danger); }
   .af-count.is-warn { color: var(--warn-text); }
@@ -548,8 +548,8 @@
     flex-wrap: wrap;
   }
   .af-ki {
-    margin-left: 8px; padding: 1px 8px; border: 1px solid var(--accent); border-radius: 99px;
-    font: 500 var(--fs-etikett)/1.4 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    margin-left: 8px; padding: 1px 8px; border: 1px solid var(--accent); border-radius: var(--ecke-pille);
+    font: 500 var(--fs-etikett)/1.4 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
     color: var(--accent); white-space: nowrap;
   }
   .af-row:last-child { border-bottom: 0; }
@@ -557,7 +557,7 @@
   .af-tasten { display: flex; gap: 6px; align-items: center; flex-shrink: 0; margin-left: auto; }
   .af-when {
     flex: 0 0 56px;
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
     color: var(--faint);
   }
   .af-when.is-due { color: var(--warn-text); }
@@ -572,7 +572,7 @@
   .af-badge {
     /* 76, nicht 72: „ÜBERFÄLLIG" passte nicht hinein und brach um. */
     flex: 0 0 76px; text-align: center;
-    font: 500 var(--fs-etikett)/1.6 var(--font-mono); letter-spacing: .08em;
+    font: 500 var(--fs-etikett)/1.6 var(--font-mono); letter-spacing: var(--sperrung-8);
     border: 1px solid var(--hair-2); border-radius: var(--r-pill);
     padding: 1px 4px; color: var(--muted);
   }
@@ -596,8 +596,8 @@
 .ls-chart-head {
   color: var(--muted);
   font-size: var(--fs-klein);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-12);
+  text-transform: var(--etikett-schreibung);
   margin-bottom: 4px;
 }
 
@@ -660,18 +660,18 @@
      auf — er sah dort anders aus als in den Karten (Befund des Prüfers). */
   .ls-fold-titel .ls-fold-pfeil {
     flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
-    border: 1px solid var(--hair-2); border-radius: 6px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-6);
     color: var(--muted); font: 500 var(--fs-klein)/1 var(--font-mono);
     letter-spacing: 0; text-transform: none;
   }
   .ls-fold-titel:hover .ls-fold-pfeil { border-color: var(--accent); color: var(--ink); }
-  .ls-fold-titel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .ls-fold-titel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--ecke-6); }
 
   /* Die Bilanz hinter einem eingeklappten Bereich — in normaler Schreibung,
      nicht in den gesperrten Grossbuchstaben des Titels: sie ist ein Satz. */
   .ls-bilanz {
     font: 400 var(--fs-klein)/1.3 var(--font-mono); font-style: normal;
-    letter-spacing: .02em; text-transform: none; color: var(--muted); white-space: nowrap;
+    letter-spacing: var(--sperrung-2); text-transform: none; color: var(--muted); white-space: nowrap;
   }
   .ls-bilanz.is-warn { color: var(--warn-text); }
   .ls-bilanz.is-crit { color: var(--danger-text); }
@@ -683,7 +683,7 @@
   .ls-fold {
     position: absolute; top: 6px; right: 6px; z-index: 1;
     display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
-    border: 1px solid transparent; border-radius: 6px; background: none;
+    border: 1px solid transparent; border-radius: var(--ecke-6); background: none;
     color: var(--faint); font: 500 var(--fs-klein)/1 var(--font-mono); cursor: pointer;
   }
   .ls-fold:hover { border-color: var(--hair-2); color: var(--ink); }
@@ -741,7 +741,7 @@
 
   .ls-zb-kopf {
     display: grid; row-gap: 6px; width: 100%; box-sizing: border-box; margin: 0; padding: 12px;
-    border: 1px solid var(--hair-2); border-radius: 12px; background: var(--panel);
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-11); background: var(--panel);
     color: inherit; font: inherit; text-align: left; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
@@ -755,14 +755,14 @@
   }
   .ls-zb-zeile .ls-fold-pfeil {
     flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
-    border: 1px solid var(--hair-2); border-radius: 6px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-6);
     color: var(--muted); font: 500 var(--fs-klein)/1 var(--font-mono);
   }
   .ls-zb-kopf:hover .ls-fold-pfeil { border-color: var(--accent); color: var(--ink); }
 
   .ls-zb-chip {
     flex: 0 0 auto; white-space: nowrap; padding: 5px 9px;
-    border: 1px solid currentColor; border-radius: 999px;
+    border: 1px solid currentColor; border-radius: var(--ecke-pille);
     font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
   }
   .ls-zb-kopf.is-ok .ls-zb-chip { color: var(--accent-text); }
@@ -773,7 +773,7 @@
      so bleibt sie scharf und die Maske schneidet nur den Ring aus. */
   .ls-zb-ringhuelle { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; }
   .ls-zb-ring {
-    position: absolute; inset: 0; border-radius: 50%;
+    position: absolute; inset: 0; border-radius: var(--ecke-rund);
     --c: var(--faint); --p: 0;
     background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--sunk) 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
@@ -790,7 +790,7 @@
   .ls-zb-hydro { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--hair-2); }
   .ls-zb-werte small {
     display: block; font: 400 var(--fs-etikett)/1.3 var(--font-mono); color: var(--muted);
-    text-transform: uppercase; letter-spacing: .06em;
+    text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-6);
   }
   .ls-zb-werte b { font: 600 var(--fs-gross)/1.3 var(--font-mono); }
   .ls-zb-werte b.is-ok { color: var(--accent-text); }

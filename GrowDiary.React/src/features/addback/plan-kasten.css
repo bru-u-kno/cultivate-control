@@ -1,8 +1,8 @@
 /* Der Plankasten „Dein Plan heute" — Addback und Wasserwechsel zeigen dieselbe Komponente (PlanKasten.tsx). */
 .plan-kasten{border:1px solid var(--hair-2);border-radius:var(--r);padding:var(--s-3) var(--s-4);margin-top:var(--s-3)}
-.plan-kasten .k{font-size:var(--fs-klein);color:var(--faint);text-transform:uppercase;letter-spacing:.06em;display:block}
+.plan-kasten .k{font-size:var(--fs-klein);color:var(--faint);text-transform:var(--etikett-schreibung);letter-spacing:var(--sperrung-6);display:block}
 .plan-kasten .kz{display:flex;flex-wrap:wrap;gap:var(--s-2);margin:6px 0 var(--s-2)}
-.plan-kasten .kz span{border:1px solid var(--hair-2);border-radius:999px;padding:2px 12px}
+.plan-kasten .kz span{border:1px solid var(--hair-2);border-radius:var(--ecke-pille);padding:2px 12px}
 .plan-kasten .nm{margin:4px 0 var(--s-2)}
 /* Eine Zeile je Ziel: links Name und Hinweis, rechts die Zahl und darunter der Abstand. */
 .plan-kasten .zeile{display:flex;flex-wrap:wrap;gap:2px var(--s-3);align-items:baseline;border-top:1px solid var(--hair);padding:var(--s-2) 0}

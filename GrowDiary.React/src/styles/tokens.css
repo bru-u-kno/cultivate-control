@@ -77,12 +77,73 @@
     --fs-gross:   1rem;       /* 16 px — Kartenueberschrift, Zeilentitel, Leerzustand */
     --fs-titel:   1.25rem;    /* 20 px — Abschnitts- und Dialogtitel */
     --fs-zahl:    1.5rem;     /* 24 px — die Zahl in der Kachel, Score, Hero */
+    /* 10 px — Kleinstbeschriftung. Wurde an 23 Stellen mit Ersatzwert .625rem
+       benutzt, ohne je definiert zu sein; jetzt steht der Wert hier. */
+    --fs-micro:   0.625rem;
 
-    /* Radien — EIN Satz statt 22/14 vs 10/7 vs 14/11 */
-    --r-sm: 7px;
-    --r:    10px;
-    --r-lg: 14px;
-    --r-pill: 999px;
+    /* ---------------------------------------------------------------
+       AUSSEHEN — die Stellschrauben, an denen ein Stil (A-033) dreht.
+       Kein Stylesheet schreibt Ecken, Sperrung oder Großschreibung fest;
+       das hält styles/feste-gestaltung.test.ts.
+
+       Die Leitern tragen in Schritt 1 (15.11.2026) GENAU die Werte, die
+       vorher fest im CSS standen — deshalb so viele Stufen. Die Nummer ist
+       die Rangfolge, nicht der Pixelwert: ein Stil darf jede Stufe anders
+       belegen, solange die Reihenfolge (klein → groß) erhalten bleibt.
+       --------------------------------------------------------------- */
+
+    /* Ecken */
+    --ecke-1:  1px;    /* Marken und Striche in Bändern */
+    --ecke-2:  2px;
+    --ecke-3:  3px;
+    --ecke-4:  4px;
+    --ecke-5:  5px;
+    --ecke-6:  6px;
+    --ecke-7:  7px;    /* = --r-sm */
+    --ecke-8:  8px;
+    --ecke-9:  9px;
+    --ecke-10: 10px;   /* = --r */
+    --ecke-11: 12px;
+    --ecke-12: 13px;
+    --ecke-13: 14px;   /* = --r-lg */
+    --ecke-14: 16px;
+    --ecke-15: 18px;
+    --ecke-16: 22px;
+    --ecke-pille: 999px;
+    --ecke-rund:  50%;
+
+    /* Radien mit Rollennamen — zeigen in die Leiter oben */
+    --r-sm: var(--ecke-7);
+    --r:    var(--ecke-10);
+    --r-lg: var(--ecke-13);
+    --r-pill: var(--ecke-pille);
+
+    /* Sperrung (letter-spacing) */
+    --sperrung-eng-4: -1px;     /* nur die Uhrzeit-Ziffern auf Live */
+    --sperrung-eng-3: -0.04em;
+    --sperrung-eng-2: -0.02em;
+    --sperrung-eng-1: -0.01em;
+    --sperrung-1:  0.01em;
+    --sperrung-2:  0.02em;
+    --sperrung-3:  0.03em;
+    --sperrung-4:  0.04em;
+    --sperrung-5:  0.05em;
+    --sperrung-6:  0.06em;
+    --sperrung-7:  0.07em;
+    --sperrung-8:  0.08em;
+    --sperrung-9:  0.1em;
+    --sperrung-10: 0.11em;
+    --sperrung-11: 0.12em;
+    --sperrung-12: 0.14em;
+    --sperrung-13: 0.16em;
+    --sperrung-14: 0.18em;
+    --sperrung-15: 0.2em;
+
+    /* Schreibung der Etiketten: ein Schalter für alle Versal-Beschriftungen */
+    --etikett-schreibung: uppercase;
+
+    /* Höhe der Kleinkurve in den Messkacheln (Live) */
+    --kurve-hoehe: 22px;
 
     /* Abstände */
     --s-1: 4px;

@@ -12,8 +12,8 @@
   .sp-card-top { display: flex; align-items: center; gap: 8px; }
   .sp-name { font: 600 var(--fs-text)/1 var(--font-mono); }
   .sp-tag {
-    margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em;
-    text-transform: uppercase; border-radius: 999px; padding: 3px 8px; white-space: nowrap;
+    margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11);
+    text-transform: var(--etikett-schreibung); border-radius: var(--ecke-pille); padding: 3px 8px; white-space: nowrap;
   }
   .sp-tag.is-shipped { border: 1px solid var(--hair-2); color: var(--faint); }
   .sp-tag.is-mine { border: 1px solid var(--info); color: var(--info-text); }
@@ -40,7 +40,7 @@
     padding: 8px 9px; font: 400 var(--fs-etikett)/1.4 var(--font-mono); border-top: 1px solid var(--hair);
   }
   .sp-th {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); text-transform: var(--etikett-schreibung);
     color: var(--faint); border-top: none; background: var(--sunk);
   }
   .sp-td.is-name { color: var(--ink); font-weight: 500; }
@@ -48,7 +48,7 @@
   .sp-pair { display: flex; gap: 5px; }
   .sp-input {
     width: 100%; min-width: 0; padding: 5px 6px;
-    border: 1px solid var(--hair-2); border-radius: 6px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-6);
     background: var(--sunk); color: var(--ink);
     font: 400 var(--fs-etikett)/1.2 var(--font-mono);
   }

@@ -21,8 +21,8 @@
      noetigen 4,5, in beiden Themen. Wer wissen will, ob die Pumpe laeuft,
      muss es lesen koennen. */
   .dz-pump-state {
-    margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em;
-    text-transform: uppercase; color: var(--faint);
+    margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .dz-pump.is-dosing .dz-pump-state { color: var(--accent-text); }
   .dz-pump-state.is-blocked { color: var(--warn-text); }
@@ -44,7 +44,7 @@
   .dz-actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .dz-dose-input {
     width: 84px; min-height: 30px; padding: 0 9px;
-    border: 1px solid var(--hair-2); border-radius: 8px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-klein)/1 var(--font-mono);
   }
 
@@ -98,7 +98,7 @@
   .dz-warn {
     display: flex; gap: 10px; align-items: flex-start;
     padding: 10px 13px; border-left: 2px solid var(--danger);
-    background: var(--danger-wash); border-radius: 0 8px 8px 0;
+    background: var(--danger-wash); border-radius: 0 var(--ecke-8) var(--ecke-8) 0;
     font: 400 var(--fs-text)/1.55 var(--font-sans); color: var(--muted);
   }
   .dz-warn b { color: var(--ink); font-weight: 600; }
@@ -108,9 +108,9 @@
 @layer features {
   .dz-badge {
     display: inline-flex; align-items: center;
-    padding: 3px 8px; border-radius: 999px;
+    padding: 3px 8px; border-radius: var(--ecke-pille);
     border: 1px solid var(--warn); color: var(--warn-text);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung);
     white-space: nowrap;
   }
   /* Keine eigene Schriftgroesse mehr: 8,5 px war die kleinste der App — an
@@ -121,7 +121,7 @@
   .dz-suggestion {
     grid-column: 1 / -1; display: grid; gap: 6px;
     padding: 10px; border: 1px solid var(--hair); border-left: 2px solid var(--hint);
-    border-radius: 8px; background: var(--sunk);
+    border-radius: var(--ecke-8); background: var(--sunk);
   }
   .dz-suggestion.is-allowed { border-left-color: var(--accent); }
   .dz-suggestion-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }

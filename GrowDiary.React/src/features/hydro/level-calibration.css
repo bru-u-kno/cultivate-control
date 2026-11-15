@@ -14,12 +14,12 @@
   .lk-value { display: grid; gap: 3px; }
   .lk-value strong { font: 600 var(--fs-zahl)/1 var(--font-mono); color: var(--ink); }
   .lk-label {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em;
-    text-transform: uppercase; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
 
   .lk-bar {
-    height: 4px; border-radius: 2px; background: var(--sunk);
+    height: 4px; border-radius: var(--ecke-2); background: var(--sunk);
     overflow: hidden; margin-bottom: 10px;
   }
   .lk-bar span { display: block; height: 100%; background: var(--accent); transition: width .4s linear; }

@@ -22,8 +22,8 @@
   .zw-kopf:hover { background: var(--accent-wash); }
 
   .zw-name {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em;
-    text-transform: uppercase; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .zw-ist {
     font: 400 var(--fs-zahl)/1 var(--font-mono); font-variant-numeric: tabular-nums;
@@ -38,12 +38,12 @@
   .zw-balken { position: relative; height: 12px; }
   /* Grau hinterlegt wie im Mockup — sonst verschwindet die Spur im dunklen Hintergrund
      und das Band ist nicht als Band zu erkennen. */
-  .zw-spur { position: absolute; left: 0; right: 0; top: 4px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 13%, transparent); }
-  .zw-zone { position: absolute; top: 4px; height: 4px; border-radius: 2px; background: var(--accent); opacity: .85; }
-  .zw-zone.ist-marke { top: 2px; width: 4px !important; height: 8px; margin-left: -2px; border-radius: 1px; opacity: 1; }
-  .zw-grenze { position: absolute; top: 1px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: var(--warn); }
+  .zw-spur { position: absolute; left: 0; right: 0; top: 4px; height: 4px; border-radius: var(--ecke-2); background: color-mix(in srgb, var(--ink) 13%, transparent); }
+  .zw-zone { position: absolute; top: 4px; height: 4px; border-radius: var(--ecke-2); background: var(--accent); opacity: .85; }
+  .zw-zone.ist-marke { top: 2px; width: 4px !important; height: 8px; margin-left: -2px; border-radius: var(--ecke-1); opacity: 1; }
+  .zw-grenze { position: absolute; top: 1px; width: 2px; height: 10px; margin-left: -1px; border-radius: var(--ecke-1); background: var(--warn); }
   .zw-nadel {
-    position: absolute; top: -1px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: 2px;
+    position: absolute; top: -1px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: var(--ecke-2);
     background: var(--ink); color: var(--ink); box-shadow: 0 0 0 2px var(--bg);
   }
   .zw-nadel::after {
@@ -64,7 +64,7 @@
     font-variant-numeric: tabular-nums;
   }
   .zw-herkunft { margin: 2px 12px 0; font-size: var(--fs-klein); color: var(--faint); }
-  .zw-fuss .zw-etikett { flex: 0 0 5.4em; font-family: var(--font-sans); font-size: var(--fs-etikett); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .zw-fuss .zw-etikett { flex: 0 0 5.4em; font-family: var(--font-sans); font-size: var(--fs-etikett); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung); color: var(--faint); }
   .zw-ziel { align-items: baseline; justify-content: flex-start; }
   .zw-ziel .zw-zahl { flex: 1 1 auto; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .zw-ziel .zw-pill { margin-right: 0; }
@@ -79,8 +79,8 @@
 
   .zw-pill {
     display: inline-block; margin-right: 5px; padding: 2px 6px; border-radius: var(--r-sm);
-    font: 500 var(--fs-etikett)/1.3 var(--font-mono); letter-spacing: .08em;
-    text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1.3 var(--font-mono); letter-spacing: var(--sperrung-8);
+    text-transform: var(--etikett-schreibung);
   }
   .zw-pill.ist-plan { background: var(--accent-wash); color: var(--accent-text); }
   .zw-pill.ist-fest { background: var(--warn-wash); color: var(--warn-text); }
@@ -118,8 +118,8 @@
     padding: 10px 12px; border-bottom: 1px solid var(--hair);
   }
   .zw-gruppe-k b {
-    font: 500 var(--fs-klein)/1.2 var(--font-mono); letter-spacing: .1em;
-    text-transform: uppercase; color: var(--ink);
+    font: 500 var(--fs-klein)/1.2 var(--font-mono); letter-spacing: var(--sperrung-9);
+    text-transform: var(--etikett-schreibung); color: var(--ink);
   }
   .zw-gruppe-k a {
     font: 400 var(--fs-klein)/1.2 var(--font-mono); color: var(--accent-text);
@@ -152,8 +152,8 @@
 
   .wb-block { padding: var(--s-3) var(--s-4); border-top: 1px solid var(--hair); display: grid; gap: var(--s-2); }
   .wb-block h3 {
-    margin: 0; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .2em;
-    text-transform: uppercase; color: var(--faint);
+    margin: 0; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-15);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .wb-felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: var(--s-3); }
   .wb-felder input.wb-geaendert { border-color: var(--accent); }
@@ -207,7 +207,7 @@
   .pr-pills { display: flex; gap: var(--s-1); flex-wrap: wrap; }
   /* Fork AI (02.10.2026): angehängte Woche — der Satz unter dem Wochentitel. */
   .pr-verlaengert { margin: var(--s-2) 0 0; font-size: var(--fs-klein); text-align: center; }
-  .pr-ungeprueft { margin: var(--s-3) 0 0; padding: var(--s-3); border: 1px solid var(--warn, #f0b43a); border-radius: var(--r-2, 10px); display: grid; gap: var(--s-2); font-size: var(--fs-klein); }
+  .pr-ungeprueft { margin: var(--s-3) 0 0; padding: var(--s-3); border: 1px solid var(--warn, #f0b43a); border-radius: var(--ecke-10); display: grid; gap: var(--s-2); font-size: var(--fs-klein); }
   .pr-ungeprueft p { margin: 0; }
 }
 
@@ -311,7 +311,7 @@
   .tn-zeile { padding: var(--s-3) 0; border-top: 1px solid var(--hair); }
   .tn-kopf { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-2); }
   .tn-kopf b { font-size: var(--fs-text); }
-  .tn-jetzt { font-size: var(--fs-etikett); color: var(--accent-text); border: 1px solid var(--accent-text); border-radius: 999px; padding: 1px var(--s-2); }
+  .tn-jetzt { font-size: var(--fs-etikett); color: var(--accent-text); border: 1px solid var(--accent-text); border-radius: var(--ecke-pille); padding: 1px var(--s-2); }
   .tn-zeile.ist-jetzt input { border-color: var(--accent); }
   .tn-status { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-2); }
   .tn-ok { font-size: var(--fs-klein); color: var(--accent-text); }
@@ -329,7 +329,7 @@
   .pk-glied-wrap { display: contents; }
   .pk-glied {
     flex: 1 1 0; min-width: 0; padding: var(--s-2) var(--s-1); text-align: center; overflow-wrap: anywhere; line-height: 1.25;
-    border: 1px solid var(--hair-2); border-radius: 999px; font-size: var(--fs-etikett); color: var(--muted); text-decoration: none;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-pille); font-size: var(--fs-etikett); color: var(--muted); text-decoration: none;
   }
   .pk-glied.ist-aktiv { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
   .pk-pfeil { flex: 0 0 auto; color: var(--faint); font-size: var(--fs-etikett); }
@@ -406,8 +406,8 @@
   .zw-warn-richtung::after { content: " ›"; color: var(--faint); }
 
   .zw-bereich {
-    padding: 8px 0 2px; font-size: var(--fs-etikett); letter-spacing: .12em;
-    text-transform: uppercase; color: var(--faint);
+    padding: 8px 0 2px; font-size: var(--fs-etikett); letter-spacing: var(--sperrung-11);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .zw-zeile-zusatz { display: block; font-size: var(--fs-klein); color: var(--faint); }
 }

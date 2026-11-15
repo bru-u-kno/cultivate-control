@@ -80,7 +80,10 @@ test('Scheitert das Speichern, springt der Haken zurück und die Karte sagt es',
   await page.goto('/steuerung/zuluft', { waitUntil: 'networkidle' })
   const karte = page.locator('[data-audit="zuluft-trocknung"]').locator('xpath=ancestor::article')
   const haken = karte.getByRole('checkbox', { name: /Folgt dem Trocknungsplan/ })
-  await haken.check()
+  // click statt check: check() prüft nach dem Klick, dass der Haken AN ist — die Attrappe
+  // antwortet aber sofort mit 400, und die Seite setzt ihn (richtig) zurück, oft bevor
+  // check() nachsieht. Dann meldete der Fall „did not change its state“ (1 von 3 Läufen, 15.11.2026).
+  await haken.click()
   await expect(karte.getByText('Nicht gespeichert')).toBeVisible()
   await expect(haken).not.toBeChecked()
 })

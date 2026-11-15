@@ -22,8 +22,8 @@
   font-family: var(--font-mono);
   font-size: var(--fs-etikett);
   font-weight: 500;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-11);
+  text-transform: var(--etikett-schreibung);
   color: var(--faint);
   padding: 0 var(--s-3) var(--s-2) 0;
   white-space: nowrap;

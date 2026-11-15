@@ -33,7 +33,7 @@
   display: flex; align-items: center; gap: 5px; white-space: nowrap;
   font: 400 var(--fs-etikett)/1.15 var(--font-mono); color: var(--faint);
 }
-.vd-ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--vd-farbe); flex: none; box-sizing: border-box; }
+.vd-ring { width: 10px; height: 10px; border-radius: var(--ecke-rund); border: 2px solid var(--vd-farbe); flex: none; box-sizing: border-box; }
 .vd-wert[aria-pressed='true'] .vd-ring { background: var(--vd-farbe); }
 .vd-wert-zahl { font: 600 var(--fs-gross)/1.1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vd-wert-zahl small, .vd-zeile-zahl small, .vd-gross-zahl small, .vd-tabelle small {
@@ -120,7 +120,7 @@
 }
 .vd-zeile-zahl { font: 600 var(--fs-gross)/1.1 var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .vd-zeile-mm { font: 400 var(--fs-etikett)/1.2 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.vd-punkt { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.vd-punkt { width: 8px; height: 8px; border-radius: var(--ecke-rund); display: inline-block; flex: none; }
 
 /* Fokus: ein Wert groß */
 .vd-fokus { display: grid; gap: 6px; }

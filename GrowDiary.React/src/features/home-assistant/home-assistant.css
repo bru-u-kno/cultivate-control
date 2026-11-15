@@ -33,7 +33,7 @@
   .ha-metric-hinweis { flex: 1 1 100%; order: 2; font-size: var(--fs-klein); line-height: 1.4; color: var(--muted); }
   .ha-entity-input {
     flex: 1 1 160px; min-width: 0; min-height: 28px; padding: 0 8px;
-    border: 1px solid var(--hair); border-radius: 6px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-6);
     background: var(--sunk); color: var(--ink);
     font: 400 var(--fs-klein)/1 var(--font-mono);
   }
@@ -60,7 +60,7 @@
   .ha-preview { margin: 0; display: grid; gap: 6px; }
   .ha-preview-frame {
     position: relative; aspect-ratio: 16 / 9;
-    background: var(--sunk); border: 1px solid var(--hair); border-radius: 10px;
+    background: var(--sunk); border: 1px solid var(--hair); border-radius: var(--ecke-10);
     overflow: hidden; display: grid; place-items: center;
   }
   .ha-preview-frame img { width: 100%; height: 100%; object-fit: cover; }

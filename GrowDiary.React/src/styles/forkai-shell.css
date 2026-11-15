@@ -89,7 +89,7 @@
   .forkai-leiste-text {
     /* Proportionalschrift: in Monospace braucht „Steuerung" 54 px, ein Sechstel auf 360 px hat 51 —
        die Leiste zeigte „Tagebu…", „Aufgab…", „Steuer…" (Umbruchprüfung 18.10.2026). */
-    font: 500 10px/1.1 var(--font-sans); letter-spacing: -0.02em;
+    font: 500 10px/1.1 var(--font-sans); letter-spacing: var(--sperrung-eng-2);
     /* Kurzform statt Menuewort — „Wasserwechsel" passt in kein Sechstel. */
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
@@ -107,7 +107,7 @@
   }
   .forkai-leiste-punkt {
     position: absolute; top: 5px; right: 50%; margin-right: -14px;
-    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    width: 7px; height: 7px; border-radius: var(--ecke-rund); background: var(--accent);
   }
   .forkai-leiste-punkt.warn { background: var(--warn); }
 
@@ -155,7 +155,7 @@
   padding: var(--s-2) var(--s-3) calc(var(--s-4) + var(--safe-bottom));
   background: var(--panel-solid, var(--bg));
   border-top: 1px solid var(--hair);
-  border-radius: 16px 16px 0 0;
+  border-radius: var(--ecke-14) var(--ecke-14) 0 0;
   /* forkai.88: `--blatt-zug` setzt `blatt-ziehen.ts` waehrend des Zugs; ohne
      Zug ist es 0 und das Blatt steht wie vorher. */
   transform: translateY(var(--blatt-zug, 0px));
@@ -173,7 +173,7 @@
     left: 50%; right: auto; bottom: auto; top: 50%;
     transform: translate(-50%, calc(-50% + var(--blatt-zug, 0px)));
     width: min(460px, calc(100vw - 48px));
-    border-radius: 14px; border: 1px solid var(--hair);
+    border-radius: var(--ecke-13); border: 1px solid var(--hair);
   }
 }
 /* forkai.88: Der Griff ist die Ziehflaeche. Der sichtbare Balken bleibt
@@ -189,7 +189,7 @@
 }
 .forkai-sheet-griff:active { cursor: grabbing; }
 .forkai-sheet-grip {
-  width: 40px; height: 4px; border-radius: 2px;
+  width: 40px; height: 4px; border-radius: var(--ecke-2);
   background: var(--hair-2); margin: 0 auto;
 }
 /* Der Titel zieht mit — oben am Blatt ist er die groesste ruhige Flaeche. */
@@ -235,7 +235,7 @@
 .forkai-anpassen-gruppe {
   margin: var(--s-3) 0 var(--s-1);
   font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.14em;
+  text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-12);
 }
 .forkai-anpassen-liste { list-style: none; margin: 0; padding: 0; }
 .forkai-anpassen-zeile {
@@ -321,7 +321,7 @@
 .v1-select-liste { border: 1px solid var(--hair); border-radius: var(--r-sm); overflow: hidden; }
 .v1-select-gruppe {
   margin: 0; padding: var(--s-2) var(--s-3);
-  font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+  font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung);
   color: var(--faint); background: var(--accent-wash); border-top: 1px solid var(--hair);
 }
 .v1-select-liste > div:first-child .v1-select-gruppe { border-top: 0; }

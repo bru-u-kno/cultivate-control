@@ -41,7 +41,7 @@
 .wp-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--ecke-rund);
   flex: 0 0 auto;
   background: var(--muted);
 }

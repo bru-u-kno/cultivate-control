@@ -86,7 +86,7 @@
       min-height: 48px;
       padding: 8px;
       border: 1px solid var(--v1-border);
-      border-radius: 8px;
+      border-radius: var(--ecke-8);
     }
     .grows-page .grow-overview-card__metrics dd {
       overflow-wrap: anywhere;
@@ -139,7 +139,7 @@
   .gp-phase {
     flex: 1 1 0; min-width: 0; padding: 9px 10px;
     border-radius: var(--r-sm);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .gp-phase.is-veg { background: var(--accent-wash); color: var(--accent-text); }
@@ -172,13 +172,13 @@
 @layer features {
   .gd-tabs {
     display: flex; gap: 6px; flex-wrap: wrap;
-    padding: 8px; border: 1px solid var(--hair); border-radius: 10px; background: var(--panel);
+    padding: 8px; border: 1px solid var(--hair); border-radius: var(--ecke-10); background: var(--panel);
   }
   .gd-tab {
     display: inline-flex; align-items: center;
     min-height: 32px; padding: 0 14px;
-    border-radius: 8px; color: var(--muted);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+    border-radius: var(--ecke-8); color: var(--muted);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-8); text-transform: var(--etikett-schreibung);
     white-space: nowrap;
   }
   .gd-tab:hover { color: var(--ink); background: var(--panel-2); }
@@ -191,7 +191,7 @@
   .gd-devs { display: grid; }
   .gd-dev { padding: 12px 14px 12px 16px; border-bottom: 1px solid var(--hair); position: relative; }
   .gd-dev:last-child { border-bottom: 0; }
-  .gd-dev::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--hair-2); }
+  .gd-dev::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: var(--ecke-2); background: var(--hair-2); }
   .gd-dev.is-critical::before { background: var(--danger); }
   .gd-dev.is-warning::before { background: var(--warn); }
   .gd-dev strong { display: block; font-size: var(--fs-text); font-weight: 600; }
@@ -201,7 +201,7 @@
   .gd-meas-table { width: 100%; border-collapse: collapse; font-size: var(--fs-text); }
   .gd-meas-table th, .gd-meas-table td { padding: 9px 14px; border-bottom: 1px solid var(--hair); text-align: left; }
   .gd-meas-table thead th {
-    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .gd-meas-table td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .gd-meas-table tbody tr:last-child td { border-bottom: 0; }
@@ -210,7 +210,7 @@
 /* Grow-Uebersicht: Karten nach dem Entwurf. */
 @layer features {
   .gc-card {
-    border: 1px solid var(--hair); border-radius: 12px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-11);
     background: var(--panel); overflow: hidden;
   }
   .gc-card.is-running { border-color: var(--accent); }
@@ -317,7 +317,7 @@
 .gp-topf {
   display: inline-flex; align-items: center; gap: 6px;
   font: 500 var(--fs-etikett)/1 var(--font-mono);
-  letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  letter-spacing: var(--sperrung-8); text-transform: var(--etikett-schreibung); color: var(--muted);
   flex: 0 1 auto; flex-wrap: wrap; min-width: 0; max-width: 100%;
 }
 .gp-topf select { min-width: 0; max-width: 100%; }
@@ -422,7 +422,7 @@
 .program-deckung.ist-teil { border-left-color: var(--warn); }
 .program-gruppe {
   margin: var(--s-4) 0 var(--s-2); font: 500 var(--fs-etikett)/1 var(--font-mono);
-  letter-spacing: .2em; text-transform: uppercase; color: var(--faint);
+  letter-spacing: var(--sperrung-15); text-transform: var(--etikett-schreibung); color: var(--faint);
 }
 .program-hinweis { margin: var(--s-2) 0; font-size: var(--fs-klein); color: var(--muted); }
 .wechsel-text { padding: var(--s-2) var(--s-4); display: grid; gap: var(--s-2); font-size: var(--fs-text); color: var(--muted); }

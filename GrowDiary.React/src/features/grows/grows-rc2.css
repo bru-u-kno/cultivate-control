@@ -31,7 +31,7 @@
   min-width: 0;
   margin-top: 14px;
   border: 1px solid var(--v1-border);
-  border-radius: 8px;
+  border-radius: var(--ecke-8);
   padding: 12px;
   background: var(--v1-surface-2);
 }

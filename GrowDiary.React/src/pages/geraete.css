@@ -5,11 +5,11 @@
    sauber auf 2 x 2 um. Mit vier Spalten und nowrap ragte „korrigiert" am Handy
    ueber den Kartenrand, sobald ein Label laenger war als „vermutet". */
 .gr-zahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--s-3) var(--s-4); margin-bottom: var(--s-3); }
-.gr-zahlen b { display: block; font-size: var(--fs-lg, 1.25rem); font-variant-numeric: tabular-nums; }
+.gr-zahlen b { display: block; font-size: var(--fs-titel); font-variant-numeric: tabular-nums; }
 .gr-zahlen b.is-warn, .gr-zahlen b.is-warn * { color: var(--info-text) !important; }
 .gr-zahlen span {
-  display: block; margin-top: var(--s-1); font-size: var(--fs-micro, .625rem);
-  letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  display: block; margin-top: var(--s-1); font-size: var(--fs-micro);
+  letter-spacing: var(--sperrung-7); text-transform: var(--etikett-schreibung); color: var(--muted);
   /* Fork AI (forkai.134, F-029): „korrigiert" brach am Handy mitten im Wort um. */
   white-space: nowrap; overflow-wrap: normal;
 }
@@ -24,24 +24,24 @@
 }
 
 .gr-name { flex: 1; min-width: 0; font-size: var(--fs-text); font-weight: 600; }
-.gr-name small { display: block; margin-top: var(--s-1); font-weight: 400; font-size: var(--fs-micro, .625rem); color: var(--muted); }
+.gr-name small { display: block; margin-top: var(--s-1); font-weight: 400; font-size: var(--fs-micro); color: var(--muted); }
 
 .gr-anzahl {
   flex: 0 0 auto; padding: 1px var(--s-2); border-radius: var(--r-pill);
   border: 1px solid var(--hair-2); background: var(--accent-wash); color: var(--accent-text);
-  font-size: var(--fs-micro, .625rem); font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-micro); font-weight: 600; font-variant-numeric: tabular-nums;
 }
 
 
 .gr-entitaeten { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .gr-entitaeten li { padding: var(--s-2) 0; border-top: 1px solid var(--hair); }
-.gr-entitaeten code { font-family: var(--font-mono); font-size: var(--fs-micro, .625rem); color: var(--muted); overflow-wrap: anywhere; }
+.gr-entitaeten code { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--muted); overflow-wrap: anywhere; }
 
 /* Fork AI (forkai.195): Eintraege nach Art gruppiert; Zweck gross, ID klein. */
 .gr-gruppe + .gr-gruppe { margin-top: var(--s-3); }
 .gr-gruppe-kopf {
   display: flex; align-items: center; gap: var(--s-2); margin: var(--s-3) 0 var(--s-1);
-  font-size: var(--fs-micro, .625rem); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  font-size: var(--fs-micro); font-weight: 600; letter-spacing: var(--sperrung-7); text-transform: var(--etikett-schreibung); color: var(--muted);
 }
 .gr-gruppe-kopf span {
   padding: 0 var(--s-2); border: 1px solid var(--hair-2); border-radius: var(--r-pill);
@@ -52,19 +52,19 @@
 .gr-eintrag-titel { font-size: var(--fs-text); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .gr-eintrag-titel.is-link { text-decoration: none; }
 .gr-eintrag-titel.is-link:hover { text-decoration: underline; }
-.gr-entitaeten code.gr-eintrag-titel.is-id { color: var(--ink); font-size: var(--fs-micro, .625rem); font-weight: 600; }
+.gr-entitaeten code.gr-eintrag-titel.is-id { color: var(--ink); font-size: var(--fs-micro); font-weight: 600; }
 .gr-entitaeten li > .v1-select { margin-top: var(--s-2); }
 
 .gr-marken { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-1); }
 .gr-marken em {
-  font-style: normal; font-size: var(--fs-micro, .625rem); padding: 1px var(--s-2);
+  font-style: normal; font-size: var(--fs-micro); padding: 1px var(--s-2);
   border-radius: var(--r-sm); background: var(--accent-wash); color: var(--accent-text);
   border: 1px solid var(--hair-2);
 }
 
-.gr-leer { margin: 0 0 var(--s-3); font-size: var(--fs-micro, .625rem); color: var(--muted); }
+.gr-leer { margin: 0 0 var(--s-3); font-size: var(--fs-micro); color: var(--muted); }
 
-.gr-fuss { margin: var(--s-4) 0 0; font-size: var(--fs-micro, .625rem); color: var(--muted); line-height: 1.5; }
+.gr-fuss { margin: var(--s-4) 0 0; font-size: var(--fs-micro); color: var(--muted); line-height: 1.5; }
 
 /* Fork AI (forkai.25): Bedienung auf der Geraeteseite. */
 .gr-knoepfe { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: 0 0 var(--s-3); }
@@ -103,19 +103,19 @@
   display: flex; align-items: center; gap: var(--s-3);
   margin: 0 0 var(--s-3); padding: var(--s-3);
   border: 1px solid var(--hair-2); border-radius: var(--r-sm); background: var(--accent-wash);
-  font-size: var(--fs-micro, .625rem); color: var(--ink);
+  font-size: var(--fs-micro); color: var(--ink);
 }
 .gr-meldung span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .gr-meldung button {
   flex: 0 0 auto; padding: var(--s-1) var(--s-2); border: 1px solid var(--hair-2);
   border-radius: var(--r-sm); background: transparent; color: var(--accent-text);
-  font: inherit; font-size: var(--fs-micro, .625rem); cursor: pointer;
+  font: inherit; font-size: var(--fs-micro); cursor: pointer;
 }
 
 .gr-gehoert { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-2); }
 .gr-gehoert > span {
-  flex: 0 0 auto; font-size: var(--fs-micro, .625rem); letter-spacing: .05em;
-  text-transform: uppercase; color: var(--muted);
+  flex: 0 0 auto; font-size: var(--fs-micro); letter-spacing: var(--sperrung-5);
+  text-transform: var(--etikett-schreibung); color: var(--muted);
 }
 .gr-gehoert select { flex: 1; min-width: 0; font: inherit; font-size: var(--fs-text); }
 
@@ -137,33 +137,33 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
   padding: var(--s-2) 0; border-top: 1px solid var(--hair);
 }
-.gr-verschobene code { flex: 1 1 100%; font-family: var(--font-mono); font-size: var(--fs-micro, .625rem); overflow-wrap: anywhere; }
-.gr-verschobene small { flex: 1; min-width: 0; font-size: var(--fs-micro, .625rem); color: var(--muted); }
+.gr-verschobene code { flex: 1 1 100%; font-family: var(--font-mono); font-size: var(--fs-micro); overflow-wrap: anywhere; }
+.gr-verschobene small { flex: 1; min-width: 0; font-size: var(--fs-micro); color: var(--muted); }
 .gr-verschobene button {
   flex: 0 0 auto; padding: var(--s-1) var(--s-2); border: 1px solid var(--hair-2);
   border-radius: var(--r-sm); background: transparent; color: var(--accent-text);
-  font: inherit; font-size: var(--fs-micro, .625rem); cursor: pointer;
+  font: inherit; font-size: var(--fs-micro); cursor: pointer;
 }
 
-.gr-verschoben-hinweis { margin: var(--s-1) 0 0; font-size: var(--fs-micro, .625rem); color: var(--muted); }
+.gr-verschoben-hinweis { margin: var(--s-1) 0 0; font-size: var(--fs-micro); color: var(--muted); }
 .gr-verschoben-hinweis em {
   font-style: normal; margin-right: var(--s-2); padding: 1px var(--s-2); border-radius: var(--r-sm);
   border: 1px solid var(--hair-2); color: var(--warn-text);
-  letter-spacing: .05em; text-transform: uppercase;
+  letter-spacing: var(--sperrung-5); text-transform: var(--etikett-schreibung);
 }
 
 /* forkai.39: Reiter „Messgrößen" — Auswahl links, Livewert rechts. */
 .gr-sec { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: var(--s-2); }
-.gr-sec span { font-size: var(--fs-micro, .625rem); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.gr-sec b { font-family: var(--font-mono); font-size: var(--fs-micro, .625rem); color: var(--faint); }
+.gr-sec span { font-size: var(--fs-micro); letter-spacing: var(--sperrung-8); text-transform: var(--etikett-schreibung); color: var(--muted); font-weight: 600; }
+.gr-sec b { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--faint); }
 
 /* forkai.40: Wert ueber das Feld statt daneben. Nebeneinander legte sich der
    Livewert bei langen Geraetenamen ueber den Text im Auswahlfeld. */
 .gr-messgroesse { padding: var(--s-3) 0; border-top: 1px solid var(--hair); }
 .gr-messkopf { display: flex; align-items: baseline; gap: var(--s-3); margin-bottom: var(--s-2); }
 .gr-messkopf span {
-  flex: 1; min-width: 0; font-family: var(--font-mono); font-size: var(--fs-micro, .625rem);
-  letter-spacing: .1em; color: var(--faint);
+  flex: 1; min-width: 0; font-family: var(--font-mono); font-size: var(--fs-micro);
+  letter-spacing: var(--sperrung-9); color: var(--faint);
 }
 .gr-messkopf b { flex: 0 0 auto; font-family: var(--font-mono); font-size: var(--fs-text); color: var(--accent-text); }
 .gr-messkopf b.is-leer { color: var(--faint); }
@@ -174,10 +174,10 @@
 .gr-wartung { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--hair); }
 .gr-wartung .nm { flex: 1; min-width: 0; }
 .gr-wartung .nm b { display: block; font-size: var(--fs-text); font-weight: 600; }
-.gr-wartung .nm small { display: block; margin-top: 2px; font-size: var(--fs-micro, .625rem); color: var(--muted); }
+.gr-wartung .nm small { display: block; margin-top: 2px; font-size: var(--fs-micro); color: var(--muted); }
 .gr-frist {
   flex: 0 0 auto; padding: 2px var(--s-2); border-radius: var(--r-pill);
-  border: 1px solid var(--hair-2); font-family: var(--font-mono); font-size: var(--fs-micro, .625rem);
+  border: 1px solid var(--hair-2); font-family: var(--font-mono); font-size: var(--fs-micro);
   color: var(--muted);
 }
 .gr-frist.is-faellig { border-color: var(--warn-text); background: var(--warn-wash); color: var(--warn-text); }
@@ -186,7 +186,7 @@
 .gr-verwendung { margin: var(--s-2) 0 var(--s-3); border: 1px solid var(--hair); border-radius: var(--r-sm); }
 .gr-verwendung-kopf {
   margin: 0; padding: var(--s-2) var(--s-3);
-  font-size: var(--fs-micro, .625rem); letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--fs-micro); letter-spacing: var(--sperrung-8); text-transform: var(--etikett-schreibung);
   color: var(--faint); background: var(--accent-wash);
 }
 .gr-verwendung-zeile {
@@ -195,7 +195,7 @@
 }
 .gr-verwendung-zeile > span { flex: 1; min-width: 0; }
 .gr-verwendung-zeile b { display: block; font-size: var(--fs-text); font-weight: 600; }
-.gr-verwendung-zeile small { display: block; margin-top: 2px; font-size: var(--fs-micro, .625rem); color: var(--muted); overflow-wrap: anywhere; }
+.gr-verwendung-zeile small { display: block; margin-top: 2px; font-size: var(--fs-micro); color: var(--muted); overflow-wrap: anywhere; }
 
 /* Fork AI (forkai.134): Marken einer Steuerungsrolle führen in den Reiter Rollen. */
 .gr-marke-link { text-decoration: none; }

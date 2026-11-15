@@ -217,8 +217,12 @@ export function SensorChart({
   )
 }
 
-/** A tiny inline curve for dashboard tiles — line only, no axes. */
-export function Sparkline({ points, width = 120, height = 30 }: { points: HistoryPoint[]; width?: number; height?: number }) {
+/**
+ * A tiny inline curve for dashboard tiles — line only, no axes.
+ * `hoeheCss` setzt die angezeigte Höhe aus einem Token (z. B. `var(--kurve-hoehe)`);
+ * `height` bleibt die Rechenhöhe des viewBox — die Linie wird gestreckt, nicht neu gerechnet.
+ */
+export function Sparkline({ points, width = 120, height = 30, hoeheCss }: { points: HistoryPoint[]; width?: number; height?: number; hoeheCss?: string }) {
   const path = useMemo(() => {
     if (points.length < 2) return null
     const times = points.map((point) => new Date(point.t).getTime())
@@ -240,7 +244,7 @@ export function Sparkline({ points, width = 120, height = 30 }: { points: Histor
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true"
-      style={{ display: 'block', width: '100%', height, opacity: 0.9 }}>
+      style={{ display: 'block', width: '100%', height: hoeheCss ?? height, opacity: 0.9 }}>
       {/* non-scaling-stroke keeps the line crisp when the viewBox is stretched to fit */}
       <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
         strokeLinecap="round" vectorEffect="non-scaling-stroke" />

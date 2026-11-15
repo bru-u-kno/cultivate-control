@@ -8,7 +8,7 @@
 
   .wp-anker { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
   .wp-pill {
-    border: 1px solid var(--hair); border-radius: 999px; background: var(--sunk);
+    border: 1px solid var(--hair); border-radius: var(--ecke-pille); background: var(--sunk);
     padding: 5px 10px; font: 400 var(--fs-klein)/1.2 var(--font-mono); color: var(--muted);
   }
   .wp-pill b { color: var(--ink); font-weight: 500; }
@@ -18,11 +18,11 @@
     gap: 7px; margin-top: 11px;
   }
   .wp-zelle {
-    border: 1px solid var(--hair); border-radius: 8px; background: var(--sunk); padding: 7px 9px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-8); background: var(--sunk); padding: 7px 9px;
   }
   .wp-zelle-n {
-    font: 400 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em;
-    text-transform: uppercase; color: var(--faint);
+    font: 400 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
 
   .wp-liste { border: 1px solid var(--hair); border-radius: var(--r); overflow: hidden; }
@@ -42,7 +42,7 @@
   /* Freigabe-Knopf: sieht wie Text aus, weil er selten gebraucht wird und
      die Zeile nicht dominieren soll. */
   .wp-frei {
-    border: 1px solid var(--warn); border-radius: 7px; background: transparent;
+    border: 1px solid var(--warn); border-radius: var(--ecke-7); background: transparent;
     color: var(--warn); padding: 3px 8px;
     font: 400 var(--fs-klein)/1.2 var(--font-mono); cursor: pointer;
   }

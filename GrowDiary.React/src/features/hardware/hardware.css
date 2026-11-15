@@ -7,7 +7,7 @@
     display: inline-flex; align-items: center; gap: 8px;
     /* 44px, damit der Knopf auch am Wandtablet mit dem Daumen zu treffen ist. */
     min-height: 44px; padding: 0 14px;
-    border: 1px solid var(--hair); border-radius: 999px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-pille);
     background: var(--panel); color: var(--muted);
     font-size: var(--fs-text); cursor: pointer;
   }
@@ -18,7 +18,7 @@
      (wie viele Geraete in diesem Filter stecken) und ist kein Beiwerk. */
   .hw-filter-count {
     font-family: var(--font-mono); font-size: var(--fs-etikett);
-    padding: 1px 7px; border-radius: 999px;
+    padding: 1px 7px; border-radius: var(--ecke-pille);
     background: var(--panel-2); color: var(--ink);
   }
   /* Auf der grünen Fläche gilt die Accent-Schrift, nicht die Status-Farbe —
@@ -37,7 +37,7 @@
   .hw-table { width: 100%; border-collapse: collapse; font-size: var(--fs-text); }
   .hw-table th {
     text-align: left; padding: 8px 12px;
-    font-size: var(--fs-etikett); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    font-size: var(--fs-etikett); font-weight: 700; letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung);
     color: var(--faint); border-bottom: 1px solid var(--hair);
     white-space: nowrap;
   }
@@ -103,7 +103,7 @@
          „ART". Bei 160 px sieht das Telefon fast gleich aus und die breite
          Karte hoert auf, auseinanderzufallen. */
       flex: 0 0 min(42%, 160px);
-      font-size: var(--fs-etikett); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      font-size: var(--fs-etikett); font-weight: 700; letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung);
       color: var(--faint);
     }
     /* Der Gerätename ist die Überschrift der Karte und braucht kein Etikett. */
@@ -130,7 +130,7 @@
   .hw-punkte-tabelle thead, .hw-punkte-tabelle tbody { display: table; width: 100%; min-width: 380px; }
   .hw-punkte-tabelle th, .hw-punkte-tabelle td { padding: 6px 8px; border-bottom: 1px solid var(--hair); text-align: left; }
   .hw-punkte-tabelle thead th {
-    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung);
     color: var(--faint); white-space: nowrap;
   }
   .hw-punkte-tabelle input { width: 100%; min-height: var(--h-md); }

@@ -15,32 +15,32 @@
 
 /* topbar */
 .ix-growdetail .topbar { background: rgba(4, 7, 10, 0.6); border-bottom: 1px solid var(--ix-hair); }
-.ix-growdetail .topbar-title { font-family: var(--ix-mono); letter-spacing: 0.02em; }
+.ix-growdetail .topbar-title { font-family: var(--ix-mono); letter-spacing: var(--sperrung-2); }
 
 /* section tabs → instrument pills */
-.ix-growdetail .detail-tabs { border: 1px solid var(--ix-hair); background: rgba(10, 16, 14, 0.5); border-radius: 12px; }
-.ix-growdetail .detail-tabs .btn { font-family: var(--ix-mono); font-size: var(--fs-klein); letter-spacing: 0.06em; text-transform: uppercase; border-radius: 9px; min-height: 44px; }
+.ix-growdetail .detail-tabs { border: 1px solid var(--ix-hair); background: rgba(10, 16, 14, 0.5); border-radius: var(--ecke-11); }
+.ix-growdetail .detail-tabs .btn { font-family: var(--ix-mono); font-size: var(--fs-klein); letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung); border-radius: var(--ecke-9); min-height: 44px; }
 
 /* cards → flat instrument panels with green hairlines */
-.ix-growdetail .card { border-color: var(--ix-hair); border-radius: 14px; background: rgba(10, 16, 14, 0.72); box-shadow: none; }
+.ix-growdetail .card { border-color: var(--ix-hair); border-radius: var(--ecke-13); background: rgba(10, 16, 14, 0.72); box-shadow: none; }
 .ix-growdetail .card-header { background: transparent; border-bottom-color: var(--ix-hair); }
-.ix-growdetail .card-title { font-family: var(--ix-mono); letter-spacing: 0.14em; }
-.ix-growdetail .section-label { font-family: var(--ix-mono); letter-spacing: 0.16em; color: var(--ix-faint); }
+.ix-growdetail .card-title { font-family: var(--ix-mono); letter-spacing: var(--sperrung-12); }
+.ix-growdetail .section-label { font-family: var(--ix-mono); letter-spacing: var(--sperrung-13); color: var(--ix-faint); }
 
 /* mobile summary */
-.ix-growdetail .grow-detail-mobile-summary { border-color: var(--ix-hair); border-radius: 14px; background: rgba(10, 16, 14, 0.72); }
-.ix-growdetail .grow-detail-mobile-head h1 { font-family: var(--ix-mono); letter-spacing: -0.01em; }
-.ix-growdetail .grow-detail-mobile-facts dt { font-family: var(--ix-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ix-faint); }
+.ix-growdetail .grow-detail-mobile-summary { border-color: var(--ix-hair); border-radius: var(--ecke-13); background: rgba(10, 16, 14, 0.72); }
+.ix-growdetail .grow-detail-mobile-head h1 { font-family: var(--ix-mono); letter-spacing: var(--sperrung-eng-1); }
+.ix-growdetail .grow-detail-mobile-facts dt { font-family: var(--ix-mono); letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung); color: var(--ix-faint); }
 
 /* deviation / recommendation rows keep their tone but get hairlines */
-.ix-growdetail .grow-deviation-card { border-color: var(--ix-hair); border-radius: 12px; }
+.ix-growdetail .grow-deviation-card { border-color: var(--ix-hair); border-radius: var(--ecke-11); }
 
 /* AutoMeasurement quick-start preset banner */
 .ix-growdetail .auto-preset {
   margin: 16px 20px;
   padding: 16px 18px;
   border: 1px solid var(--ix-hair-2);
-  border-radius: 12px;
+  border-radius: var(--ecke-11);
   background: rgba(82, 233, 140, 0.06);
   display: grid;
   gap: 9px;
@@ -49,7 +49,7 @@
   font-family: var(--ix-mono);
   font-size: var(--fs-text);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--sperrung-1);
   color: var(--ix-ink);
   margin: 0;
 }
@@ -74,18 +74,18 @@
    The diagnosis / SOP / journal / measurement sections still render the older ".card"
    chrome. Scope the alignment to .v1-page so only the V1 grow pages get it — the Harvest
    and MeasurementEdit pages also use .card but are NOT inside a .v1-page. */
-.v1-page .card { background: var(--v1-panel); border: 1px solid var(--v1-line); border-radius: 16px; box-shadow: none; }
+.v1-page .card { background: var(--v1-panel); border: 1px solid var(--v1-line); border-radius: var(--ecke-14); box-shadow: none; }
 /* Titel links, Zaehler rechts. Ohne Flex standen beide als Inline-Elemente
    direkt aneinander — auf dem Bildschirm stand „Verlauf8 gesamt". */
 .v1-page .card-header {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   background: transparent; border-bottom: 1px solid var(--v1-line); padding: 14px 18px;
 }
-.v1-page .card-title, .v1-page .section-label { color: var(--v1-muted); font-size: var(--fs-etikett); letter-spacing: 0.2em; }
+.v1-page .card-title, .v1-page .section-label { color: var(--v1-muted); font-size: var(--fs-etikett); letter-spacing: var(--sperrung-15); }
 .v1-page .empty-hint { color: var(--v1-muted); }
 .v1-page .tl-title { color: var(--v1-text); }
 .v1-page .tl-sub, .v1-page .text-muted { color: var(--v1-muted); }
-.v1-page .badge { border-radius: 999px; border: 1px solid var(--v1-line); background: transparent; color: var(--v1-muted); min-height: 26px; }
+.v1-page .badge { border-radius: var(--ecke-pille); border: 1px solid var(--v1-line); background: transparent; color: var(--v1-muted); min-height: 26px; }
 /* Schriftfarbe aus dem Thema, nicht fest verdrahtet: die hellen Toene waren
    fuer die dunkle Ansicht gewaehlt und standen in der hellen praktisch
    unsichtbar auf der Karte (gemessener Kontrast 1,1). Die getoenten Flaechen
@@ -104,12 +104,12 @@
 .v1-page .btn {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 40px; padding: 0 14px;
-  border-radius: 12px; border: 1px solid var(--v1-line-strong);
+  border-radius: var(--ecke-11); border: 1px solid var(--v1-line-strong);
   background: var(--v1-panel-2); color: var(--v1-text); font-weight: 800;
 }
 .v1-page .btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); }
 .v1-page .btn-primary { background: var(--v1-green); border-color: var(--v1-green); color: #001905; }
-.v1-page .meas-input, .v1-page .field input, .v1-page .field textarea, .v1-page .field select { border-radius: 12px; border: 1px solid var(--v1-line); background: var(--sunk); color: var(--v1-text); }
+.v1-page .meas-input, .v1-page .field input, .v1-page .field textarea, .v1-page .field select { border-radius: var(--ecke-11); border: 1px solid var(--v1-line); background: var(--sunk); color: var(--v1-text); }
 
 /* On mobile the grow name is already shown in the mobile summary card, so hide the
    hero's title/subtitle (keep its KPI grid) to avoid showing the name twice. */

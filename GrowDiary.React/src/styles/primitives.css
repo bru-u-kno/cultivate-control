@@ -51,7 +51,7 @@
   .v1-hero h1 {
     margin: 6px 0 0;
     font: 600 var(--fs-zahl)/1.15 var(--font-mono);
-    letter-spacing: -0.01em;
+    letter-spacing: var(--sperrung-eng-1);
     overflow-wrap: anywhere;
   }
   .v1-hero p {
@@ -61,7 +61,7 @@
   }
   .v1-eyebrow, .v1-card-kicker {
     font: 500 var(--fs-etikett)/1 var(--font-mono);
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint);
+    letter-spacing: var(--sperrung-15); text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   /* `min-width: 0` an den Behaeltern, nicht am Feld: ein Flex-Kind kann sonst
      nicht unter seinen Inhalt, und ein langer Grow-Name schob die Auswahl aus
@@ -90,7 +90,7 @@
   .v1-section-head h2 {
     margin: 0;
     font: 500 var(--fs-etikett)/1 var(--font-mono);
-    letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint);
+    letter-spacing: var(--sperrung-13); text-transform: var(--etikett-schreibung); color: var(--faint);
     /* Eine Ueberschrift schrumpft nicht unter ihren eigenen Text. */
     flex: 0 0 auto;
     /* Aber auch nicht ueber die Zeile hinaus.
@@ -138,7 +138,7 @@
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     border: 1px solid var(--hair-2); border-radius: var(--r-sm);
     background: transparent; color: var(--ink);
-    font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: 0.04em;
+    font: 500 var(--fs-klein)/1 var(--font-mono); letter-spacing: var(--sperrung-4);
     text-decoration: none; cursor: pointer;
     transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
   }
@@ -161,7 +161,7 @@
     display: inline-flex; align-items: center; gap: 5px;
     min-height: var(--h-xs); padding: 0 var(--s-2);
     border: 1px solid var(--hair-2); border-radius: var(--r-pill);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: 0.1em; color: var(--muted);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); color: var(--muted);
   }
   .v1-badge.tone-ok { color: var(--accent-text); border-color: var(--accent); }
   .v1-badge.tone-warn { color: var(--warn-text); border-color: var(--warn); }
@@ -206,7 +206,7 @@
      geschrieben, wie man sie schreibt; ein Band wird gesetzt. */
   .v1-stat > span {
     font: 500 var(--fs-etikett)/1 var(--font-mono);
-    letter-spacing: 0.12em; color: var(--faint);
+    letter-spacing: var(--sperrung-11); color: var(--faint);
   }
   /* Kuerzen statt ueberschreiben: „Purple Lemonade" lief ueber die Trennlinie
      und legte sich auf die Pflanzenzahl daneben — die 4 war nicht mehr zu
@@ -239,7 +239,7 @@
   .v1-tab {
     min-height: var(--h-sm); padding: 0 var(--s-3);
     border: 0; border-radius: var(--r-sm); background: transparent; color: var(--muted);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung);
     white-space: nowrap; cursor: pointer;
   }
   .v1-tab:hover:not(.active) { color: var(--ink); background: var(--panel-2); }
@@ -260,7 +260,7 @@
      Eingaben (Zelt-Formular, A-017 Luecke 3). Sie belegt jetzt die ganze Zeile. */
   .v1-form-divider {
     grid-column: 1 / -1; padding-top: var(--s-2);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: 0.1em;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9);
     color: var(--faint); border-bottom: 1px solid var(--hair); padding-bottom: var(--s-2);
   }
   /* Ein Schalter bleibt so hoch wie sein Text. Ohne `align-self: start` dehnt
@@ -281,7 +281,7 @@
    */
   .v1-field > span {
     font: 500 var(--fs-etikett)/1 var(--font-mono);
-    letter-spacing: 0.1em; color: var(--faint);
+    letter-spacing: var(--sperrung-9); color: var(--faint);
   }
   .v1-field input, .v1-field select, .v1-field textarea {
     width: 100%; min-height: var(--h-md);
@@ -314,7 +314,7 @@
      Trennung aneinander — „LoesungswechselReservoir oder Naehrloesung …". */
   .v1-switch > span { display: grid; gap: 2px; min-width: 0; }
   .v1-switch strong { font-weight: 500; }
-  .v1-dreher { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: v1-drehen .8s linear infinite; }
+  .v1-dreher { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border: 2px solid currentColor; border-right-color: transparent; border-radius: var(--ecke-rund); vertical-align: -1px; animation: v1-drehen .8s linear infinite; }
   @keyframes v1-drehen { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .v1-dreher { animation: none; border-right-color: currentColor; } }
   .v1-switch.is-ausstehend, .v1-switch.is-gesperrt { opacity: .7; }
@@ -357,7 +357,7 @@
   /* Ebenfalls Messgroessen — siehe .v1-stat > span. */
   .v1-info span, .v1-fact span {
     font: 500 var(--fs-etikett)/1 var(--font-mono);
-    letter-spacing: 0.11em; color: var(--faint);
+    letter-spacing: var(--sperrung-10); color: var(--faint);
   }
   .v1-info strong, .v1-fact strong { font-size: var(--fs-text); font-weight: 600; overflow-wrap: anywhere; }
   .v1-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -408,7 +408,7 @@
   }
   /* The verbatim payload on the AI page: shown so the transparency claim is checkable,
    which only works if long lines wrap instead of running off the side. */
-.v1-pre { margin: 12px 0 0; padding: 12px 14px; max-height: 420px; overflow: auto; border: 1px solid var(--v1-line); border-radius: 12px; background: rgba(0,0,0,0.25); font-size: var(--fs-klein); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.v1-pre { margin: 12px 0 0; padding: 12px 14px; max-height: 420px; overflow: auto; border: 1px solid var(--v1-line); border-radius: var(--ecke-11); background: rgba(0,0,0,0.25); font-size: var(--fs-klein); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 
   @media (max-width: 860px) {
     .v1-card-grid { gap: 10px; }
@@ -436,7 +436,7 @@
      und verschwinden, sobald die letzte Seite auf V1Button/V1Badge umgestellt ist. */
   .btn-primary {
     min-height: 44px; padding: 0 18px;
-    border: none; border-radius: 7px;
+    border: none; border-radius: var(--ecke-7);
     background: var(--accent); color: var(--accent-ink);
     font-size: var(--fs-gross); font-weight: 700;
   }
@@ -449,7 +449,7 @@
   .badge {
     display: inline-flex; align-items: center; justify-content: center;
     min-height: 24px; padding: 3px 9px;
-    border: 1px solid transparent; border-radius: 999px;
+    border: 1px solid transparent; border-radius: var(--ecke-pille);
     font-size: var(--fs-klein); font-weight: 650;
   }
   .badge-neutral { background: var(--panel-2); color: var(--muted); }
@@ -457,14 +457,14 @@
   .section-label {
     margin: 24px 0 12px;
     font-family: var(--font-mono); font-size: var(--fs-klein); font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.14em; color: var(--faint);
+    text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-12); color: var(--faint);
   }
   .section-label:first-child { margin-top: 0; }
-  .card-title { font-family: var(--font-mono); letter-spacing: 0.14em; }
+  .card-title { font-family: var(--font-mono); letter-spacing: var(--sperrung-12); }
   .live-dashboard .section-label { margin-top: 4px; }
 
   .data-table-header { display: grid; padding: 10px 16px; border-bottom: 1px solid var(--hair); background: var(--panel-2); }
-  .data-table-header span { font-size: var(--fs-klein); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); }
+  .data-table-header span { font-size: var(--fs-klein); font-weight: 600; text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-5); color: var(--faint); }
   .data-row { display: grid; padding: 12px 16px; border-bottom: 1px solid var(--hair); align-items: center; }
   .data-row:last-child { border-bottom: none; }
   .data-row:hover { background: var(--panel-2); }
@@ -494,7 +494,7 @@
     min-height: 56px; display: grid; align-content: center; gap: 7px;
     padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--hair);
   }
-  .v1-skeleton .bar { display: block; height: 10px; border-radius: 999px; background: var(--hint); }
+  .v1-skeleton .bar { display: block; height: 10px; border-radius: var(--ecke-pille); background: var(--hint); }
   .v1-skeleton .bar.sm { width: 32%; height: 8px; }
   .v1-skeleton .bar.md { width: 48%; }
   .v1-skeleton .bar.lg { width: 60%; height: 18px; }
@@ -528,7 +528,7 @@
   }
   .gos-demo strong {
     color: var(--info-text); font-weight: 600;
-    letter-spacing: .12em; text-transform: uppercase; font-size: var(--fs-etikett);
+    letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung); font-size: var(--fs-etikett);
   }
   .gos-demo span { color: var(--muted); }
 }

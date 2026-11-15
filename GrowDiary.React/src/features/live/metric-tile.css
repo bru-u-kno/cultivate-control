@@ -23,7 +23,7 @@
   }
 
   .gos-metric-head { display: flex; justify-content: space-between; gap: 6px; }
-  .gos-metric-label { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; color: var(--faint); min-width: 0; overflow-wrap: anywhere; }
+  .gos-metric-label { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); color: var(--faint); min-width: 0; overflow-wrap: anywhere; }
   .gos-metric-status { font: 500 var(--fs-etikett)/1 var(--font-mono); white-space: nowrap; }
   .gos-metric.is-ok   .gos-metric-status { color: var(--accent-text); }
   .gos-metric.is-warn .gos-metric-status { color: var(--warn-text); }
@@ -42,16 +42,16 @@
 
   .gos-metric-scale {
     position: relative; height: 3px; margin-top: 9px;
-    border-radius: 2px; background: var(--sunk);
+    border-radius: var(--ecke-2); background: var(--sunk);
   }
   .gos-metric-scale.is-empty { background: transparent; }
   .gos-metric-scale .band {
     position: absolute; top: 0; bottom: 0;
-    border-radius: 2px; background: var(--accent-wash);
+    border-radius: var(--ecke-2); background: var(--accent-wash);
   }
   .gos-metric-scale .mark {
     position: absolute; top: -2px; width: 2px; height: 7px;
-    border-radius: 1px; background: var(--accent);
+    border-radius: var(--ecke-1); background: var(--accent);
     transform: translateX(-1px);
   }
   .gos-metric.is-warn .gos-metric-scale .mark { background: var(--warn); }
@@ -108,7 +108,7 @@
 
   /* Fork AI (F-041, Mockup v3): „ZIEL" + Wert, Band wie auf der Grenzwerte-Seite. */
   .gos-metric-ziel { margin-top: 9px; }
-  .gos-metric-ziel-n { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em; color: var(--faint); }
+  .gos-metric-ziel-n { font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11); color: var(--faint); }
   .gos-metric-zv, .gos-metric-tn {
     margin-top: 4px; font: 400 var(--fs-text)/1.2 var(--font-mono);
     font-variant-numeric: tabular-nums; color: var(--ink);
@@ -124,12 +124,12 @@
 
   .gos-metric-band { margin: 12px 2px 0; }
   .gos-metric-band .balken { position: relative; height: 12px; }
-  .gos-metric-band .spur { position: absolute; left: 0; right: 0; top: 4px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 13%, transparent); }
-  .gos-metric-band .zone { position: absolute; top: 4px; height: 4px; border-radius: 2px; background: var(--accent); opacity: .85; }
-  .gos-metric-band .zielmarke { position: absolute; top: 2px; width: 4px; height: 8px; margin-left: -2px; border-radius: 1px; background: var(--accent); }
-  .gos-metric-band .grenze { position: absolute; top: 1px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: var(--warn); }
+  .gos-metric-band .spur { position: absolute; left: 0; right: 0; top: 4px; height: 4px; border-radius: var(--ecke-2); background: color-mix(in srgb, var(--ink) 13%, transparent); }
+  .gos-metric-band .zone { position: absolute; top: 4px; height: 4px; border-radius: var(--ecke-2); background: var(--accent); opacity: .85; }
+  .gos-metric-band .zielmarke { position: absolute; top: 2px; width: 4px; height: 8px; margin-left: -2px; border-radius: var(--ecke-1); background: var(--accent); }
+  .gos-metric-band .grenze { position: absolute; top: 1px; width: 2px; height: 10px; margin-left: -1px; border-radius: var(--ecke-1); background: var(--warn); }
   .gos-metric-band .nadel {
-    position: absolute; top: -1px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: 2px;
+    position: absolute; top: -1px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: var(--ecke-2);
     background: var(--ink); color: var(--ink); box-shadow: 0 0 0 2px var(--panel);
   }
   .gos-metric-band .nadel::after {

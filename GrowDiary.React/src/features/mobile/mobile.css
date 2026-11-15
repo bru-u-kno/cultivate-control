@@ -26,14 +26,14 @@
   .mo-steps b { color: var(--ink); font-weight: 500; }
 
   .mo-yaml {
-    margin: 0; padding: 10px 12px; overflow-x: auto; border: 1px solid var(--hair-2); border-radius: 8px;
+    margin: 0; padding: 10px 12px; overflow-x: auto; border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     font: 400 var(--fs-klein)/1.55 var(--font-mono); color: var(--ink); background: var(--surface-2, transparent);
   }
 
   .mo-url { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .mo-url code {
     flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere;
-    padding: 7px 9px; border: 1px solid var(--hair-2); border-radius: 8px;
+    padding: 7px 9px; border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-klein)/1.45 var(--font-mono);
   }
 

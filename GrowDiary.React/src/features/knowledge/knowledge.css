@@ -6,7 +6,7 @@
   /* ---------- Suche im Seitenkopf ---------- */
   .kb-search {
     min-height: 34px; min-width: min(260px, 100%);
-    border: 1px solid var(--hair); border-radius: 8px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink);
     padding: 0 12px; font: 400 var(--fs-text)/1 var(--font-sans);
   }
@@ -21,7 +21,7 @@
 
   /* ---------- Karten ---------- */
   .kb-card {
-    border: 1px solid var(--hair); border-radius: 12px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-11);
     background: var(--panel); padding: 14px 16px;
     display: grid; gap: 0; align-content: start;
   }
@@ -33,7 +33,7 @@
   .kb-card .ls-btn { margin-top: 10px; justify-self: start; }
 
   .kb-tag {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
   }
   .kb-tag.is-accent { color: var(--accent-text); }
   .kb-tag.is-warn { color: var(--warn-text); }
@@ -44,7 +44,7 @@
   /* ---------- Zonen-Überschriften ---------- */
   .kb-zone {
     display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .16em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-13); text-transform: var(--etikett-schreibung);
     color: var(--faint);
   }
   .kb-zone i { flex: 1; height: 1px; background: var(--hair); }
@@ -92,15 +92,15 @@
      ein Drittel zu weit. */
   .kb-detail { padding: 14px 16px 18px; max-width: 560px; }
   .kb-detail .kk {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); text-transform: var(--etikett-schreibung);
     color: var(--faint);
   }
-  .kb-detail h2 { margin: 6px 0 0; font: 600 var(--fs-titel)/1.2 var(--font-mono); letter-spacing: -.01em; }
+  .kb-detail h2 { margin: 6px 0 0; font: 600 var(--fs-titel)/1.2 var(--font-mono); letter-spacing: var(--sperrung-eng-1); }
 
   .ix-kb-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
   .ix-kb-tag {
     display: inline-flex; align-items: center; padding: 3px 8px;
-    border: 1px solid var(--hair-2); border-radius: 999px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-pille);
     font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
   }
   .ix-kb-tag.ok { color: var(--accent-text); border-color: var(--accent); }
@@ -111,14 +111,14 @@
 
   .ix-kb-sec { margin-top: 16px; }
   .ix-kb-sec h4 {
-    margin: 0 0 6px; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em;
-    text-transform: uppercase; color: var(--faint);
+    margin: 0 0 6px; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12);
+    text-transform: var(--etikett-schreibung); color: var(--faint);
   }
   .ix-kb-sec p { margin: 0; font-size: var(--fs-text); line-height: 1.6; }
 
   .ix-kb-ul { margin: 0; padding-left: 18px; font-size: var(--fs-text); line-height: 1.7; }
 
-  .ix-kb-steps { display: grid; gap: 1px; border: 1px solid var(--hair); border-radius: 10px; overflow: hidden; background: var(--hair); }
+  .ix-kb-steps { display: grid; gap: 1px; border: 1px solid var(--hair); border-radius: var(--ecke-10); overflow: hidden; background: var(--hair); }
   .ix-kb-step { background: var(--panel); padding: 10px 12px; }
   .ix-kb-step .h { display: flex; gap: 10px; align-items: baseline; }
   .ix-kb-step .num { font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--accent-text); }
@@ -127,14 +127,14 @@
 
   .ix-kb-facts { margin: 0; display: grid; gap: 6px; }
   .ix-kb-fact { display: grid; grid-template-columns: minmax(min(100%, 120px), 200px) minmax(0, 1fr); gap: 10px; font-size: var(--fs-text); }
-  .ix-kb-fact dt { color: var(--faint); font-family: var(--font-mono); font-size: var(--fs-etikett); letter-spacing: .04em; }
+  .ix-kb-fact dt { color: var(--faint); font-family: var(--font-mono); font-size: var(--fs-etikett); letter-spacing: var(--sperrung-4); }
   .ix-kb-fact dd { margin: 0; overflow-wrap: anywhere; }
 
   .ix-kb-refs { display: flex; gap: 6px; flex-wrap: wrap; }
   .ix-kb-ref {
     display: inline-flex; align-items: center; gap: 4px;
     min-height: 26px; padding: 0 9px;
-    border: 1px solid var(--hair-2); border-radius: 7px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-7);
     background: transparent; color: var(--ink);
     font: 500 var(--fs-etikett)/1 var(--font-mono); cursor: pointer;
   }
@@ -142,11 +142,11 @@
   .ix-kb-ref .arr { color: var(--faint); }
   .ix-kb-ref.dead { color: var(--faint); cursor: default; }
 
-  .ix-kb-table-wrap { overflow-x: auto; border: 1px solid var(--hair); border-radius: 10px; }
+  .ix-kb-table-wrap { overflow-x: auto; border: 1px solid var(--hair); border-radius: var(--ecke-10); }
   .ix-kb-table { width: 100%; border-collapse: collapse; font-size: var(--fs-text); min-width: 480px; }
   .ix-kb-table th, .ix-kb-table td { padding: 8px 10px; border-bottom: 1px solid var(--hair); text-align: left; }
   .ix-kb-table thead th {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); text-transform: var(--etikett-schreibung);
     color: var(--faint); background: var(--panel-2);
   }
   .ix-kb-table td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -162,8 +162,8 @@
 .sl-group-head {
   color: var(--muted);
   font-size: var(--fs-klein);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-12);
+  text-transform: var(--etikett-schreibung);
   margin-bottom: 4px;
 }
 

@@ -38,7 +38,7 @@
      stand sie schwarz auf Schwarz, gemessener Kontrast 1,12. Feste helle Farbe
      ist hier kein Verstoss gegen die Token, sondern die Bedingung dafuer, dass
      der dunkle Balken ueberhaupt dunkel bleiben darf. */
-  .v1-camera-label { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,0.64); backdrop-filter: blur(10px); color: #f2f6f3; }
+  .v1-camera-label { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: var(--ecke-13); background: rgba(0,0,0,0.64); backdrop-filter: blur(10px); color: #f2f6f3; }
   .v1-camera-label strong, .v1-camera-label span, .v1-camera-label b { color: inherit; }
   .v1-camera-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; }
   /* Die kompakte Karte steht in einer Spalte des Zelt-Rasters und ist dort
@@ -81,8 +81,8 @@
   @media (max-width: 860px) {
     .v1-live-hero-grid, .v1-hydro-layout { grid-template-columns: 1fr; }
     .v1-live-hero-grid { gap: 10px; }
-    .v1-camera-card { min-height: 218px; border-radius: 18px; }
-    .v1-camera-empty, .v1-camera-empty.is-compact { min-height: 104px; padding: 13px; border-radius: 18px; }
+    .v1-camera-card { min-height: 218px; border-radius: var(--ecke-15); }
+    .v1-camera-empty, .v1-camera-empty.is-compact { min-height: 104px; padding: 13px; border-radius: var(--ecke-15); }
     .v1-camera-empty.is-compact h2 { font-size: 22px; margin: 2px 0 0; }
     .v1-camera-empty .v1-button { min-height: 38px; padding: 0 10px; }
     .v1-live-now-card { min-height: 0; }

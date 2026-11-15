@@ -120,15 +120,15 @@
   gap: 2px;
   padding: 8px 12px;
   border: 1px solid var(--v1-line);
-  border-radius: 13px;
+  border-radius: var(--ecke-12);
   background: color-mix(in oklch, var(--v1-bg), white 3%);
 }
 .rc2-measurement-derived span {
   color: var(--v1-muted);
   font-size: var(--fs-klein);
   font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  text-transform: var(--etikett-schreibung);
+  letter-spacing: var(--sperrung-7);
 }
 .rc2-measurement-derived strong {
   display: flex;

@@ -48,7 +48,7 @@
   .ww-punkt {
     inline-size: 14px;
     block-size: 14px;
-    border-radius: 50%;
+    border-radius: var(--ecke-rund);
     border: 1px solid var(--v1-muted);
     background: transparent;
   }

@@ -4,7 +4,7 @@
   .hv-table { width: 100%; border-collapse: collapse; font-size: var(--fs-text); }
   .hv-table th, .hv-table td { padding: 6px 8px; border-bottom: 1px solid var(--hair); text-align: left; }
   .hv-table thead th {
-    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint);
+    font: 700 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-6); text-transform: var(--etikett-schreibung); color: var(--faint);
     white-space: nowrap;
   }
   .hv-table tbody th { font-weight: 500; width: 34%; }
@@ -16,7 +16,7 @@
     flex: 1 1 150px; min-width: 0; padding: 11px 13px;
     border: 1px solid var(--hair); border-radius: var(--r); background: var(--panel);
   }
-  .hv-sums span { display: block; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; color: var(--faint); }
+  .hv-sums span { display: block; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); color: var(--faint); }
   .hv-sums strong {
     display: block; margin-top: 7px;
     font: 500 var(--fs-zahl)/1 var(--font-mono); font-variant-numeric: tabular-nums;

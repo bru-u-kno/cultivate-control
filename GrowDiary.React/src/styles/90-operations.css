@@ -81,8 +81,8 @@
   font-style: normal;
   font-weight: 900;
   font-size: var(--fs-etikett);
-  text-transform: uppercase;
-  letter-spacing: .12em;
+  text-transform: var(--etikett-schreibung);
+  letter-spacing: var(--sperrung-11);
   color: var(--v1-muted);
 }
 .rc-risk-action-desc {
@@ -120,15 +120,15 @@
   gap: 6px;
   padding: 3px 9px;
   border: 1px solid currentColor;
-  border-radius: 99px;
+  border-radius: var(--ecke-pille);
   font: 600 var(--fs-etikett)/1.2 var(--font-mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-6);
+  text-transform: var(--etikett-schreibung);
 }
 .rc-risk-state i {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--ecke-rund);
   background: currentColor;
 }
 .rc-risk-state.is-on { color: var(--warn-text); }
@@ -137,15 +137,15 @@
 .rc-risk-stand {
   padding: 8px 10px;
   border: 1px solid var(--v1-line);
-  border-radius: 10px;
+  border-radius: var(--ecke-10);
 }
 .rc-risk-stand.is-old { border-style: dashed; border-color: var(--warn-text); }
 .rc-risk-stand-label {
   display: block;
   color: var(--v1-muted);
   font: 600 var(--fs-etikett)/1.2 var(--font-mono);
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-8);
+  text-transform: var(--etikett-schreibung);
 }
 .rc-risk-stand p {
   margin: 2px 0 0;
@@ -212,7 +212,7 @@
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--v1-line);
-  border-radius: 14px;
+  border-radius: var(--ecke-13);
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.02);
 }

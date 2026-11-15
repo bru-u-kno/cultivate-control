@@ -33,7 +33,7 @@
   .ki-stufen { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s-2); min-width: 0; }
   .ki-stufen legend {
     padding: 0; margin-bottom: var(--s-2);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: 0.1em; color: var(--faint);
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-9); color: var(--faint);
   }
   .ki-stufe { display: grid; gap: var(--s-2); min-width: 0; }
   .ki-stufe-zeile {
@@ -101,7 +101,7 @@
   .ki-klartext-wert {
     display: block; padding: var(--s-3); border: 1px solid var(--hair-2); border-radius: var(--r-sm);
     background: var(--panel); color: var(--ink);
-    font: 500 var(--fs-gross)/1.5 var(--font-mono); letter-spacing: .02em;
+    font: 500 var(--fs-gross)/1.5 var(--font-mono); letter-spacing: var(--sperrung-2);
     overflow-wrap: anywhere; word-break: break-all; user-select: all;
   }
   .ki-klartext-satz { margin: 0; font-weight: 600; font-size: var(--fs-text); color: var(--ink); }

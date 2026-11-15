@@ -12,7 +12,7 @@
   .co-table { display: grid; background: var(--panel-2); }
   .co-th {
     padding: 8px 12px;
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-11); text-transform: var(--etikett-schreibung);
     color: var(--faint);
   }
   .co-td {
@@ -46,7 +46,7 @@
   }
   .co-td input:not([type='checkbox']), .co-td select {
     width: 100%; min-width: 0; min-height: 28px; padding: 0 8px;
-    border: 1px solid var(--hair); border-radius: 6px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-6);
     background: var(--sunk); color: var(--ink);
     font: 400 var(--fs-klein)/1 var(--font-mono);
   }
@@ -100,7 +100,7 @@
   /* ---------- Kennzahlen-Leiste ---------- */
   .co-strip {
     display: flex; flex-wrap: wrap;
-    border: 1px solid var(--hair); border-radius: 10px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-10);
     background: var(--panel); overflow: hidden;
   }
   /* Linie links UND oben plus negativer Rand — sonst haengt beim Umbruch ein
@@ -117,7 +117,7 @@
     display: flex; flex-direction: column; justify-content: space-between;
   }
   .co-cell-label {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); text-transform: var(--etikett-schreibung);
     color: var(--faint);
   }
   .co-cell-value { margin-top: 6px; font: 500 var(--fs-gross)/1.2 var(--font-mono); }
@@ -131,9 +131,9 @@
   .co-chips { display: flex; gap: 5px; flex-wrap: wrap; }
   .co-chip {
     min-height: 26px; display: inline-flex; align-items: center; padding: 0 10px;
-    border: 1px solid var(--hair-2); border-radius: 999px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-pille);
     background: transparent; color: var(--muted);
-    font: 400 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+    font: 400 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-4); text-transform: var(--etikett-schreibung);
     cursor: pointer;
   }
   .co-chip.active {
@@ -193,7 +193,7 @@
 
   .co-row-sub { font: 400 var(--fs-text)/1.4 var(--font-mono); color: var(--muted); }
   .co-row-text { font-size: var(--fs-text); }
-  .co-row-value { margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .co-row-value { margin-left: auto; font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-4); text-transform: var(--etikett-schreibung); color: var(--muted); white-space: nowrap; }
   .co-row-value.is-good { color: var(--accent-text); }
   .co-row-value.is-faint { color: var(--faint); }
   .co-row-entity { font: 400 var(--fs-klein)/1.3 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
@@ -223,7 +223,7 @@
   .co-tabhead .gc-facts { margin: 0; max-width: 64ch; }
 
   /* Statuspunkt in Panel-Zeilen (Auto-Messungen). */
-  .co-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--hair-2); flex-shrink: 0; }
+  .co-dot { width: 5px; height: 5px; border-radius: var(--ecke-rund); background: var(--hair-2); flex-shrink: 0; }
   .co-dot.is-on { background: var(--accent); }
 
   /* ---------- Kartengitter + Geisterkarte ---------- */
@@ -235,9 +235,9 @@
   .co-grid.is-300 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
   .co-ghost {
     min-height: 150px; display: grid; place-items: center; align-content: center; gap: 4px;
-    border: 1px dashed var(--hair-2); border-radius: 12px;
+    border: 1px dashed var(--hair-2); border-radius: var(--ecke-11);
     background: transparent; color: var(--faint);
-    font: 500 var(--fs-klein)/1.6 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+    font: 500 var(--fs-klein)/1.6 var(--font-mono); letter-spacing: var(--sperrung-4); text-transform: var(--etikett-schreibung);
     cursor: pointer; text-align: center;
   }
   .co-ghost small { font-size: var(--fs-etikett); letter-spacing: 0; text-transform: none; }
@@ -248,7 +248,7 @@
   .st-import { align-items: flex-start; }
   .st-preview {
     margin-top: 10px; padding: 10px 12px;
-    border: 1px solid var(--hair-2); border-radius: 8px;
+    border: 1px solid var(--hair-2); border-radius: var(--ecke-8);
     display: grid; gap: 3px;
     font: 400 var(--fs-klein)/1.5 var(--font-mono); color: var(--muted);
   }
@@ -357,8 +357,8 @@
   display: block;
   color: var(--muted);
   font-size: var(--fs-klein);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: var(--sperrung-11);
+  text-transform: var(--etikett-schreibung);
   margin-bottom: 2px;
 }
 

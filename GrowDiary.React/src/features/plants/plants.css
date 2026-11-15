@@ -6,10 +6,10 @@
   .plant-actions-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .plant-action-form {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; align-items: end;
-    padding: 12px; border: 1px solid var(--hair); border-radius: 12px; background: var(--panel-2);
+    padding: 12px; border: 1px solid var(--hair); border-radius: var(--ecke-11); background: var(--panel-2);
   }
   .plant-row { display: grid; gap: 2px; }
   .plant-row strong { font-size: var(--fs-text); font-weight: 600; }
   .plant-row span { color: var(--muted); font-size: var(--fs-text); }
-  .plant-row em { font-style: normal; font-size: var(--fs-etikett); color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .plant-row em { font-style: normal; font-size: var(--fs-etikett); color: var(--faint); text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-8); }
 }

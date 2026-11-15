@@ -13,5 +13,5 @@
   }
   .alert-bar strong { color: var(--danger); font-weight: 600; }
   .alert-bar span { color: var(--muted); }
-  .alert-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+  .alert-dot { width: 7px; height: 7px; border-radius: var(--ecke-rund); background: var(--danger); flex-shrink: 0; }
 }

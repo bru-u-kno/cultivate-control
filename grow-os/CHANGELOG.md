@@ -5,6 +5,14 @@
 > was sich ändert. Die älteren Einträge darunter sind noch englisch; sie sind
 > Geschichte und werden nicht nachübersetzt.
 
+## 2.0.0-cc.341
+
+**Aussehen an einer Stelle: Ecken, Buchstabenabstand und Großschreibung kommen jetzt überall aus einer zentralen Datei. Sichtbar ändert sich dadurch nichts.**
+
+- **Was war:** Farben, Schriftgrößen und Abstände waren schon zentral festgelegt, Eckenradien, Buchstabenabstand (Sperrung) und die Großschreibung der kleinen Beschriftungen aber nicht. Sie standen an rund 420 Stellen in 51 Stildateien jeweils fest eingetragen. Wer das Aussehen der App ändern wollte, musste jede Seite einzeln anfassen, und dabei wäre fast zwangsläufig eine Seite anders geblieben als die übrigen.
+- **Jetzt:** Alle diese Stellen holen ihren Wert aus der zentralen Stildatei: 16 Eckenstufen (dazu „rund“ und „Pille“), 19 Sperrungsstufen, ein Schalter für die Großschreibung aller Beschriftungen, dazu die Höhe der kleinen Kurven in den Live-Kacheln. Jede Stufe trägt genau den Wert, der vorher dort stand. Das ist die Grundlage dafür, dass sich später ein anderes Aussehen mit einem Schritt für die ganze App einstellen lässt.
+- **Geprüft:** Jede Menüseite wurde vor und nach der Umstellung in hell und dunkel, auf Handybreite (369 px) und am Desktop aufgenommen und Pixel für Pixel verglichen. Ein neuer Test meldet jeden festen Eckenradius, jede feste Sperrung, jedes feste Großschreiben und jede neue feste Schriftgröße außerhalb der zentralen Datei, außerdem jeden Verweis auf eine Stufe, die es dort nicht gibt. Bei einer Probe mit absichtlich eingebauten Fehlern wird er rot. Bei der Umstellung fiel auf, dass eine Kleinstschriftgröße an 23 Stellen benutzt wurde, ohne je festgelegt zu sein (es galt immer der Ersatzwert). Sie ist jetzt mit genau diesem Wert festgelegt.
+
 ## 2.0.0-cc.340
 
 **Controller-Wächter: Die Seite versprach einen Neustart, obwohl keine Steckdose gewählt war.**

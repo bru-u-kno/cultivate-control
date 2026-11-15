@@ -44,7 +44,7 @@
   .ab-frage-kopf strong { font: 500 var(--fs-text)/1.2 var(--font-sans); color: var(--ink); }
   .ab-nummer {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 999px;
+    width: 22px; height: 22px; border-radius: var(--ecke-pille);
     background: var(--sunk); border: 1px solid var(--hair);
     font: 500 var(--fs-etikett)/1 var(--font-mono); color: var(--muted);
   }
@@ -72,7 +72,7 @@
     overflow: auto;
     background: var(--sunk);
     border: 1px solid var(--hair);
-    border-radius: 12px;
+    border-radius: var(--ecke-11);
     font: 400 var(--fs-klein)/1.65 var(--font-mono);
     color: var(--ink);
     white-space: pre-wrap;

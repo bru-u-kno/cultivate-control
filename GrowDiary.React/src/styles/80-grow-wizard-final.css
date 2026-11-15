@@ -49,7 +49,7 @@ GROW-2 · Grow Wizard final
 .program-card {
   appearance: none;
   border: 1px solid color-mix(in oklch, var(--border) 86%, transparent);
-  border-radius: 22px;
+  border-radius: var(--ecke-16);
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--surface2) 72%, transparent), color-mix(in oklch, var(--surface) 92%, black));
   color: var(--text);
@@ -112,7 +112,7 @@ GROW-2 · Grow Wizard final
 
 .grow-card-facts b {
   border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
-  border-radius: 999px;
+  border-radius: var(--ecke-pille);
   padding: 6px 9px;
   background: color-mix(in oklch, var(--surface3) 42%, transparent);
   color: color-mix(in oklch, var(--text) 88%, var(--accent));
@@ -139,7 +139,7 @@ GROW-2 · Grow Wizard final
 .grow-summary-card h2 {
   margin: 0;
   font-size: clamp(1.25rem, 2vw, 1.8rem);
-  letter-spacing: -0.04em;
+  letter-spacing: var(--sperrung-eng-3);
 }
 
 .grow-summary-list {
@@ -195,7 +195,7 @@ GROW-2 · Grow Wizard final
   .program-card {
     min-height: unset;
     padding: 14px;
-    border-radius: 18px;
+    border-radius: var(--ecke-15);
   }
 
   .grow-card-facts,

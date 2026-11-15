@@ -191,7 +191,7 @@ export function MetricTile({
       {/* Die 24-h-Kurve bleibt — sie ist der Einstieg in den Verlauf. */}
       {trend && trend.length > 1 && (
         <div className="gos-metric-spark" aria-hidden="true">
-          <Sparkline points={trend} height={22} />
+          <Sparkline points={trend} height={22} hoeheCss="var(--kurve-hoehe)" />
         </div>
       )}
 

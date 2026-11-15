@@ -2,7 +2,7 @@
 @layer features {
 
   .cu-jar {
-    border: 1px solid var(--hair); border-radius: 12px; background: var(--panel);
+    border: 1px solid var(--hair); border-radius: var(--ecke-11); background: var(--panel);
     padding: 14px; display: grid; gap: 10px; min-width: 0;
   }
   /* Gleich hohe Glaeser: `align-self: stretch` zieht die Karten auf dieselbe
@@ -24,7 +24,7 @@
 
   .cu-ampel {
     border-left: 3px solid var(--hair); padding: 8px 12px;
-    background: var(--sunk); border-radius: 0 8px 8px 0; display: grid; gap: 4px;
+    background: var(--sunk); border-radius: 0 var(--ecke-8) var(--ecke-8) 0; display: grid; gap: 4px;
   }
   /* Dieselben drei Farben wie die Wasser-Ampel — zwei Ampeln in einer App
      duerfen nicht verschieden aussehen. */
@@ -35,7 +35,7 @@
   .cu-ampel p { margin: 0; font-size: var(--fs-text); line-height: 1.55; color: var(--ink); max-width: 68ch; }
   .cu-ampel small { font-size: var(--fs-etikett); color: var(--faint); }
   .cu-alter { font: 400 var(--fs-etikett)/1 var(--font-mono); color: var(--faint); white-space: nowrap; }
-  .cu-ampel .cu-alter { letter-spacing: .03em; }
+  .cu-ampel .cu-alter { letter-spacing: var(--sperrung-3); }
 
   .cu-rhythmus { margin: 0; font-size: var(--fs-klein); line-height: 1.55; color: var(--muted); max-width: 68ch; }
   .cu-hint { margin: 6px 0 0; font-size: var(--fs-text); line-height: 1.55; color: var(--muted); }
@@ -47,10 +47,10 @@
      Karte mitwachsen; die Obergrenze haelt es bei der Groesse, die zum
      Inhalt passt. */
   .cu-form label { display: grid; gap: 3px; flex: 0 1 130px; min-width: 0; }
-  .cu-form label span { font-size: var(--fs-etikett); color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+  .cu-form label span { font-size: var(--fs-etikett); color: var(--faint); text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-4); }
   .cu-form input {
     min-height: 40px; padding: 0 10px; min-width: 0;
-    border: 1px solid var(--hair); border-radius: 8px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-text)/1 var(--font-mono);
   }
   .cu-form .ls-btn { min-height: 40px; }
@@ -75,10 +75,10 @@
      ein Versehen. */
   .cu-new .ls-btn { min-height: 38px; }
   .cu-new label { display: grid; gap: 3px; flex: 1 1 120px; min-width: 0; }
-  .cu-new label span { font-size: var(--fs-etikett); color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+  .cu-new label span { font-size: var(--fs-etikett); color: var(--faint); text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-4); }
   .cu-new input, .cu-new select {
     min-height: 40px; padding: 0 10px; min-width: 0;
-    border: 1px solid var(--hair); border-radius: 8px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-8);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-text)/1 var(--font-sans);
   }
   /* 40 px waren zwei zu wenig. Das Kaestchen tippt man ueber die

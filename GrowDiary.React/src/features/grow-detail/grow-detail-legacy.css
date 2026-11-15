@@ -10,7 +10,7 @@
   .timeline-item { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--hair); }
   .timeline-item:last-child { border-bottom: none; }
   .tl-dot-col { display: flex; flex-direction: column; align-items: center; padding-top: 3px; }
-  .tl-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--hair-2); background: var(--panel-2); flex-shrink: 0; }
+  .tl-dot { width: 8px; height: 8px; border-radius: var(--ecke-rund); border: 1.5px solid var(--hair-2); background: var(--panel-2); flex-shrink: 0; }
   .tl-dot.measurement { background: var(--accent); border-color: var(--accent); }
   .tl-dot.journal { background: var(--info); border-color: var(--info); }
   .tl-dot.task { background: var(--warn); border-color: var(--warn); }
@@ -22,11 +22,11 @@
   .meas-field { display: grid; gap: 6px; }
   /* Auch hier Messgroessen — sonst steht in der alten Maske PH, waehrend die
      neue Maske daneben pH schreibt. */
-  .meas-field label { font-size: var(--fs-klein); font-weight: 600; color: var(--muted); letter-spacing: 0.04em; }
+  .meas-field label { font-size: var(--fs-klein); font-weight: 600; color: var(--muted); letter-spacing: var(--sperrung-4); }
   .meas-field-inner { position: relative; }
   .meas-input {
     width: 100%; min-height: 44px; padding: 12px 14px;
-    border: 1.5px solid var(--hair); border-radius: 8px;
+    border: 1.5px solid var(--hair); border-radius: var(--ecke-8);
     background: var(--panel-2); color: var(--ink);
     font-family: var(--font-mono); font-size: var(--fs-zahl); font-weight: 600;
     outline: none;
@@ -45,7 +45,7 @@
   .sop-setup-field > span { color: var(--muted); }
   .sop-setup-field select,
   .sop-setup-field input {
-    padding: 8px 10px; border: 1px solid var(--hair); border-radius: 10px;
+    padding: 8px 10px; border: 1px solid var(--hair); border-radius: var(--ecke-10);
     background: var(--panel-2); color: inherit; font: inherit; font-size: var(--fs-text);
   }
   .sop-setup-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }

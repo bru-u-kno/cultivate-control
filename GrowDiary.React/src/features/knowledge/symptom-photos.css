@@ -4,7 +4,7 @@
   .sp-wrap { display: grid; gap: 8px; margin-top: 12px; min-width: 0; }
 
   .sp-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .sp-head span { font: 500 var(--fs-klein)/1 var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .sp-head span { font: 500 var(--fs-klein)/1 var(--font-mono); text-transform: var(--etikett-schreibung); letter-spacing: var(--sperrung-5); color: var(--muted); }
   .sp-head small { font-size: var(--fs-etikett); color: var(--faint); }
 
   .sp-grid {
@@ -15,7 +15,7 @@
   .sp-item { margin: 0; display: grid; gap: 5px; min-width: 0; }
   .sp-item img {
     width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
-    border-radius: 8px; border: 1px solid var(--hair); background: var(--sunk);
+    border-radius: var(--ecke-8); border: 1px solid var(--hair); background: var(--sunk);
     display: block;
   }
   .sp-item figcaption { font-size: var(--fs-klein); line-height: 1.45; color: var(--muted); display: grid; gap: 2px; }
@@ -29,7 +29,7 @@
   .sp-assign { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .sp-assign select {
     min-height: 32px; padding: 0 8px; max-width: 100%; min-width: 0;
-    border: 1px solid var(--hair); border-radius: 6px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-6);
     background: var(--sunk); color: var(--ink); font: 400 var(--fs-klein)/1 var(--font-sans);
   }
   .sp-assign span { font-size: var(--fs-etikett); color: var(--faint); }

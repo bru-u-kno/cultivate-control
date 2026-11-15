@@ -96,7 +96,7 @@
   min-width: 0;
   max-width: 100%;
   border: 1px solid var(--v1-line);
-  border-radius: 10px;
+  border-radius: var(--ecke-10);
   padding: 10px;
   background: rgba(255, 255, 255, .02);
 }
@@ -278,7 +278,7 @@
   .tn-list .ls-label { padding: 0 2px; }
   .tn-item {
     text-align: left; padding: 10px 12px;
-    border: 1px solid var(--hair); border-radius: 10px;
+    border: 1px solid var(--hair); border-radius: var(--ecke-10);
     background: var(--panel); color: var(--ink);
     cursor: pointer; display: grid; gap: 5px;
   }
@@ -286,7 +286,7 @@
   .tn-item.is-archived { opacity: .65; }
   .tn-item.is-ghost {
     border-style: dashed; background: transparent; color: var(--faint);
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-4); text-transform: var(--etikett-schreibung);
     min-height: 38px; display: grid; place-items: center;
   }
   .tn-item.is-ghost:hover { border-color: var(--accent); color: var(--accent-text); }
@@ -330,7 +330,7 @@
      auf Kontrast 4,26 — knapp unter den noetigen 4,5. Kleine Schrift braucht
      mehr Kontrast, nicht weniger. */
   .tn-group-label {
-    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase;
+    font: 500 var(--fs-etikett)/1 var(--font-mono); letter-spacing: var(--sperrung-12); text-transform: var(--etikett-schreibung);
     color: var(--muted); margin-bottom: 9px;
   }
   .tn-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: var(--fs-text); margin-top: 7px; }
